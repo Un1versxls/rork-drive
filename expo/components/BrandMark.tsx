@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Easing, StyleSheet, Text, View, Platform } from "react-native";
+import { Animated, Easing, Image, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+
+const LOGO_URI = "https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/ildjxbdtuicbf06zk7zn0.jpeg";
 
 interface Props {
   size?: number;
@@ -36,7 +38,7 @@ export function BrandMark({ size = 120, animated = true, testID }: Props) {
 
   const ringSize = size;
   const coreSize = Math.round(size * 0.72);
-  const letterSize = Math.round(size * 0.42);
+  const logoSize = Math.round(size * 0.58);
   const glowSize = Math.round(size * 1.9);
 
   return (
@@ -97,48 +99,12 @@ export function BrandMark({ size = 120, animated = true, testID }: Props) {
             style={StyleSheet.absoluteFill}
           />
         </View>
-        <MaskedLetter letter="D" size={letterSize} />
+        <Image
+          source={{ uri: LOGO_URI }}
+          style={{ width: logoSize, height: logoSize }}
+          resizeMode="contain"
+        />
       </View>
-    </View>
-  );
-}
-
-function MaskedLetter({ letter, size }: { letter: string; size: number }) {
-  if (Platform.OS === "web") {
-    return (
-      <Text
-        style={{
-          fontSize: size,
-          fontWeight: "900",
-          letterSpacing: -2,
-          ...({
-            backgroundImage: "linear-gradient(135deg, #f7e7be 0%, #d4af37 45%, #8b7355 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-            color: "transparent",
-          } as object),
-        }}
-      >
-        {letter}
-      </Text>
-    );
-  }
-  return (
-    <View style={{ alignItems: "center", justifyContent: "center" }}>
-      <Text
-        style={{
-          fontSize: size,
-          fontWeight: "900",
-          letterSpacing: -2,
-          color: "#f4e4bc",
-          textShadowColor: "rgba(212,175,55,0.6)",
-          textShadowOffset: { width: 0, height: 1 },
-          textShadowRadius: 8,
-        }}
-      >
-        {letter}
-      </Text>
     </View>
   );
 }
