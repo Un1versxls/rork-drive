@@ -252,6 +252,11 @@ export default function PaywallScreen() {
           {purchaseMutation.isPending ? (
             <ActivityIndicator size="small" color={Colors.textDim} />
           ) : null}
+          {!fromUpgrade ? (
+            <Pressable onPress={() => router.push("/redeem")} hitSlop={10} style={styles.codeBtn} testID="paywall-code-btn">
+              <Text style={styles.codeBtnText}>Have a code?</Text>
+            </Pressable>
+          ) : null}
         </View>
       </SafeAreaView>
     </View>
@@ -347,4 +352,6 @@ const styles = StyleSheet.create({
 
   footer: { paddingBottom: 8, paddingTop: 4, gap: 6 },
   legal: { color: Colors.textMuted, fontSize: 10, textAlign: "center", lineHeight: 14 },
+  codeBtn: { alignSelf: "center", paddingVertical: 6, paddingHorizontal: 10, marginTop: 2 },
+  codeBtnText: { color: Colors.textMuted, fontSize: 11, fontWeight: "600", textDecorationLine: "underline" },
 });
