@@ -131,10 +131,6 @@ export default function PaywallScreen() {
       else router.replace("/(tabs)/tasks");
       return;
     }
-    if (retry) {
-      router.replace("/onboarding/complete");
-      return;
-    }
     router.push({ pathname: "/onboarding/decline", params: fromUpgrade ? { fromUpgrade: "1" } : {} });
   };
 

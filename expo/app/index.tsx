@@ -24,5 +24,8 @@ export default function Index() {
     }
     return <Redirect href="/onboarding" />;
   }
+  if (!state.profile.subscription.active) {
+    return <Redirect href="/onboarding/paywall" />;
+  }
   return <Redirect href="/(tabs)/tasks" />;
 }
