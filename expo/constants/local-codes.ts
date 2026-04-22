@@ -5,6 +5,7 @@ export interface LocalCode {
 }
 
 export const LOCAL_CODES: LocalCode[] = [
+  { code: "1111", plan: "admin", grantsAdmin: true },
   { code: "DRIVEADMIN", plan: "admin", grantsAdmin: true },
   { code: "DRIVEFREE", plan: "premium", grantsAdmin: false },
   { code: "FOUNDER2026", plan: "premium", grantsAdmin: true },
