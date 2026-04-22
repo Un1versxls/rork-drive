@@ -26,6 +26,27 @@ export default function ProgressScreen() {
   const completionRate = 100 - skipRate;
   const percentileOfNewUsers = Math.min(95, 40 + Math.min(55, totalCompleted));
 
+  const hypePool = useMemo<string[]>(() => [
+    "at this rate, you'll have a fully automated business in 30 days",
+    "keep this pace and you're looking at a real income stream by next month",
+    "30 more days like this and your business basically runs itself",
+    "you're on track to out-work 90% of people who downloaded this app",
+    "stay consistent and your first $1K month is closer than you think",
+    "this pace turns into a 6-figure pace in a few months",
+    "one month of this and you won't recognize your old self",
+    "compounding has entered the chat — don't stop now",
+    "founders who move like this are the ones who win",
+    "30 days of this pace = a real, running business",
+  ], []);
+
+  const hypeLine = useMemo<string>(() => {
+    const now = new Date();
+    const daySeed = now.getFullYear() * 1000 + now.getMonth() * 50 + now.getDate();
+    const sessionSeed = Math.floor(Date.now() / (1000 * 60 * 60));
+    const idx = (daySeed + sessionSeed) % hypePool.length;
+    return hypePool[idx] ?? hypePool[0] ?? "";
+  }, [hypePool]);
+
   const headlines: { title: string; sub: string; emoji: string }[] = [];
   if (weekMinutes > 0) {
     headlines.push({ emoji: "💪", title: `${weekMinutes} minutes of real work`, sub: "this past week" });
@@ -71,6 +92,10 @@ export default function ProgressScreen() {
                 </View>
               </View>
             ))}
+            <View style={styles.hypeCard} testID="progress-hype">
+              <Text style={styles.hypeEmoji}>🚀</Text>
+              <Text style={styles.hypeText}>{hypeLine}</Text>
+            </View>
           </View>
 
           <View style={styles.week}>
@@ -150,6 +175,10 @@ const styles = StyleSheet.create({
   advancedBtn: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16, borderRadius: 16, borderWidth: 1, borderColor: "#eeeeee", backgroundColor: "#ffffff" },
   advancedLabel: { color: Colors.text, fontSize: 15, fontWeight: "800" },
   chevOpen: { transform: [{ rotate: "180deg" }] },
+
+  hypeCard: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, backgroundColor: "#fffbea", borderWidth: 1, borderColor: "#f3e2a1" },
+  hypeEmoji: { fontSize: 18 },
+  hypeText: { flex: 1, color: "#7a5a00", fontSize: 13, fontWeight: "700", lineHeight: 18 },
 
   advanced: { marginTop: 8, padding: 6, borderRadius: 16, backgroundColor: "#fafafa", borderWidth: 1, borderColor: "#eeeeee" },
   statRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 13 },
