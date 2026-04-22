@@ -10,16 +10,24 @@ const LOGO_URI = "https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachment
 
 export default function Welcome() {
   const router = useRouter();
-  const fade = useRef(new Animated.Value(0)).current;
+  const riseY = useRef(new Animated.Value(0)).current;
+  const ctaFade = useRef(new Animated.Value(0)).current;
+  const ctaShift = useRef(new Animated.Value(16)).current;
 
   useEffect(() => {
-    Animated.timing(fade, { toValue: 1, duration: 500, useNativeDriver: true }).start();
-  }, [fade]);
+    Animated.sequence([
+      Animated.timing(riseY, { toValue: -60, duration: 1100, useNativeDriver: true }),
+      Animated.parallel([
+        Animated.timing(ctaFade, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(ctaShift, { toValue: 0, duration: 900, useNativeDriver: true }),
+      ]),
+    ]).start();
+  }, [riseY, ctaFade, ctaShift]);
 
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-        <Animated.View style={[styles.content, { opacity: fade }]}>
+        <Animated.View style={[styles.content, { transform: [{ translateY: riseY }] }]}>
           <View style={styles.iconWrap}>
             <Image
               source={{ uri: LOGO_URI }}
@@ -33,10 +41,10 @@ export default function Welcome() {
           </Text>
         </Animated.View>
 
-        <View style={styles.cta}>
+        <Animated.View style={[styles.cta, { opacity: ctaFade, transform: [{ translateY: ctaShift }] }]}>
           <GradientButton title="Get started" onPress={() => router.push("/onboarding/goal")} testID="cta-start" />
           <Text style={styles.smallLegal}>Takes under two minutes</Text>
-        </View>
+        </Animated.View>
       </SafeAreaView>
     </View>
   );
