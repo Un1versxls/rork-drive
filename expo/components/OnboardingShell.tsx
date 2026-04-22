@@ -2,10 +2,29 @@ import React, { useEffect, useRef } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronLeft } from "lucide-react-native";
-import { useRouter, usePathname } from "expo-router";
+import { useRouter, usePathname, type Href } from "expo-router";
 
 import { Colors } from "@/constants/colors";
 import { useApp } from "@/providers/AppProvider";
+
+const PREV_STEP: Record<string, Href> = {
+  "/onboarding/goal": "/onboarding",
+  "/onboarding/experience": "/onboarding/goal",
+  "/onboarding/time": "/onboarding/experience",
+  "/onboarding/priority": "/onboarding/time",
+  "/onboarding/industry": "/onboarding/priority",
+  "/onboarding/budget": "/onboarding/industry",
+  "/onboarding/obstacle": "/onboarding/budget",
+  "/onboarding/name": "/onboarding/obstacle",
+  "/onboarding/email": "/onboarding/name",
+  "/onboarding/source": "/onboarding/email",
+  "/onboarding/results": "/onboarding/source",
+  "/onboarding/paywall": "/onboarding/results",
+  "/onboarding/decline": "/onboarding/paywall",
+  "/onboarding/match": "/onboarding/paywall",
+  "/onboarding/business": "/onboarding/match",
+  "/onboarding/complete": "/onboarding/business",
+};
 
 interface Props {
   step: number;
@@ -41,7 +60,20 @@ export function OnboardingShell({ step, total, title, subtitle, children, footer
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <View style={styles.topRow}>
           {canGoBack ? (
-            <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12} testID="btn-back">
+            <Pressable
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                  return;
+                }
+                const prev = pathname ? PREV_STEP[pathname] : undefined;
+                if (prev) router.replace(prev);
+                else router.replace("/onboarding" as Href);
+              }}
+              style={styles.backBtn}
+              hitSlop={12}
+              testID="btn-back"
+            >
               <ChevronLeft color={Colors.text} size={22} />
             </Pressable>
           ) : <View style={styles.backBtn} />}
