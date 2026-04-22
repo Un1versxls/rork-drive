@@ -9,9 +9,9 @@ import { useApp } from "@/providers/AppProvider";
 import type { TimeCommitment } from "@/types";
 
 const OPTIONS: { id: TimeCommitment; label: string; description: string; emoji: string }[] = [
-  { id: "15m", label: "15 minutes", description: "Tiny daily wins", emoji: "⏱️" },
+  { id: "15m", label: "15 minutes", description: "Tiny daily wins", emoji: "⏱" },
   { id: "30m", label: "30 minutes", description: "Solid momentum", emoji: "⏳" },
-  { id: "1h", label: "1 hour", description: "Real deep work", emoji: "⌛️" },
+  { id: "1h", label: "1 hour", description: "Real deep work", emoji: "⌛" },
   { id: "2h", label: "2+ hours", description: "Serious mode", emoji: "🧨" },
 ];
 
@@ -23,8 +23,8 @@ export default function TimeScreen() {
   return (
     <OnboardingShell
       step={3}
-      total={10}
-      title="How much time can you commit daily?"
+      total={11}
+      title="How much time daily?"
       subtitle="Small is fine — consistency wins."
       footer={
         <GradientButton

@@ -1,80 +1,57 @@
-import type { Plan } from "@/types";
+import type { Plan, BillingCycle } from "@/types";
 
 export const PLANS: Plan[] = [
   {
-    id: "free",
-    name: "Free",
-    price: 0,
-    taskLimit: 3,
-    multiplier: 1,
-    tagline: "Start moving",
-    incomeTier: "starter",
-    incomeRange: "$0 \u2013 $50 / month",
+    id: "base",
+    name: "Base",
+    monthlyPrice: 23.99,
+    yearlyDiscount: 20,
+    tagline: "Start your side hustle",
+    incomeTier: "standard",
+    incomeRange: "$50 – $1,500 / month",
     premiumBusinesses: false,
-    perks: [
-      "3 daily tasks",
-      "1x points",
-      "Basic streak tracking",
-      "Starter side hustles ($0\u2013$50/mo range)",
-    ],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: 29,
     taskLimit: 6,
     multiplier: 2,
-    tagline: "Most popular",
-    incomeTier: "growth",
-    incomeRange: "$100 \u2013 $1,000 / month",
-    premiumBusinesses: false,
     perks: [
-      "6 daily tasks",
-      "2x points",
-      "Streak boosters",
-      "All badges",
-      "Growth businesses ($100\u2013$1k/mo range)",
+      "Pick from hand-picked businesses ($50 – $1,500 range)",
+      "Personalized daily tasks",
+      "Streak tracking + rewards",
+      "7-day free trial",
     ],
-    recommended: true,
   },
   {
-    id: "elite",
-    name: "Elite",
-    price: 79,
+    id: "premium",
+    name: "Premium",
+    monthlyPrice: 35,
+    yearlyDiscount: 30,
+    tagline: "For people actually trying to make real money",
+    incomeTier: "premium",
+    incomeRange: "$1,500 – $10,000 / month",
+    premiumBusinesses: true,
     taskLimit: 10,
     multiplier: 3,
-    tagline: "Go pro",
-    incomeTier: "premium",
-    incomeRange: "$1,000 \u2013 $10,000+ / month",
-    premiumBusinesses: true,
+    recommended: true,
     perks: [
-      "10 daily tasks",
-      "3x points",
-      "Priority categories",
-      "Advanced stats",
-      "Premium Mode \u2014 unlock high-ticket businesses ($1k\u2013$10k+/mo)",
-    ],
-  },
-  {
-    id: "unlimited",
-    name: "Unlimited",
-    price: 149,
-    taskLimit: 99,
-    multiplier: 5,
-    tagline: "No limits",
-    incomeTier: "elite",
-    incomeRange: "$10,000+ / month",
-    premiumBusinesses: true,
-    perks: [
-      "Unlimited tasks",
-      "5x points",
-      "Everything in Elite",
-      "Founding member",
-      "Elite Mode \u2014 scale-ready businesses ($10k+/mo potential)",
+      "Unlock high-ticket businesses ($1,500 – $10,000 range)",
+      "Build your OWN custom business — we make the daily tasks",
+      "Priority matching + premium-only ideas",
+      "Everything in Base",
+      "7-day free trial",
     ],
   },
 ];
 
 export function getPlan(id: string): Plan {
   return PLANS.find((p) => p.id === id) ?? PLANS[0];
+}
+
+export function priceFor(plan: Plan, cycle: BillingCycle): number {
+  if (cycle === "monthly") return plan.monthlyPrice;
+  const full = plan.monthlyPrice * 12;
+  return Math.max(0, Math.round((full - plan.yearlyDiscount) * 100) / 100);
+}
+
+export function monthlyEquivalent(plan: Plan, cycle: BillingCycle): number {
+  if (cycle === "monthly") return plan.monthlyPrice;
+  return Math.round((priceFor(plan, "yearly") / 12) * 100) / 100;
 }

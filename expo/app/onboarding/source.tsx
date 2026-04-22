@@ -6,36 +6,36 @@ import { OnboardingShell } from "@/components/OnboardingShell";
 import { OptionCard } from "@/components/OptionCard";
 import { GradientButton } from "@/components/GradientButton";
 import { useApp } from "@/providers/AppProvider";
-import type { PrimaryGoal } from "@/types";
+import type { Source } from "@/types";
 
-const OPTIONS: { id: PrimaryGoal; label: string; description: string; emoji: string }[] = [
-  { id: "earn_income", label: "Earn extra income", description: "Side hustles, freelance, pitching", emoji: "💸" },
-  { id: "build_skills", label: "Build skills", description: "Learn, practice, level up", emoji: "🧠" },
-  { id: "grow_business", label: "Grow my business", description: "Customers, revenue, product", emoji: "📈" },
-  { id: "stay_productive", label: "Stay productive", description: "Focus, routines, follow through", emoji: "⚡" },
+const OPTIONS: { id: Source; label: string; emoji: string }[] = [
+  { id: "tiktok", label: "TikTok", emoji: "🎵" },
+  { id: "instagram", label: "Instagram", emoji: "📸" },
+  { id: "friend", label: "A friend", emoji: "👋" },
+  { id: "creator", label: "A creator", emoji: "⭐" },
+  { id: "other", label: "Other", emoji: "✨" },
 ];
 
-export default function GoalScreen() {
+export default function SourceScreen() {
   const router = useRouter();
   const { state, setAnswers } = useApp();
-  const [selected, setSelected] = useState<PrimaryGoal | null>(state.profile.goal);
+  const [selected, setSelected] = useState<Source | null>(state.profile.source);
 
   return (
     <OnboardingShell
-      step={1}
+      step={9}
       total={11}
-      title="What's your goal?"
-      subtitle="We'll tailor your daily tasks to it."
+      title="Where did you hear about us?"
+      subtitle="Just curious — pick one."
       footer={
         <GradientButton
           title="Continue"
           disabled={!selected}
           onPress={() => {
             if (!selected) return;
-            setAnswers({ goal: selected });
-            router.push("/onboarding/experience");
+            setAnswers({ source: selected });
+            router.push("/onboarding/results");
           }}
-          testID="cta-continue"
         />
       }
     >
@@ -44,11 +44,9 @@ export default function GoalScreen() {
           <OptionCard
             key={o.id}
             label={o.label}
-            description={o.description}
             emoji={o.emoji}
             selected={selected === o.id}
             onPress={() => setSelected(o.id)}
-            testID={`opt-${o.id}`}
           />
         ))}
       </ScrollView>

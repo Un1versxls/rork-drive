@@ -9,18 +9,20 @@ export default function Index() {
   const [minShown, setMinShown] = useState<boolean>(false);
 
   useEffect(() => {
-    const t = setTimeout(() => setMinShown(true), 1600);
+    const t = setTimeout(() => setMinShown(true), 2000);
     return () => clearTimeout(t);
   }, []);
 
-  useEffect(() => {
-    console.log("[Index] hydrated", hydrated, "onboarded", state.onboarded);
-  }, [hydrated, state.onboarded]);
-
   if (!hydrated || !minShown) {
-    return <SplashLoader streak={state.streak} showStreak={state.onboarded && state.streak > 0} />;
+    return <SplashLoader />;
   }
 
-  if (!state.onboarded) return <Redirect href="/onboarding" />;
+  if (!state.onboarded) {
+    const step = state.profile.onboardingStep;
+    if (step && step !== "/") {
+      return <Redirect href={step as never} />;
+    }
+    return <Redirect href="/onboarding" />;
+  }
   return <Redirect href="/(tabs)/tasks" />;
 }

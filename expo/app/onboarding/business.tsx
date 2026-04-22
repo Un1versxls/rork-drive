@@ -28,8 +28,8 @@ export default function BusinessScreen() {
   if (!data) {
     return (
       <OnboardingShell
-        step={10}
-        total={10}
+        step={11}
+        total={11}
         title="Pick your business"
         footer={<GradientButton title="Retry" onPress={() => router.replace("/onboarding/match")} />}
       >
@@ -42,10 +42,10 @@ export default function BusinessScreen() {
 
   return (
     <OnboardingShell
-      step={10}
-      total={10}
+      step={11}
+      total={11}
       title="Pick your business"
-      subtitle="We drafted 3 for you. Choose one — you can switch later."
+      subtitle="3 matches for you. Choose one — switch anytime."
       footer={
         <GradientButton
           title="Start with this one"

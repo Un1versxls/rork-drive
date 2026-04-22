@@ -1,70 +1,116 @@
-# Add business library, streak effects, task helper AI, achievement styles, and notifications
+# Cal AI–style simplicity, paid-only $23.99 trial flow, Premium tier, and user accounts
 
-## Central Business/Routine/Skill Library (editable by you)
+## Look & feel — full redesign (Cal AI simple, but keep the flame)
 
-- **Shared library, easy to edit**: All possible businesses, routines, and skills live in one central list stored in your Supabase database (works like a spreadsheet — you can view, add, edit, or delete rows from the Supabase dashboard at any time).
-- **Auto-sync on unlock**: When a user finishes onboarding and the app generates 3 business suggestions, any new business that isn't already in the library gets added automatically. Existing ones are reused.
-- **Removable options**: If you delete a row from the library, users will no longer get that option going forward.
-- **Fields for each entry**: name, category (business/routine/skill), description, typical daily tasks, difficulty, matching goals/experience, and an "active" toggle so you can disable without deleting.
+- Clean white backgrounds, black text, lots of whitespace, rounded cards, one bold action button per screen.
+- All emojis through onboarding shown in a gold tint.
+- Keep the flame / streak effect on the progress screen and splash as the signature moment.
+- Remove busy gradients, glass blurs, and heavy decorations from paywall, tabs, and tasks.
+- Simple typography hierarchy: one big headline, one short subline, bold CTA.
 
-## Loading Screen with Streak Effects
+## Loading screen
 
-- **App open loading screen**: When the app opens, a short loading screen shows the user's current streak number front and center, with a tailored visual effect based on streak size.
-- **Streak tiers** (each with a distinctive, premium-feeling effect):
-  - **Spark (1–2 days)**: soft gold shimmer with rising particles
-  - **Flame (3–6)**: warm flickering flame glow around the number
-  - **Blaze (7–29)**: animated ember trail with pulsing gold rings
-  - **Inferno (30–99)**: roaring flame column with heat-wave distortion
-  - **Phoenix (100+)**: radiant gold-white aura with rotating rays and drifting embers
-- **Tap the streak icon in-app**: Triggers a vibration and plays a smaller 1–2 second version of the user's current streak effect right on the icon.
+- Remove the project preview image that flashes before the app loads.
+- New splash: just the app icon + the word "DRIVE" underneath, shown for exactly 2 seconds, then the app opens.
 
-## Task Detail Panel + AI Question Coach
+## Onboarding — simpler, with new steps
 
-- **Tap a task** to open a clean slide-up panel with:
-  - Full task description and why it matters for the user's chosen business
-  - Step-by-step breakdown (checkable sub-steps)
-  - Estimated time and difficulty
-  - "Mark complete" and "Skip" buttons
-- **Built-in AI coach chat** inside the panel:
-  - Only asks guiding Socratic questions to help the user think it through
-  - Will never do the work, write content, or give direct answers — strictly asks clarifying and reflective questions
-  - Friendly, short responses styled like a coach
-  - Clear label so the user knows it's a thinking partner, not a doer
+- Save progress automatically at every step (user can close the app and come back to the same question).
+- All option emojis shown in gold.
+- New question: **"Where did you hear about us?"** with multiple choice: TikTok, Instagram, A friend, A creator, Other.
+- New **Results page** (placeholder for now) that shows:
+  - A 5-star rating with review count as social proof.
+  - Placeholder success stats (you'll fill in later).
+  - Room for before/after user images (placeholder).
+- Final onboarding screen becomes the **free trial offer** (see next section).
 
-## Achievements with Equippable Name Effects
+## Paid-only — new paywall flow
 
-- **Achievements screen** on the Progress tab with badges that unlock as users hit milestones.
-- **Equippable effects**: Certain achievements unlock a visual effect the user can equip to style their own name across the app (profile, leaderboard, etc.).
-  - **Gold Shimmer** (starter unlock): animated gold gradient sweeping across name letters
-  - **Ember Glow** (7-day streak): warm glowing outline
-  - **Phoenix Aura** (100-day streak): radiant gold-white halo behind name
-  - **Founder's Mark** (complete first business milestone): subtle gold underline with a small crown
-  - **Diamond Trail** (Elite/Unlimited plan): soft sparkle particles
-- **Equip flow**: Tap an unlocked achievement → preview the effect on your name → tap "Equip". Only one equipped at a time. Haptic feedback on equip.
+- Remove Free, Pro, and Unlimited plans entirely. Only two plans exist now:
 
-## Vibrations Everywhere
+  **Base — $23.99**
+  - Monthly: $23.99/month, auto-renews monthly through Apple.
+  - Yearly: same $23.99 price shown, multiplied to yearly, then **$20 off** — presented as the best deal.
+  - Includes: pick businesses in the $50–$1,500 range.
+  - Comes with a free trial before the first charge.
 
-Gentle haptic feedback added to all meaningful interactions:
-- Button taps, tab switches, onboarding answer selection
-- Completing a task (satisfying double-tap pattern)
-- Skipping a task (soft warning)
-- Unlocking achievements (celebratory pattern)
-- Equipping effects, streak icon tap, opening/closing task panel
-- Receiving AI coach replies (subtle tick)
+  **Premium — $35**
+  - Monthly: $35/month, auto-renews monthly through Apple.
+  - Yearly: same $35 price shown, multiplied to yearly, then **$30 off**.
+  - Includes everything in Base **plus**:
+    - Unlock high-ticket businesses ($1,500–$10,000).
+    - Build your own custom business (tell Drive your idea and it generates daily tasks for you).
+    - Priority matching and premium-only ideas.
+  - Presented with enticing copy aimed at 16–26 TikTok users ("for people actually trying to make real money", "unlock the big leagues", etc).
 
-## Notification Opt-in Flow
+- Paywall screen itself is dead simple:
+  - Headline: "We want you to try it free."
+  - Two clean toggle cards: Yearly (best value, big savings badge) and Monthly.
+  - Plan switcher between Base and Premium at the top.
+  - One gold CTA button: "Start free trial".
+  - Tiny "Restore purchase" and legal text at the bottom.
 
-- **After onboarding**, a friendly screen asks: "Want reminders to keep your momentum?" with Allow / Not now.
-- **If allowed**, a second screen lets the user pick notification types (multi-select):
-  - Daily task reminders (with time picker)
-  - Streak protection alerts (end-of-day warning if tasks aren't done)
-  - Achievement unlocks
-  - Business milestone nudges
-  - Motivating streak reminders ("Remember why you started" style messages)
-- **Settings in Profile tab**: User can revisit and change these anytime, plus change reminder time.
+## If the user declines / closes the paywall
 
-## Design Notes
+1. First, show a short **"Why aren't you interested?"** screen with multiple choice:
+   - Too expensive
+   - Not sure it's worth it
+   - Don't have the money right now
+   - Just browsing
+   - Other
+2. After they answer, send them **back to the free trial offer** with slightly softer copy ("One more look — your first week is on us").
+3. The app stays locked until they start a trial. No free tier exists.
 
-- Maintains your warm off-white + gold/caramel palette throughout all new screens.
-- New panels and effects use glassmorphism cards, gentle shadows, and Outfit/Inter typography already in the app.
-- All effects are smooth and feel premium — no harsh or gimmicky animations.
+## Custom business builder (Premium only)
+
+- New screen where the user types their own business / project idea and Drive generates daily tasks for it.
+- Shown as a teaser card to Base users with a gold lock — tapping it opens the Premium upgrade paywall.
+- Fully unlocked for Premium subscribers.
+
+## Tasks & progress — cleaner copy
+
+- When the user completes half their daily tasks: a small celebratory popup like **"Great job — halfway there 🔥"**.
+- Progress screen: remove "Avg skip rate" from the main view.
+- Replace it with friendly achievement lines like:
+  - "You've turned 56 minutes into real work this week."
+  - "3 days on fire in a row."
+  - "You finished more tasks than 72% of new users."
+- Add a small **"Advanced stats"** panel at the bottom that opens to reveal the old detailed numbers (skip rate, completion %, streak history) for users who want them.
+
+## User accounts & admin system
+
+- Full sign-up / log-in with email.
+- Every user gets a unique ID that you can see.
+- Accounts sync progress across devices.
+- **Admin panel** (only visible to your dev accounts):
+  - See a list of users.
+  - Grant free Premium to any user (for giveaways, creators, dev testing).
+  - Mark accounts as "dev" so they skip the paywall.
+  - Revoke access.
+- Redeem-a-code screen for regular users, so you can hand out free premium codes to TikTok followers.
+
+## Rate the app
+
+- On the results page during onboarding, show a 5-star social-proof rating with review count.
+- After the user has used the app for a bit, ask them once to rate the app.
+- If they haven't rated, ask again every 30 days (gentle, dismissible).
+
+## App icon
+
+- Keep your current updated app store icon exactly as you set it — no changes here.
+
+## Screens in the app
+
+1. **Splash** — icon + "DRIVE" for 2 seconds.
+2. **Onboarding** — name, goal, experience, time, priority, industry, budget, obstacle, where-did-you-hear, results page, free trial offer. Progress saved.
+3. **Decline survey → Back to trial offer** — only if user dismisses paywall.
+4. **Sign up / Log in** — email account, unique ID.
+5. **Tasks (home)** — today's tasks, halfway celebration, streak flame kept.
+6. **Progress** — friendly achievements on top, advanced stats panel at the bottom.
+7. **Profile / Settings** — account info, subscription status, redeem code, rate the app, restore purchase, log out.
+8. **Custom Business (Premium)** — type your idea, generate daily tasks. Locked teaser for Base users.
+9. **Admin panel** — only for dev accounts: user list, grant premium, mark dev, revoke.
+
+## On your "do I have enough credits" question
+
+Credits here are for building, not for running a backend — the accounts + admin system will run on the Supabase backend that's already wired into your project, so there's no extra ongoing cost for that. The only real cost to you later will be Apple's cut of the subscriptions, which only happens when people actually pay.

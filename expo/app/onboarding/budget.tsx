@@ -9,9 +9,9 @@ import { useApp } from "@/providers/AppProvider";
 import type { Budget } from "@/types";
 
 const OPTIONS: { id: Budget; label: string; description: string; emoji: string }[] = [
-  { id: "under_100", label: "Under $100", description: "Lean, bootstrapped start", emoji: "🪙" },
-  { id: "100_500", label: "$100 – $500", description: "Enough for basic tools", emoji: "💵" },
-  { id: "500_2000", label: "$500 – $2,000", description: "Room to invest in quality", emoji: "💳" },
+  { id: "under_100", label: "Under $100", description: "Lean start", emoji: "🪙" },
+  { id: "100_500", label: "$100 – $500", description: "Basic tools", emoji: "💵" },
+  { id: "500_2000", label: "$500 – $2,000", description: "Quality gear", emoji: "💳" },
   { id: "2000_plus", label: "$2,000+", description: "Ready to move fast", emoji: "🏦" },
 ];
 
@@ -23,9 +23,9 @@ export default function BudgetScreen() {
   return (
     <OnboardingShell
       step={6}
-      total={10}
-      title="What's your starting budget?"
-      subtitle="We'll match ideas you can actually afford to start."
+      total={11}
+      title="Your starting budget?"
+      subtitle="We'll match ideas you can actually afford."
       footer={
         <GradientButton
           title="Continue"

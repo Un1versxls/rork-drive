@@ -1,6 +1,5 @@
 import React from "react";
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { Colors } from "@/constants/colors";
 
@@ -9,7 +8,7 @@ interface Props {
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
-  variant?: "primary" | "ghost";
+  variant?: "primary" | "ghost" | "gold";
   style?: ViewStyle;
   testID?: string;
   icon?: React.ReactNode;
@@ -37,30 +36,26 @@ export function GradientButton({ title, onPress, disabled, loading, variant = "p
     );
   }
 
+  const bg = variant === "gold" ? Colors.accentGold : Colors.text;
+  const textColor = "#ffffff";
+
   return (
     <Pressable
       testID={testID}
       onPress={handle}
       disabled={disabled || loading}
-      style={({ pressed }) => [styles.wrap, pressed && styles.pressed, disabled && styles.disabled, style]}
+      style={({ pressed }) => [styles.wrap, { backgroundColor: bg }, pressed && styles.pressed, disabled && styles.disabled, style]}
     >
-      <LinearGradient
-        colors={["#1a1a1a", "#2a2a2a"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.grad}
-      >
-        <View style={styles.row}>
-          {loading ? (
-            <ActivityIndicator color="#f5f4f0" />
-          ) : (
-            <>
-              {icon}
-              <Text style={styles.text}>{title}</Text>
-            </>
-          )}
-        </View>
-      </LinearGradient>
+      <View style={styles.row}>
+        {loading ? (
+          <ActivityIndicator color={textColor} />
+        ) : (
+          <>
+            {icon}
+            <Text style={[styles.text, { color: textColor }]}>{title}</Text>
+          </>
+        )}
+      </View>
     </Pressable>
   );
 }
@@ -68,32 +63,24 @@ export function GradientButton({ title, onPress, disabled, loading, variant = "p
 const styles = StyleSheet.create({
   wrap: {
     borderRadius: 999,
-    shadowColor: "#000",
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-  },
-  grad: {
-    paddingVertical: 16,
+    paddingVertical: 18,
     paddingHorizontal: 24,
-    borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
   },
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
-  text: { color: "#faf9f6", fontWeight: "800", fontSize: 16, letterSpacing: 0.3 },
-  pressed: { opacity: 0.92, transform: [{ scale: 0.98 }] },
+  text: { fontWeight: "800", fontSize: 16, letterSpacing: 0.2 },
+  pressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
   disabled: { opacity: 0.35 },
   ghost: {
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.cardBg,
+    borderWidth: 1.5,
+    borderColor: "#eeeeee",
+    backgroundColor: "#ffffff",
   },
   ghostText: { color: Colors.text, fontWeight: "700", fontSize: 15 },
 });

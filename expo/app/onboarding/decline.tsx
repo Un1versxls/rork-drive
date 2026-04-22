@@ -6,36 +6,37 @@ import { OnboardingShell } from "@/components/OnboardingShell";
 import { OptionCard } from "@/components/OptionCard";
 import { GradientButton } from "@/components/GradientButton";
 import { useApp } from "@/providers/AppProvider";
-import type { PrimaryGoal } from "@/types";
+import type { DeclineReason } from "@/types";
 
-const OPTIONS: { id: PrimaryGoal; label: string; description: string; emoji: string }[] = [
-  { id: "earn_income", label: "Earn extra income", description: "Side hustles, freelance, pitching", emoji: "💸" },
-  { id: "build_skills", label: "Build skills", description: "Learn, practice, level up", emoji: "🧠" },
-  { id: "grow_business", label: "Grow my business", description: "Customers, revenue, product", emoji: "📈" },
-  { id: "stay_productive", label: "Stay productive", description: "Focus, routines, follow through", emoji: "⚡" },
+const OPTIONS: { id: DeclineReason; label: string; emoji: string }[] = [
+  { id: "too_expensive", label: "Too expensive", emoji: "💸" },
+  { id: "not_worth", label: "Not sure it's worth it", emoji: "🤔" },
+  { id: "no_money", label: "Don't have the money right now", emoji: "🪙" },
+  { id: "browsing", label: "Just browsing", emoji: "👀" },
+  { id: "other", label: "Other", emoji: "✨" },
 ];
 
-export default function GoalScreen() {
+export default function DeclineScreen() {
   const router = useRouter();
-  const { state, setAnswers } = useApp();
-  const [selected, setSelected] = useState<PrimaryGoal | null>(state.profile.goal);
+  const { setDeclineReason } = useApp();
+  const [selected, setSelected] = useState<DeclineReason | null>(null);
 
   return (
     <OnboardingShell
-      step={1}
+      step={10}
       total={11}
-      title="What's your goal?"
-      subtitle="We'll tailor your daily tasks to it."
+      title="Why aren't you interested?"
+      subtitle="Quick one — helps us make it better."
+      canGoBack
       footer={
         <GradientButton
           title="Continue"
           disabled={!selected}
           onPress={() => {
             if (!selected) return;
-            setAnswers({ goal: selected });
-            router.push("/onboarding/experience");
+            setDeclineReason(selected);
+            router.replace({ pathname: "/onboarding/paywall", params: { retry: "1" } });
           }}
-          testID="cta-continue"
         />
       }
     >
@@ -44,11 +45,9 @@ export default function GoalScreen() {
           <OptionCard
             key={o.id}
             label={o.label}
-            description={o.description}
             emoji={o.emoji}
             selected={selected === o.id}
             onPress={() => setSelected(o.id)}
-            testID={`opt-${o.id}`}
           />
         ))}
       </ScrollView>

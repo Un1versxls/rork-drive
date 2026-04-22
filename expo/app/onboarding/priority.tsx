@@ -9,10 +9,10 @@ import { useApp } from "@/providers/AppProvider";
 import type { Priority } from "@/types";
 
 const OPTIONS: { id: Priority; label: string; description: string; emoji: string }[] = [
-  { id: "flexibility", label: "Flexibility", description: "My own schedule, my rules", emoji: "🪁" },
+  { id: "flexibility", label: "Flexibility", description: "My own schedule", emoji: "🪁" },
   { id: "earning", label: "Earning potential", description: "Income is the point", emoji: "💰" },
-  { id: "learning", label: "Learning opportunities", description: "Growth over everything", emoji: "📚" },
-  { id: "speed", label: "Speed to results", description: "I want it working fast", emoji: "⚡️" },
+  { id: "learning", label: "Learning", description: "Growth over everything", emoji: "📚" },
+  { id: "speed", label: "Speed to results", description: "Fast wins", emoji: "⚡" },
 ];
 
 export default function PriorityScreen() {
@@ -23,8 +23,8 @@ export default function PriorityScreen() {
   return (
     <OnboardingShell
       step={4}
-      total={10}
-      title="What matters most to you?"
+      total={11}
+      title="What matters most?"
       subtitle="This shapes the tone of your daily work."
       footer={
         <GradientButton

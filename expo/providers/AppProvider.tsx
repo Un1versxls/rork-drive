@@ -10,8 +10,10 @@ import { generateDailyTasks } from "@/constants/task-pool";
 import { triggerHaptic } from "@/lib/haptics";
 import type {
   AppState,
+  BillingCycle,
   BusinessIdea,
   Budget,
+  DeclineReason,
   ExperienceLevel,
   Industry,
   NameEffect,
@@ -20,12 +22,14 @@ import type {
   PlanId,
   PrimaryGoal,
   Priority,
+  Source,
+  Subscription,
   TaskSeed,
   TimeCommitment,
   UserProfile,
 } from "@/types";
 
-const STORAGE_KEY = "drive.state.v3";
+const STORAGE_KEY = "drive.state.v4";
 
 function todayKey(): string {
   const d = new Date();
@@ -49,6 +53,15 @@ const DEFAULT_NOTIF_PREFS: NotificationPrefs = {
   motivating: true,
 };
 
+const DEFAULT_SUBSCRIPTION: Subscription = {
+  active: false,
+  plan: "base",
+  cycle: "yearly",
+  trial: false,
+  startedAt: null,
+  source: "none",
+};
+
 const DEFAULT_PROFILE: UserProfile = {
   name: "",
   goal: null,
@@ -61,7 +74,9 @@ const DEFAULT_PROFILE: UserProfile = {
   industry: null,
   budget: null,
   obstacle: null,
-  plan: "free",
+  source: null,
+  declineReason: null,
+  subscription: DEFAULT_SUBSCRIPTION,
   business: null,
   businessTaskPool: [],
   hapticsEnabled: true,
@@ -70,6 +85,9 @@ const DEFAULT_PROFILE: UserProfile = {
   notificationPromptSeen: false,
   equippedEffect: "none",
   unlockedEffects: ["none"],
+  lastRatePromptAt: null,
+  hasRated: false,
+  onboardingStep: null,
 };
 
 const DEFAULT_STATE: AppState = {
@@ -97,6 +115,7 @@ async function loadState(): Promise<AppState> {
         ...DEFAULT_PROFILE,
         ...parsed.profile,
         notificationPrefs: { ...DEFAULT_NOTIF_PREFS, ...(parsed.profile?.notificationPrefs ?? {}) },
+        subscription: { ...DEFAULT_SUBSCRIPTION, ...(parsed.profile?.subscription ?? {}) },
         unlockedEffects: parsed.profile?.unlockedEffects ?? ["none"],
       },
     };
@@ -135,7 +154,7 @@ function evaluateAchievements(state: AppState): { ids: string[]; effects: NameEf
   const unlocked = new Set(state.unlockedAchievements);
   const effects = new Set<NameEffect>(state.profile.unlockedEffects);
   const newlyUnlocked: string[] = [];
-  const premiumPlan = state.profile.plan === "elite" || state.profile.plan === "unlimited";
+  const premiumPlan = state.profile.subscription.plan === "premium" && state.profile.subscription.active;
   for (const a of ACHIEVEMENTS) {
     if (unlocked.has(a.id)) continue;
     const value =
@@ -214,7 +233,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       };
     }
 
-    const plan = getPlan(state.profile.plan);
+    const plan = getPlan(state.profile.subscription.plan);
     const newTasks = generateDailyTasks(state.profile.goal, plan.taskLimit, key, state.profile.businessTaskPool);
     next = { ...next, tasks: newTasks, history };
     commit(next);
@@ -254,6 +273,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     industry?: Industry;
     budget?: Budget;
     obstacle?: Obstacle;
+    source?: Source;
     name?: string;
     goalDetail?: string;
     industryDetail?: string;
@@ -269,8 +289,22 @@ export const [AppProvider, useApp] = createContextHook(() => {
     commit(next);
   }, [state, commit]);
 
-  const setPlan = useCallback((plan: PlanId) => {
-    let next: AppState = { ...state, profile: { ...state.profile, plan } };
+  const setOnboardingStep = useCallback((path: string) => {
+    if (state.profile.onboardingStep === path) return;
+    const next: AppState = { ...state, profile: { ...state.profile, onboardingStep: path } };
+    commit(next);
+  }, [state, commit]);
+
+  const startSubscription = useCallback((plan: PlanId, cycle: BillingCycle, opts?: { source?: Subscription["source"] }) => {
+    const sub: Subscription = {
+      active: true,
+      plan,
+      cycle,
+      trial: true,
+      startedAt: new Date().toISOString(),
+      source: opts?.source ?? "trial",
+    };
+    let next: AppState = { ...state, profile: { ...state.profile, subscription: sub } };
     const ach = evaluateAchievements(next);
     next = {
       ...next,
@@ -283,6 +317,41 @@ export const [AppProvider, useApp] = createContextHook(() => {
     }
   }, [state, commit]);
 
+  const grantPremiumViaCode = useCallback(() => {
+    const sub: Subscription = {
+      active: true,
+      plan: "premium",
+      cycle: "yearly",
+      trial: false,
+      startedAt: new Date().toISOString(),
+      source: "code",
+    };
+    commit({ ...state, profile: { ...state.profile, subscription: sub } });
+  }, [state, commit]);
+
+  const cancelSubscription = useCallback(() => {
+    const sub: Subscription = { ...state.profile.subscription, active: false, trial: false };
+    commit({ ...state, profile: { ...state.profile, subscription: sub } });
+  }, [state, commit]);
+
+  const setDeclineReason = useCallback((reason: DeclineReason | null) => {
+    commit({ ...state, profile: { ...state.profile, declineReason: reason } });
+  }, [state, commit]);
+
+  const markRated = useCallback(() => {
+    commit({
+      ...state,
+      profile: { ...state.profile, hasRated: true, lastRatePromptAt: new Date().toISOString() },
+    });
+  }, [state, commit]);
+
+  const markRatePromptSeen = useCallback(() => {
+    commit({
+      ...state,
+      profile: { ...state.profile, lastRatePromptAt: new Date().toISOString() },
+    });
+  }, [state, commit]);
+
   const setBusiness = useCallback((business: BusinessIdea, taskPool: TaskSeed[]) => {
     const next: AppState = {
       ...state,
@@ -293,7 +362,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const completeOnboarding = useCallback(() => {
     if (!state.profile.goal) return;
-    const plan = getPlan(state.profile.plan);
+    const plan = getPlan(state.profile.subscription.plan);
     const key = todayKey();
     const tasks = generateDailyTasks(state.profile.goal, plan.taskLimit, key, state.profile.businessTaskPool);
     const next: AppState = {
@@ -301,6 +370,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       onboarded: true,
       tasks,
       lastActiveDate: key,
+      profile: { ...state.profile, onboardingStep: null },
     };
     commit(next);
   }, [state, commit]);
@@ -308,7 +378,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const completeTask = useCallback((id: string) => {
     const task = state.tasks.find((t) => t.id === id);
     if (!task || task.status !== "pending") return;
-    const plan = getPlan(state.profile.plan);
+    const plan = getPlan(state.profile.subscription.plan);
     const pts = task.basePoints * plan.multiplier;
     const tasks = state.tasks.map((t) => (t.id === id ? { ...t, status: "completed" as const } : t));
     const key = todayKey();
@@ -360,7 +430,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const undoTask = useCallback((id: string) => {
     const target = state.tasks.find((t) => t.id === id);
     if (!target) return;
-    const plan = getPlan(state.profile.plan);
+    const plan = getPlan(state.profile.subscription.plan);
     const wasCompleted = target.status === "completed";
     const tasks = state.tasks.map((t) => (t.id === id ? { ...t, status: "pending" as const } : t));
     const next: AppState = {
@@ -419,6 +489,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const level = useMemo(() => Math.floor(state.points / 250) + 1, [state.points]);
   const levelProgress = useMemo(() => (state.points % 250) / 250, [state.points]);
 
+  const currentPlan = useMemo(() => getPlan(state.profile.subscription.plan), [state.profile.subscription.plan]);
+  const isPremium = state.profile.subscription.plan === "premium" && state.profile.subscription.active;
+  const hasActiveSubscription = state.profile.subscription.active;
+
   return useMemo(() => ({
     hydrated,
     state,
@@ -429,10 +503,18 @@ export const [AppProvider, useApp] = createContextHook(() => {
     level,
     levelProgress,
     plans: PLANS,
-    currentPlan: getPlan(state.profile.plan),
+    currentPlan,
+    isPremium,
+    hasActiveSubscription,
     pendingAchievements,
     setAnswers,
-    setPlan,
+    setOnboardingStep,
+    startSubscription,
+    grantPremiumViaCode,
+    cancelSubscription,
+    setDeclineReason,
+    markRated,
+    markRatePromptSeen,
     setBusiness,
     setProfileField,
     setNotificationPrefs,
@@ -443,5 +525,5 @@ export const [AppProvider, useApp] = createContextHook(() => {
     undoTask,
     resetOnboarding,
     dismissPendingAchievement,
-  }), [hydrated, state, today, weeklyActivity, totalCompleted, totalSkipped, level, levelProgress, pendingAchievements, setAnswers, setPlan, setBusiness, setProfileField, setNotificationPrefs, equipEffect, completeOnboarding, completeTask, skipTask, undoTask, resetOnboarding, dismissPendingAchievement]);
+  }), [hydrated, state, today, weeklyActivity, totalCompleted, totalSkipped, level, levelProgress, currentPlan, isPremium, hasActiveSubscription, pendingAchievements, setAnswers, setOnboardingStep, startSubscription, grantPremiumViaCode, cancelSubscription, setDeclineReason, markRated, markRatePromptSeen, setBusiness, setProfileField, setNotificationPrefs, equipEffect, completeOnboarding, completeTask, skipTask, undoTask, resetOnboarding, dismissPendingAchievement]);
 });

@@ -30,22 +30,29 @@ export type Obstacle =
   | "direction"
   | "accountability";
 
-export type PlanId = "free" | "pro" | "elite" | "unlimited";
+export type Source = "tiktok" | "instagram" | "friend" | "creator" | "other";
 
-export type IncomeTier = "starter" | "growth" | "premium" | "elite";
+export type DeclineReason = "too_expensive" | "not_worth" | "no_money" | "browsing" | "other";
+
+export type PlanId = "base" | "premium";
+
+export type BillingCycle = "monthly" | "yearly";
+
+export type IncomeTier = "standard" | "premium";
 
 export interface Plan {
   id: PlanId;
   name: string;
-  price: number;
-  taskLimit: number;
-  multiplier: number;
+  monthlyPrice: number;
+  yearlyDiscount: number;
   tagline: string;
   perks: string[];
   recommended?: boolean;
   incomeTier: IncomeTier;
   incomeRange: string;
   premiumBusinesses: boolean;
+  taskLimit: number;
+  multiplier: number;
 }
 
 export type TaskCategory =
@@ -91,6 +98,15 @@ export interface NotificationPrefs {
   motivating: boolean;
 }
 
+export interface Subscription {
+  active: boolean;
+  plan: PlanId;
+  cycle: BillingCycle;
+  trial: boolean;
+  startedAt: string | null;
+  source: "trial" | "code" | "admin" | "none";
+}
+
 export interface UserProfile {
   name: string;
   goal: PrimaryGoal | null;
@@ -103,7 +119,9 @@ export interface UserProfile {
   industry: Industry | null;
   budget: Budget | null;
   obstacle: Obstacle | null;
-  plan: PlanId;
+  source: Source | null;
+  declineReason: DeclineReason | null;
+  subscription: Subscription;
   business: BusinessIdea | null;
   businessTaskPool: TaskSeed[];
   hapticsEnabled: boolean;
@@ -112,6 +130,17 @@ export interface UserProfile {
   notificationPromptSeen: boolean;
   equippedEffect: NameEffect;
   unlockedEffects: NameEffect[];
+  lastRatePromptAt: string | null;
+  hasRated: boolean;
+  onboardingStep: string | null;
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  isAdmin: boolean;
+  isDev: boolean;
+  adminGrantedPremium: boolean;
 }
 
 export interface Task {

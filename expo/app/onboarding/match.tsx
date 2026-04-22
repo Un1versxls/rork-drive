@@ -59,7 +59,7 @@ const INDUSTRY_LABEL: Record<Industry, string> = {
 export default function MatchScreen() {
   const router = useRouter();
   const { state } = useApp();
-  const plan = getPlan(state.profile.plan);
+  const plan = getPlan(state.profile.subscription.plan);
   const [stepIdx, setStepIdx] = useState<number>(0);
   const [error] = useState<string | null>(null);
 

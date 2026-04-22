@@ -17,7 +17,7 @@ export default function NameScreen() {
   return (
     <OnboardingShell
       step={8}
-      total={10}
+      total={11}
       title="What should we call you?"
       subtitle="We'll greet you here every day."
       footer={
@@ -26,7 +26,7 @@ export default function NameScreen() {
           disabled={!valid}
           onPress={() => {
             setAnswers({ name: name.trim() });
-            router.push("/onboarding/plan");
+            router.push("/onboarding/source");
           }}
         />
       }
@@ -43,7 +43,7 @@ export default function NameScreen() {
           autoCapitalize="words"
           testID="input-name"
         />
-        <Text style={styles.hint}>You can change this later in your profile.</Text>
+        <Text style={styles.hint}>You can change this later.</Text>
       </View>
     </OnboardingShell>
   );
@@ -52,9 +52,9 @@ export default function NameScreen() {
 const styles = StyleSheet.create({
   wrap: { paddingTop: 4 },
   input: {
-    backgroundColor: Colors.cardBg,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    backgroundColor: "#ffffff",
+    borderWidth: 1.5,
+    borderColor: "#eeeeee",
     borderRadius: 16,
     paddingHorizontal: 18,
     paddingVertical: 18,
