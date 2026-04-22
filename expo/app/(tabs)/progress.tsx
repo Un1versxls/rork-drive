@@ -26,40 +26,18 @@ export default function ProgressScreen() {
   const completionRate = 100 - skipRate;
   const percentileOfNewUsers = Math.min(95, 40 + Math.min(55, totalCompleted));
 
-  const hypePool = useMemo<string[]>(() => [
-    "at this rate, you'll have a fully automated business in 30 days",
-    "keep this pace and you're looking at a real income stream by next month",
-    "30 more days like this and your business basically runs itself",
-    "you're on track to out-work 90% of people who downloaded this app",
-    "stay consistent and your first $1K month is closer than you think",
-    "this pace turns into a 6-figure pace in a few months",
-    "one month of this and you won't recognize your old self",
-    "compounding has entered the chat — don't stop now",
-    "founders who move like this are the ones who win",
-    "30 days of this pace = a real, running business",
-  ], []);
-
-  const hypeLine = useMemo<string>(() => {
-    const now = new Date();
-    const daySeed = now.getFullYear() * 1000 + now.getMonth() * 50 + now.getDate();
-    const sessionSeed = Math.floor(Date.now() / (1000 * 60 * 60));
-    const idx = (daySeed + sessionSeed) % hypePool.length;
-    return hypePool[idx] ?? hypePool[0] ?? "";
-  }, [hypePool]);
-
-  const headlines: { title: string; sub: string; emoji: string }[] = [];
-  if (weekMinutes > 0) {
-    headlines.push({ emoji: "💪", title: `${weekMinutes} minutes of real work`, sub: "this past week" });
-  }
-  if (state.streak >= 2) {
-    headlines.push({ emoji: "🔥", title: `${state.streak} days on fire`, sub: "keep the chain going" });
-  }
-  if (totalCompleted >= 5) {
-    headlines.push({ emoji: "🏆", title: `You finished more tasks than ${percentileOfNewUsers}% of new users`, sub: "and you're just warming up" });
-  }
-  if (headlines.length === 0) {
-    headlines.push({ emoji: "✨", title: "Finish your first task", sub: "your stats unlock once you start moving" });
-  }
+  const headline: { title: string; sub: string; emoji: string } = (() => {
+    if (weekMinutes > 0) {
+      return { emoji: "💪", title: `${weekMinutes} minutes of real work`, sub: "this past week" };
+    }
+    if (state.streak >= 2) {
+      return { emoji: "🔥", title: `${state.streak} days on fire`, sub: "keep the chain going" };
+    }
+    if (totalCompleted >= 5) {
+      return { emoji: "🏆", title: `You finished more tasks than ${percentileOfNewUsers}% of new users`, sub: "and you're just warming up" };
+    }
+    return { emoji: "✨", title: "Finish your first task", sub: "your stats unlock once you start moving" };
+  })();
 
   const toggleAdvanced = () => {
     if (Platform.OS !== "web") LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -83,18 +61,12 @@ export default function ProgressScreen() {
           </View>
 
           <View style={styles.headlines}>
-            {headlines.map((h, i) => (
-              <View key={i} style={styles.headCard}>
-                <Text style={styles.headEmoji}>{h.emoji}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.headTitle}>{h.title}</Text>
-                  <Text style={styles.headSub}>{h.sub}</Text>
-                </View>
+            <View style={styles.headCard} testID="progress-insight">
+              <Text style={styles.headEmoji}>{headline.emoji}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.headTitle}>{headline.title}</Text>
+                <Text style={styles.headSub}>{headline.sub}</Text>
               </View>
-            ))}
-            <View style={styles.hypeCard} testID="progress-hype">
-              <Text style={styles.hypeEmoji}>🚀</Text>
-              <Text style={styles.hypeText}>{hypeLine}</Text>
             </View>
           </View>
 
