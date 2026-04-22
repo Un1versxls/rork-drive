@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useNavigation } from "expo-router";
 
 import { GradientButton } from "@/components/GradientButton";
 import { Colors } from "@/constants/colors";
@@ -10,6 +10,19 @@ import { useApp } from "@/providers/AppProvider";
 
 export default function RedeemCodeScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
+  const goBack = () => {
+    try {
+      if (navigation.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/onboarding/paywall");
+      }
+    } catch (e) {
+      console.log("[redeem-code] back error", e);
+      router.replace("/onboarding/paywall");
+    }
+  };
   const { user, redeemCode, redeemPending } = useAuth();
   const { grantPremiumViaCode } = useApp();
   const [code, setCode] = useState<string>("");
@@ -37,7 +50,7 @@ export default function RedeemCodeScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
-      <Pressable onPress={() => router.back()} hitSlop={16} style={styles.closeBtn}>
+      <Pressable onPress={goBack} hitSlop={16} style={styles.closeBtn} testID="redeem-close-btn">
         <Text style={styles.closeText}>✕</Text>
       </Pressable>
       <View style={styles.content}>
@@ -57,7 +70,7 @@ export default function RedeemCodeScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <View style={{ height: 20 }} />
         <GradientButton title="Apply code" onPress={onRedeem} loading={redeemPending} disabled={!code} />
-        <Pressable onPress={() => router.back()} style={styles.cancel}>
+        <Pressable onPress={goBack} style={styles.cancel} testID="redeem-cancel-btn">
           <Text style={styles.cancelText}>Cancel</Text>
         </Pressable>
       </View>
