@@ -1,14 +1,24 @@
-import React, { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View, Platform, Alert } from "react-native";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, Platform, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Check, Crown, Sparkles } from "lucide-react-native";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import type { PurchasesOffering, PurchasesPackage } from "react-native-purchases";
 
 import { GradientButton } from "@/components/GradientButton";
 import { Colors } from "@/constants/colors";
 import { useApp } from "@/providers/AppProvider";
 import { PLANS, priceFor, monthlyEquivalent } from "@/constants/plans";
+import { configurePurchases, getOfferings, purchasePackage, hasActiveEntitlement } from "@/lib/purchases";
 import type { BillingCycle, PlanId } from "@/types";
+
+type PkgMap = {
+  base_monthly?: PurchasesPackage;
+  base_yearly?: PurchasesPackage;
+  premium_monthly?: PurchasesPackage;
+  premium_yearly?: PurchasesPackage;
+};
 
 export default function PaywallScreen() {
   const router = useRouter();
@@ -20,7 +30,74 @@ export default function PaywallScreen() {
   const [cycle, setCycle] = useState<BillingCycle>("yearly");
 
   const plan = PLANS.find((p) => p.id === planId) ?? PLANS[0];
-  const premium = PLANS.find((p) => p.id === "premium") ?? PLANS[1];
+
+  useEffect(() => {
+    configurePurchases();
+  }, []);
+
+  const offeringsQuery = useQuery({
+    queryKey: ["rc-offerings"],
+    queryFn: async (): Promise<PurchasesOffering | null> => {
+      return getOfferings();
+    },
+    enabled: Platform.OS !== "web",
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const pkgs: PkgMap = React.useMemo(() => {
+    const off = offeringsQuery.data;
+    if (!off) return {};
+    const out: PkgMap = {};
+    for (const p of off.availablePackages) {
+      const k = p.identifier;
+      if (k === "base_monthly" || k === "$rc_monthly" && planId === "base") out.base_monthly = p;
+      if (k === "base_yearly") out.base_yearly = p;
+      if (k === "premium_monthly") out.premium_monthly = p;
+      if (k === "premium_yearly") out.premium_yearly = p;
+    }
+    return out;
+  }, [offeringsQuery.data, planId]);
+
+  const currentPkg: PurchasesPackage | undefined =
+    planId === "base"
+      ? cycle === "yearly" ? pkgs.base_yearly : pkgs.base_monthly
+      : cycle === "yearly" ? pkgs.premium_yearly : pkgs.premium_monthly;
+
+  const storePrice = currentPkg?.product?.priceString;
+  const fallbackPrice = cycle === "yearly"
+    ? `$${priceFor(plan, "yearly").toFixed(2)} / year`
+    : `$${plan.monthlyPrice.toFixed(2)} / month`;
+
+  const purchaseMutation = useMutation({
+    mutationFn: async () => {
+      if (Platform.OS === "web") {
+        return { ok: true as const };
+      }
+      if (!currentPkg) {
+        throw new Error("Subscription not available. Please try again.");
+      }
+      const info = await purchasePackage(currentPkg);
+      const entKey: "base" | "premium" = planId;
+      const ok = hasActiveEntitlement(info, entKey);
+      return { ok };
+    },
+    onSuccess: (res) => {
+      if (res.ok) {
+        startSubscription(planId, cycle);
+        router.replace("/onboarding/match");
+      } else {
+        Alert.alert("Payment not completed", "We couldn't verify your subscription. Try again.");
+      }
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "Purchase failed";
+      const isCancel = msg.toLowerCase().includes("cancel");
+      if (!isCancel) {
+        Alert.alert("Purchase failed", msg);
+      }
+      console.log("[paywall] purchase error", err);
+    },
+  });
 
   const onStart = () => {
     if (Platform.OS === "web") {
@@ -28,25 +105,14 @@ export default function PaywallScreen() {
       router.replace("/onboarding/match");
       return;
     }
-    Alert.alert(
-      "Start free trial?",
-      `You'll get 7 days free. After that, ${cycle === "yearly" ? `$${priceFor(plan, "yearly").toFixed(2)} / year` : `$${plan.monthlyPrice.toFixed(2)} / month`}. Cancel anytime in Settings.`,
-      [
-        { text: "Not now", style: "cancel" },
-        {
-          text: "Start trial",
-          onPress: () => {
-            startSubscription(planId, cycle);
-            router.replace("/onboarding/match");
-          },
-        },
-      ]
-    );
+    purchaseMutation.mutate();
   };
 
   const onDecline = () => {
     router.push("/onboarding/decline");
   };
+
+  const loadingPkgs = Platform.OS !== "web" && offeringsQuery.isLoading;
 
   return (
     <View style={styles.root}>
@@ -58,10 +124,10 @@ export default function PaywallScreen() {
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <Text style={styles.eyebrow}>{retry ? "ONE MORE LOOK" : "LAST STEP"}</Text>
           <Text style={styles.title}>
-            {retry ? "Your first week is\non us." : "We want you to\ntry it free."}
+            {retry ? "Your first 3 days\nare on us." : "We want you to\ntry it free."}
           </Text>
           <Text style={styles.subtitle}>
-            7 days free. Cancel anytime. No charge until the trial ends.
+            3 days free. Cancel anytime. No charge until the trial ends.
           </Text>
 
           <View style={styles.planSwitcher}>
@@ -128,14 +194,24 @@ export default function PaywallScreen() {
 
         <View style={styles.footer}>
           <GradientButton
-            title="Start 7-day free trial"
+            title={purchaseMutation.isPending ? "Opening Apple…" : "Start 3-day free trial"}
             variant="gold"
             onPress={onStart}
+            disabled={purchaseMutation.isPending || loadingPkgs}
             testID="cta-start-trial"
           />
           <Text style={styles.legal}>
-            Then {cycle === "yearly" ? `$${priceFor(plan, "yearly").toFixed(2)}/yr` : `$${plan.monthlyPrice.toFixed(2)}/mo`} through Apple. Cancel anytime.
+            {loadingPkgs ? (
+              "Loading…"
+            ) : (
+              <>
+                3 days free, then {storePrice ?? fallbackPrice} {cycle === "yearly" ? "/ yr" : "/ mo"} through Apple. Cancel anytime.
+              </>
+            )}
           </Text>
+          {purchaseMutation.isPending ? (
+            <ActivityIndicator size="small" color={Colors.textDim} />
+          ) : null}
         </View>
       </SafeAreaView>
     </View>
@@ -196,19 +272,19 @@ const styles = StyleSheet.create({
   },
   tagText: { color: "#ffffff", fontSize: 9, fontWeight: "900", letterSpacing: 1 },
 
-  cycles: { gap: 10, marginTop: 16 },
+  cycles: { gap: 8, marginTop: 16 },
   cycleCard: {
-    padding: 16, borderRadius: 16,
+    padding: 14, borderRadius: 14,
     borderWidth: 1.5, borderColor: "#eeeeee", backgroundColor: "#ffffff",
   },
   cycleCardOn: { borderColor: Colors.text },
-  cycleRow: { flexDirection: "row", alignItems: "center", gap: 14 },
-  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: "#dddddd", alignItems: "center", justifyContent: "center" },
+  cycleRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: "#dddddd", alignItems: "center", justifyContent: "center" },
   radioOn: { borderColor: Colors.text },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.text },
-  cycleHeadline: { color: Colors.text, fontSize: 16, fontWeight: "800" },
-  cycleSub: { color: Colors.textDim, fontSize: 12, fontWeight: "600", marginTop: 2 },
-  savings: { backgroundColor: Colors.accentGold, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  radioDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: Colors.text },
+  cycleHeadline: { color: Colors.text, fontSize: 14, fontWeight: "800" },
+  cycleSub: { color: Colors.textDim, fontSize: 11, fontWeight: "600", marginTop: 2 },
+  savings: { backgroundColor: Colors.accentGold, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
   savingsText: { color: "#ffffff", fontSize: 9, fontWeight: "900", letterSpacing: 0.8 },
 
   perks: { marginTop: 20, gap: 10 },
@@ -229,6 +305,6 @@ const styles = StyleSheet.create({
   },
   teaserText: { color: Colors.text, fontSize: 12, fontWeight: "600", flex: 1 },
 
-  footer: { paddingBottom: 8, paddingTop: 4, gap: 8 },
-  legal: { color: Colors.textMuted, fontSize: 11, textAlign: "center" },
+  footer: { paddingBottom: 8, paddingTop: 4, gap: 6 },
+  legal: { color: Colors.textMuted, fontSize: 10, textAlign: "center", lineHeight: 14 },
 });

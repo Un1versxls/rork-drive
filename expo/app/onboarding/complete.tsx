@@ -43,7 +43,7 @@ export default function CompleteScreen() {
           <View style={styles.card}>
             <Text style={styles.cardLabel}>PLAN</Text>
             <Text style={styles.cardName}>{currentPlan.name}</Text>
-            <Text style={styles.cardTag}>7-day free trial active</Text>
+            <Text style={styles.cardTag}>3-day free trial active</Text>
           </View>
         </Animated.View>
 

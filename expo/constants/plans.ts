@@ -16,7 +16,7 @@ export const PLANS: Plan[] = [
       "Pick from hand-picked businesses ($50 – $1,500 range)",
       "Personalized daily tasks",
       "Streak tracking + rewards",
-      "7-day free trial",
+      "3-day free trial",
     ],
   },
   {
@@ -36,7 +36,7 @@ export const PLANS: Plan[] = [
       "Build your OWN custom business — we make the daily tasks",
       "Priority matching + premium-only ideas",
       "Everything in Base",
-      "7-day free trial",
+      "3-day free trial",
     ],
   },
 ];
