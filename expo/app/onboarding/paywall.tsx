@@ -150,10 +150,16 @@ export default function PaywallScreen() {
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <Text style={styles.eyebrow}>{retry ? "ONE MORE LOOK" : "LAST STEP"}</Text>
           <Text style={styles.title}>
-            {retry ? "Your first 3 days\nare on us." : "We want you to\ntry it free."}
+            {planId === "premium"
+              ? "Unlock Premium."
+              : retry
+              ? "Your first 3 days\nare on us."
+              : "We want you to\ntry it free."}
           </Text>
           <Text style={styles.subtitle}>
-            3 days free. Cancel anytime. No charge until the trial ends.
+            {planId === "premium"
+              ? "Full access to big-money ideas. Cancel anytime."
+              : "3 days free. Cancel anytime. No charge until the trial ends."}
           </Text>
 
           <View style={styles.planSwitcher}>
@@ -220,7 +226,7 @@ export default function PaywallScreen() {
 
         <View style={styles.footer}>
           <GradientButton
-            title={purchaseMutation.isPending ? "Opening Apple…" : "Start 3-day free trial"}
+            title={purchaseMutation.isPending ? "Opening Apple…" : planId === "premium" ? "Unlock Premium" : "Start 3-day free trial"}
             variant="gold"
             onPress={onStart}
             disabled={purchaseMutation.isPending || loadingPkgs}
@@ -231,7 +237,15 @@ export default function PaywallScreen() {
               "Loading…"
             ) : (
               <>
-                3 days free, then {storePrice ?? fallbackPrice} {cycle === "yearly" ? "/ yr" : "/ mo"} through Apple. Cancel anytime.
+                {planId === "premium" ? (
+                  <>
+                    {storePrice ?? fallbackPrice} {cycle === "yearly" ? "/ yr" : "/ mo"} billed through Apple. Cancel anytime.
+                  </>
+                ) : (
+                  <>
+                    3 days free, then {storePrice ?? fallbackPrice} {cycle === "yearly" ? "/ yr" : "/ mo"} through Apple. Cancel anytime.
+                  </>
+                )}
               </>
             )}
           </Text>
