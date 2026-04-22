@@ -127,16 +127,24 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         .eq("code", code);
       if (updErr) throw updErr;
 
+      const grantsAdmin = existing.grants_admin === true || existing.plan === "admin";
+      const patch: Record<string, unknown> = {};
+      if (grantsAdmin) patch.is_admin = true;
+      if (existing.plan === "base" || existing.plan === "premium") {
+        patch.admin_granted_premium = true;
+        patch.granted_premium_plan = existing.plan;
+      } else if (grantsAdmin) {
+        patch.admin_granted_premium = true;
+        patch.granted_premium_plan = "premium";
+      }
+
       const { error: grantErr } = await supabase
         .from("user_accounts")
-        .update({
-          admin_granted_premium: true,
-          granted_premium_plan: existing.plan,
-        })
+        .update(patch)
         .eq("id", session.user.id);
       if (grantErr) throw grantErr;
 
-      return existing.plan as "base" | "premium";
+      return (existing.plan === "admin" ? "premium" : existing.plan) as "base" | "premium";
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["user-account"] });

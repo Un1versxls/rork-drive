@@ -30,6 +30,7 @@ function RootLayoutNav() {
       <Stack.Screen name="auth" options={{ presentation: "modal", animation: "slide_from_bottom" }} />
       <Stack.Screen name="admin" options={{ headerShown: true, title: "Admin" }} />
       <Stack.Screen name="redeem" options={{ presentation: "modal", headerShown: true, title: "Redeem code" }} />
+      <Stack.Screen name="redeem-code" options={{ presentation: "modal", headerShown: false, animation: "slide_from_bottom" }} />
     </Stack>
   );
 }
