@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Easing, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, Image, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -203,7 +203,11 @@ Mix: prefer reusing 1-2 library entries when they fit, and invent 1-2 fresh ones
               />
             </Animated.View>
             <View style={styles.ringInner}>
-              <Text style={styles.ringLetter}>D</Text>
+              <Image
+                source={{ uri: "https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/ildjxbdtuicbf06zk7zn0.jpeg" }}
+                style={styles.ringLogo}
+                resizeMode="contain"
+              />
             </View>
           </View>
 
@@ -275,8 +279,8 @@ const styles = StyleSheet.create({
   glowRing: { position: "absolute", width: 230, height: 230, borderRadius: 999 },
   glowFill: { flex: 1, borderRadius: 999 },
   ring: { position: "absolute", width: 118, height: 118, borderRadius: 999, overflow: "hidden" },
-  ringInner: { width: 96, height: 96, borderRadius: 48, backgroundColor: Colors.bg, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(0,0,0,0.06)" },
-  ringLetter: { color: Colors.text, fontSize: 40, fontWeight: "900", letterSpacing: -2 },
+  ringInner: { width: 96, height: 96, borderRadius: 48, backgroundColor: "#0a0a0a", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(212,175,55,0.4)", overflow: "hidden" },
+  ringLogo: { width: 72, height: 72 },
   eyebrow: { color: Colors.accent, letterSpacing: 3, fontWeight: "800", fontSize: 11 },
   title: { color: Colors.text, fontSize: 26, fontWeight: "900", letterSpacing: -0.5, textAlign: "center", marginTop: 8, lineHeight: 32 },
   stepsBox: { marginTop: 28, alignSelf: "stretch", gap: 10, paddingHorizontal: 12 },
