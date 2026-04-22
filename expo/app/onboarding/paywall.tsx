@@ -24,7 +24,7 @@ type PkgMap = {
 
 export default function PaywallScreen() {
   const router = useRouter();
-  const { state, startSubscription } = useApp();
+  const { state, startSubscription, resetOnboarding } = useApp();
   const { user } = useAuth();
   const params = useLocalSearchParams<{ retry?: string; fromUpgrade?: string }>();
   const retry = params.retry === "1";
@@ -253,6 +253,26 @@ export default function PaywallScreen() {
               <Text style={styles.codeBtnText}>Have a code?</Text>
             </Pressable>
           ) : null}
+          {!fromUpgrade ? (
+            <Pressable
+              onPress={() => {
+                const go = () => { resetOnboarding(); router.replace("/onboarding"); };
+                if (Platform.OS === "web") {
+                  if (typeof window !== "undefined" && window.confirm("Restart onboarding from the beginning?")) go();
+                  return;
+                }
+                Alert.alert("Restart?", "This will take you back to the start screen.", [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Restart", style: "destructive", onPress: go },
+                ]);
+              }}
+              hitSlop={8}
+              style={styles.restartBtn}
+              testID="paywall-restart-btn"
+            >
+              <Text style={styles.restartText}>Restart</Text>
+            </Pressable>
+          ) : null}
         </View>
       </SafeAreaView>
     </View>
@@ -350,4 +370,6 @@ const styles = StyleSheet.create({
   legal: { color: Colors.textMuted, fontSize: 10, textAlign: "center", lineHeight: 14 },
   codeBtn: { alignSelf: "center", paddingVertical: 6, paddingHorizontal: 10, marginTop: 2 },
   codeBtnText: { color: Colors.textMuted, fontSize: 11, fontWeight: "600", textDecorationLine: "underline" },
+  restartBtn: { alignSelf: "center", paddingVertical: 4, paddingHorizontal: 8, marginTop: 2, opacity: 0.55 },
+  restartText: { color: "#c0392b", fontSize: 9, fontWeight: "600", letterSpacing: 0.4 },
 });
