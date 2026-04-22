@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
+import { Music2, Instagram, Users, Star, Sparkles, type LucideIcon } from "lucide-react-native";
 
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { OptionCard } from "@/components/OptionCard";
@@ -8,12 +9,12 @@ import { GradientButton } from "@/components/GradientButton";
 import { useApp } from "@/providers/AppProvider";
 import type { Source } from "@/types";
 
-const OPTIONS: { id: Source; label: string; emoji: string }[] = [
-  { id: "tiktok", label: "TikTok", emoji: "🎵" },
-  { id: "instagram", label: "Instagram", emoji: "📸" },
-  { id: "friend", label: "A friend", emoji: "👋" },
-  { id: "creator", label: "A creator", emoji: "⭐" },
-  { id: "other", label: "Other", emoji: "✨" },
+const OPTIONS: { id: Source; label: string; Icon: LucideIcon }[] = [
+  { id: "tiktok", label: "TikTok", Icon: Music2 },
+  { id: "instagram", label: "Instagram", Icon: Instagram },
+  { id: "friend", label: "A friend", Icon: Users },
+  { id: "creator", label: "A creator", Icon: Star },
+  { id: "other", label: "Other", Icon: Sparkles },
 ];
 
 export default function SourceScreen() {
@@ -44,7 +45,7 @@ export default function SourceScreen() {
           <OptionCard
             key={o.id}
             label={o.label}
-            emoji={o.emoji}
+            Icon={o.Icon}
             selected={selected === o.id}
             onPress={() => setSelected(o.id)}
           />

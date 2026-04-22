@@ -1,6 +1,6 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Check } from "lucide-react-native";
+import { Check, type LucideIcon } from "lucide-react-native";
 
 import { Colors } from "@/constants/colors";
 import { triggerHaptic } from "@/lib/haptics";
@@ -10,11 +10,11 @@ interface Props {
   description?: string;
   selected: boolean;
   onPress: () => void;
-  emoji?: string;
+  Icon?: LucideIcon;
   testID?: string;
 }
 
-export function OptionCard({ label, description, selected, onPress, emoji, testID }: Props) {
+export function OptionCard({ label, description, selected, onPress, Icon, testID }: Props) {
   const handle = () => {
     triggerHaptic("select", true);
     onPress();
@@ -30,9 +30,9 @@ export function OptionCard({ label, description, selected, onPress, emoji, testI
       ]}
     >
       <View style={styles.row}>
-        {emoji ? (
+        {Icon ? (
           <View style={styles.emojiWrap}>
-            <Text style={styles.emoji}>{emoji}</Text>
+            <Icon color={Colors.accentGold} size={22} strokeWidth={2.2} />
           </View>
         ) : null}
         <View style={styles.textCol}>
@@ -68,7 +68,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(212,175,55,0.12)",
     alignItems: "center", justifyContent: "center",
   },
-  emoji: { fontSize: 22, color: Colors.accentGold },
   textCol: { flex: 1 },
   label: { color: Colors.text, fontSize: 16, fontWeight: "700" },
   desc: { color: Colors.textDim, fontSize: 13, marginTop: 2 },

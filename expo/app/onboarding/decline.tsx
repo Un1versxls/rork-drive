@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
+import { Banknote, HelpCircle, Coins, Eye, Sparkles, type LucideIcon } from "lucide-react-native";
 
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { OptionCard } from "@/components/OptionCard";
@@ -8,12 +9,12 @@ import { GradientButton } from "@/components/GradientButton";
 import { useApp } from "@/providers/AppProvider";
 import type { DeclineReason } from "@/types";
 
-const OPTIONS: { id: DeclineReason; label: string; emoji: string }[] = [
-  { id: "too_expensive", label: "Too expensive", emoji: "💸" },
-  { id: "not_worth", label: "Not sure it's worth it", emoji: "🤔" },
-  { id: "no_money", label: "Don't have the money right now", emoji: "🪙" },
-  { id: "browsing", label: "Just browsing", emoji: "👀" },
-  { id: "other", label: "Other", emoji: "✨" },
+const OPTIONS: { id: DeclineReason; label: string; Icon: LucideIcon }[] = [
+  { id: "too_expensive", label: "Too expensive", Icon: Banknote },
+  { id: "not_worth", label: "Not sure it's worth it", Icon: HelpCircle },
+  { id: "no_money", label: "Don't have the money right now", Icon: Coins },
+  { id: "browsing", label: "Just browsing", Icon: Eye },
+  { id: "other", label: "Other", Icon: Sparkles },
 ];
 
 export default function DeclineScreen() {
@@ -45,7 +46,7 @@ export default function DeclineScreen() {
           <OptionCard
             key={o.id}
             label={o.label}
-            emoji={o.emoji}
+            Icon={o.Icon}
             selected={selected === o.id}
             onPress={() => setSelected(o.id)}
           />

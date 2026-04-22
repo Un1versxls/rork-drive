@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
+import { Feather, Wallet, BookOpen, Zap, type LucideIcon } from "lucide-react-native";
 
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { OptionCard } from "@/components/OptionCard";
@@ -8,11 +9,11 @@ import { GradientButton } from "@/components/GradientButton";
 import { useApp } from "@/providers/AppProvider";
 import type { Priority } from "@/types";
 
-const OPTIONS: { id: Priority; label: string; description: string; emoji: string }[] = [
-  { id: "flexibility", label: "Flexibility", description: "My own schedule", emoji: "🪁" },
-  { id: "earning", label: "Earning potential", description: "Income is the point", emoji: "💰" },
-  { id: "learning", label: "Learning", description: "Growth over everything", emoji: "📚" },
-  { id: "speed", label: "Speed to results", description: "Fast wins", emoji: "⚡" },
+const OPTIONS: { id: Priority; label: string; description: string; Icon: LucideIcon }[] = [
+  { id: "flexibility", label: "Flexibility", description: "My own schedule", Icon: Feather },
+  { id: "earning", label: "Earning potential", description: "Income is the point", Icon: Wallet },
+  { id: "learning", label: "Learning", description: "Growth over everything", Icon: BookOpen },
+  { id: "speed", label: "Speed to results", description: "Fast wins", Icon: Zap },
 ];
 
 export default function PriorityScreen() {
@@ -44,7 +45,7 @@ export default function PriorityScreen() {
             key={o.id}
             label={o.label}
             description={o.description}
-            emoji={o.emoji}
+            Icon={o.Icon}
             selected={selected === o.id}
             onPress={() => setSelected(o.id)}
           />

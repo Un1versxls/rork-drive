@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
+import { Coins, DollarSign, CreditCard, Landmark, type LucideIcon } from "lucide-react-native";
 
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { OptionCard } from "@/components/OptionCard";
@@ -8,11 +9,11 @@ import { GradientButton } from "@/components/GradientButton";
 import { useApp } from "@/providers/AppProvider";
 import type { Budget } from "@/types";
 
-const OPTIONS: { id: Budget; label: string; description: string; emoji: string }[] = [
-  { id: "under_100", label: "Under $100", description: "Lean start", emoji: "🪙" },
-  { id: "100_500", label: "$100 – $500", description: "Basic tools", emoji: "💵" },
-  { id: "500_2000", label: "$500 – $2,000", description: "Quality gear", emoji: "💳" },
-  { id: "2000_plus", label: "$2,000+", description: "Ready to move fast", emoji: "🏦" },
+const OPTIONS: { id: Budget; label: string; description: string; Icon: LucideIcon }[] = [
+  { id: "under_100", label: "Under $100", description: "Lean start", Icon: Coins },
+  { id: "100_500", label: "$100 – $500", description: "Basic tools", Icon: DollarSign },
+  { id: "500_2000", label: "$500 – $2,000", description: "Quality gear", Icon: CreditCard },
+  { id: "2000_plus", label: "$2,000+", description: "Ready to move fast", Icon: Landmark },
 ];
 
 export default function BudgetScreen() {
@@ -44,7 +45,7 @@ export default function BudgetScreen() {
             key={o.id}
             label={o.label}
             description={o.description}
-            emoji={o.emoji}
+            Icon={o.Icon}
             selected={selected === o.id}
             onPress={() => setSelected(o.id)}
           />

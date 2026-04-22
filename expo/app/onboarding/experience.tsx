@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
+import { Sprout, Rocket, Flame, Crown, type LucideIcon } from "lucide-react-native";
 
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { OptionCard } from "@/components/OptionCard";
@@ -8,11 +9,11 @@ import { GradientButton } from "@/components/GradientButton";
 import { useApp } from "@/providers/AppProvider";
 import type { ExperienceLevel } from "@/types";
 
-const OPTIONS: { id: ExperienceLevel; label: string; description: string; emoji: string }[] = [
-  { id: "beginner", label: "Beginner", description: "Just getting started", emoji: "🌱" },
-  { id: "intermediate", label: "Intermediate", description: "Some real reps in", emoji: "🚀" },
-  { id: "advanced", label: "Advanced", description: "Confident and consistent", emoji: "🔥" },
-  { id: "expert", label: "Expert", description: "Helping others do this", emoji: "👑" },
+const OPTIONS: { id: ExperienceLevel; label: string; description: string; Icon: LucideIcon }[] = [
+  { id: "beginner", label: "Beginner", description: "Just getting started", Icon: Sprout },
+  { id: "intermediate", label: "Intermediate", description: "Some real reps in", Icon: Rocket },
+  { id: "advanced", label: "Advanced", description: "Confident and consistent", Icon: Flame },
+  { id: "expert", label: "Expert", description: "Helping others do this", Icon: Crown },
 ];
 
 export default function ExperienceScreen() {
@@ -44,7 +45,7 @@ export default function ExperienceScreen() {
             key={o.id}
             label={o.label}
             description={o.description}
-            emoji={o.emoji}
+            Icon={o.Icon}
             selected={selected === o.id}
             onPress={() => setSelected(o.id)}
           />

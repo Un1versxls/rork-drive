@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
+import { Banknote, Brain, TrendingUp, Zap, type LucideIcon } from "lucide-react-native";
 
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { OptionCard } from "@/components/OptionCard";
@@ -8,11 +9,11 @@ import { GradientButton } from "@/components/GradientButton";
 import { useApp } from "@/providers/AppProvider";
 import type { PrimaryGoal } from "@/types";
 
-const OPTIONS: { id: PrimaryGoal; label: string; description: string; emoji: string }[] = [
-  { id: "earn_income", label: "Earn extra income", description: "Side hustles, freelance, pitching", emoji: "💸" },
-  { id: "build_skills", label: "Build skills", description: "Learn, practice, level up", emoji: "🧠" },
-  { id: "grow_business", label: "Grow my business", description: "Customers, revenue, product", emoji: "📈" },
-  { id: "stay_productive", label: "Stay productive", description: "Focus, routines, follow through", emoji: "⚡" },
+const OPTIONS: { id: PrimaryGoal; label: string; description: string; Icon: LucideIcon }[] = [
+  { id: "earn_income", label: "Earn extra income", description: "Side hustles, freelance, pitching", Icon: Banknote },
+  { id: "build_skills", label: "Build skills", description: "Learn, practice, level up", Icon: Brain },
+  { id: "grow_business", label: "Grow my business", description: "Customers, revenue, product", Icon: TrendingUp },
+  { id: "stay_productive", label: "Stay productive", description: "Focus, routines, follow through", Icon: Zap },
 ];
 
 export default function GoalScreen() {
@@ -45,7 +46,7 @@ export default function GoalScreen() {
             key={o.id}
             label={o.label}
             description={o.description}
-            emoji={o.emoji}
+            Icon={o.Icon}
             selected={selected === o.id}
             onPress={() => setSelected(o.id)}
             testID={`opt-${o.id}`}

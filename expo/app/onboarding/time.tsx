@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
+import { Timer, Hourglass, Clock, Flame, type LucideIcon } from "lucide-react-native";
 
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { OptionCard } from "@/components/OptionCard";
@@ -8,11 +9,11 @@ import { GradientButton } from "@/components/GradientButton";
 import { useApp } from "@/providers/AppProvider";
 import type { TimeCommitment } from "@/types";
 
-const OPTIONS: { id: TimeCommitment; label: string; description: string; emoji: string }[] = [
-  { id: "15m", label: "15 minutes", description: "Tiny daily wins", emoji: "⏱" },
-  { id: "30m", label: "30 minutes", description: "Solid momentum", emoji: "⏳" },
-  { id: "1h", label: "1 hour", description: "Real deep work", emoji: "⌛" },
-  { id: "2h", label: "2+ hours", description: "Serious mode", emoji: "🧨" },
+const OPTIONS: { id: TimeCommitment; label: string; description: string; Icon: LucideIcon }[] = [
+  { id: "15m", label: "15 minutes", description: "Tiny daily wins", Icon: Timer },
+  { id: "30m", label: "30 minutes", description: "Solid momentum", Icon: Hourglass },
+  { id: "1h", label: "1 hour", description: "Real deep work", Icon: Clock },
+  { id: "2h", label: "2+ hours", description: "Serious mode", Icon: Flame },
 ];
 
 export default function TimeScreen() {
@@ -44,7 +45,7 @@ export default function TimeScreen() {
             key={o.id}
             label={o.label}
             description={o.description}
-            emoji={o.emoji}
+            Icon={o.Icon}
             selected={selected === o.id}
             onPress={() => setSelected(o.id)}
           />
