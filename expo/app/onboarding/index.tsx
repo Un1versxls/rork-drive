@@ -37,7 +37,7 @@ export default function Welcome() {
           </View>
           <Text style={styles.title}>DRIVE</Text>
           <Text style={styles.subtitle}>
-            The app that turns your goals into daily tasks — and actually keeps you moving.
+            Turn your goals — or your existing business — into daily tasks that actually get done.
           </Text>
         </Animated.View>
 

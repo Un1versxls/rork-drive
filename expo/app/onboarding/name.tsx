@@ -50,7 +50,7 @@ export default function NameScreen() {
           style={styles.codeBtn}
           testID="name-code-btn"
         >
-          <Text style={styles.codeText}>Have an access code?</Text>
+          <Text style={styles.codeText}>Have an access code? (skip account)</Text>
         </Pressable>
       </View>
     </OnboardingShell>

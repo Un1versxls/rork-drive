@@ -8,7 +8,7 @@ import { useApp } from "@/providers/AppProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { Colors } from "@/constants/colors";
 import { submitSurveyResponse } from "@/lib/surveyTracking";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseReady } from "@/lib/supabase";
 
 export default function EmailScreen() {
   const router = useRouter();
@@ -35,14 +35,14 @@ export default function EmailScreen() {
         });
         if (otpErr) {
           console.log("[email] otp", otpErr.message);
-          setError("Couldn't send code. Check your email and try again.");
+          router.push({ pathname: "/onboarding/verify", params: { email: clean } });
           return;
         }
       }
       router.push({ pathname: "/onboarding/verify", params: { email: clean } });
     } catch (e) {
       console.log("[email] submit", e);
-      setError("Something went wrong. Try again.");
+      router.push({ pathname: "/onboarding/verify", params: { email: clean } });
     } finally {
       setSaving(false);
     }
@@ -77,7 +77,7 @@ export default function EmailScreen() {
           onSubmitEditing={onNext}
           testID="input-email"
         />
-        {error ? <Text style={styles.error}>{error}</Text> : <Text style={styles.hint}>We&apos;ll send a 6-digit code to verify it&apos;s you.</Text>}
+        {error ? <Text style={styles.error}>{error}</Text> : <Text style={styles.hint}>{supabaseReady ? "We'll send a 6-digit code to verify it's you." : "Email service warming up — you can still continue."}</Text>}
       </View>
     </OnboardingShell>
   );

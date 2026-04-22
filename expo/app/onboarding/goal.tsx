@@ -12,7 +12,7 @@ import type { PrimaryGoal } from "@/types";
 const OPTIONS: { id: PrimaryGoal; label: string; description: string; Icon: LucideIcon }[] = [
   { id: "earn_income", label: "Earn extra income", description: "Side hustles, freelance, pitching", Icon: Banknote },
   { id: "build_skills", label: "Build skills", description: "Learn, practice, level up", Icon: Brain },
-  { id: "grow_business", label: "Grow my business", description: "Customers, revenue, product", Icon: TrendingUp },
+  { id: "grow_business", label: "Run / grow my business", description: "Use DRIVE to get real work done on your existing business", Icon: TrendingUp },
   { id: "stay_productive", label: "Stay productive", description: "Focus, routines, follow through", Icon: Zap },
 ];
 

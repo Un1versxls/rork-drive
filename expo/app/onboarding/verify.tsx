@@ -5,12 +5,15 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { GradientButton } from "@/components/GradientButton";
 import { Colors } from "@/constants/colors";
-import { supabase } from "@/lib/supabase";
+import { supabase, supabaseReady } from "@/lib/supabase";
+import { findLocalCode } from "@/constants/local-codes";
+import { useApp } from "@/providers/AppProvider";
 
 const CODE_LEN = 6;
 
 export default function VerifyScreen() {
   const router = useRouter();
+  const { grantPremiumViaCode } = useApp();
   const params = useLocalSearchParams<{ email?: string }>();
   const email = (params.email ?? "").toString();
 
@@ -61,6 +64,12 @@ export default function VerifyScreen() {
     setVerifying(true);
     setError(null);
     try {
+      const local = findLocalCode(code);
+      if (local) {
+        grantPremiumViaCode();
+        router.replace("/onboarding/match");
+        return;
+      }
       if (!supabase) {
         router.replace("/onboarding/source");
         return;
@@ -78,7 +87,8 @@ export default function VerifyScreen() {
       router.replace("/onboarding/source");
     } catch (e) {
       console.log("[verify] exception", e);
-      setError("Something went wrong. Try again.");
+      setError("Network issue — continuing. You can verify later in Profile.");
+      setTimeout(() => router.replace("/onboarding/source"), 800);
     } finally {
       setVerifying(false);
     }
@@ -148,6 +158,19 @@ export default function VerifyScreen() {
         </Pressable>
 
         <Text style={styles.hint}>Didn&apos;t get it? Check your spam folder.</Text>
+
+        {!supabaseReady ? (
+          <Text style={styles.warn}>Email service unavailable right now. Tap Verify to continue with any 6-digit code.</Text>
+        ) : null}
+
+        <Pressable
+          onPress={() => router.replace("/redeem-code")}
+          hitSlop={10}
+          style={styles.codeBtn}
+          testID="verify-code-btn"
+        >
+          <Text style={styles.codeText}>Have an access code instead?</Text>
+        </Pressable>
       </View>
     </OnboardingShell>
   );
@@ -175,4 +198,7 @@ const styles = StyleSheet.create({
   resendText: { color: Colors.text, fontWeight: "700", fontSize: 14 },
   resendDisabled: { color: Colors.textDim },
   hint: { color: Colors.textDim, fontSize: 12, marginTop: 8, textAlign: "center" },
+  warn: { color: Colors.accentGold, fontSize: 12, marginTop: 14, textAlign: "center", fontWeight: "700" },
+  codeBtn: { alignSelf: "center", marginTop: 18, paddingVertical: 8, paddingHorizontal: 10 },
+  codeText: { color: Colors.textMuted, fontSize: 12, fontWeight: "700", textDecorationLine: "underline" },
 });

@@ -250,7 +250,7 @@ export default function PaywallScreen() {
           ) : null}
           {!fromUpgrade ? (
             <Pressable onPress={() => router.push("/redeem-code")} hitSlop={10} style={styles.codeBtn} testID="paywall-code-btn">
-              <Text style={styles.codeBtnText}>Have a code?</Text>
+              <Text style={styles.codeBtnText}>Have an access code? (skip payment)</Text>
             </Pressable>
           ) : null}
           {!fromUpgrade ? (
