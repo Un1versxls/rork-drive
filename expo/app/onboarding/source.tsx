@@ -24,8 +24,8 @@ export default function SourceScreen() {
 
   return (
     <OnboardingShell
-      step={9}
-      total={11}
+      step={10}
+      total={12}
       title="Where did you hear about us?"
       subtitle="Just curious — pick one."
       footer={

@@ -108,14 +108,9 @@ export default function ProfileScreen() {
               </View>
             </View>
             {!isPremium ? (
-              <Pressable onPress={() => router.push("/onboarding/paywall")} style={styles.upgradeBtn}>
+              <Pressable onPress={() => router.push({ pathname: "/onboarding/paywall", params: { fromUpgrade: "1" } })} style={styles.upgradeBtn}>
                 <Crown color="#ffffff" size={14} />
                 <Text style={styles.upgradeText}>Upgrade to Premium</Text>
-              </Pressable>
-            ) : null}
-            {hasActiveSubscription ? (
-              <Pressable onPress={onCancel} style={styles.cancelSubBtn}>
-                <Text style={styles.cancelSubText}>Cancel subscription</Text>
               </Pressable>
             ) : null}
           </View>
@@ -172,6 +167,12 @@ export default function ProfileScreen() {
           </Pressable>
 
           <Text style={styles.footer}>DRIVE v1.0</Text>
+
+          {hasActiveSubscription ? (
+            <Pressable onPress={onCancel} hitSlop={10} style={styles.tinyCancel}>
+              <Text style={styles.tinyCancelText}>cancel subscription</Text>
+            </Pressable>
+          ) : null}
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -215,6 +216,8 @@ const styles = StyleSheet.create({
   upgradeText: { color: "#ffffff", fontSize: 14, fontWeight: "800" },
   cancelSubBtn: { alignSelf: "flex-start", marginTop: 12 },
   cancelSubText: { color: Colors.textDim, fontSize: 12, fontWeight: "700" },
+  tinyCancel: { alignSelf: "center", marginTop: 12, paddingVertical: 4, paddingHorizontal: 8 },
+  tinyCancelText: { color: Colors.textMuted, fontSize: 9, fontWeight: "500", opacity: 0.5, textDecorationLine: "underline" },
 
   bizName: { color: Colors.text, fontSize: 17, fontWeight: "900" },
   bizTag: { color: Colors.textDim, fontSize: 13, marginTop: 2 },

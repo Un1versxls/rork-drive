@@ -17,7 +17,7 @@ export default function NameScreen() {
   return (
     <OnboardingShell
       step={8}
-      total={11}
+      total={12}
       title="What should we call you?"
       subtitle="We'll greet you here every day."
       footer={
@@ -26,7 +26,7 @@ export default function NameScreen() {
           disabled={!valid}
           onPress={() => {
             setAnswers({ name: name.trim() });
-            router.push("/onboarding/source");
+            router.push("/onboarding/email");
           }}
         />
       }

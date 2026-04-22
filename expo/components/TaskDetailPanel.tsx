@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
   coachIcon: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: Colors.accentDim },
   coachTitle: { color: Colors.text, fontWeight: "800", fontSize: 14 },
   coachSub: { color: Colors.textDim, fontSize: 11, marginTop: 2 },
-  chatBox: { marginTop: 10, padding: 12, borderRadius: 16, backgroundColor: Colors.bgAlt, borderWidth: 1, borderColor: Colors.border },
+  chatBox: { marginTop: 10, padding: 12, paddingBottom: 20, marginBottom: 18, borderRadius: 16, backgroundColor: Colors.bgAlt, borderWidth: 1, borderColor: Colors.border },
   chatBanner: { flexDirection: "row", alignItems: "center", gap: 6, padding: 8, borderRadius: 10, backgroundColor: Colors.accentDim, marginBottom: 10 },
   chatBannerText: { color: Colors.accentDeep, fontSize: 11, fontWeight: "700", flex: 1 },
   chatMsgs: { gap: 8 },

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Crown, Lock, Sparkles } from "lucide-react-native";
+import { Crown, Lock, Sparkles, TrendingUp } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { z } from "zod";
 import { generateObject } from "@rork-ai/toolkit-sdk";
@@ -75,7 +75,7 @@ Return: name (2-5 words), tagline, description (2 sentences), whyFit (why it wor
   if (!isPremium) {
     return (
       <SafeAreaView style={styles.root} edges={["top"]}>
-        <ScrollView contentContainerStyle={styles.scroll}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <View style={styles.lockedCard}>
             <View style={styles.crownBadge}>
               <Crown color="#ffffff" size={18} />
@@ -99,9 +99,41 @@ Return: name (2-5 words), tagline, description (2 sentences), whyFit (why it wor
             <GradientButton
               title="Upgrade to Premium"
               variant="gold"
-              onPress={() => router.push("/onboarding/paywall")}
+              onPress={() => router.push({ pathname: "/onboarding/paywall", params: { fromUpgrade: "1" } })}
             />
           </View>
+
+          <View style={styles.proofHeader}>
+            <TrendingUp color={Colors.accentGold} size={14} />
+            <Text style={styles.proofHeaderText}>REAL BUILDS FROM PREMIUM USERS</Text>
+          </View>
+
+          <ResultCard
+            uri="https://images.unsplash.com/photo-1556745753-b2904692b3cd?w=800&q=80"
+            headline="$8,240 / mo"
+            sub="DTC coffee brand"
+            tilt="-6deg"
+            stat1="+$1.2k week 1"
+            stat2="90 days"
+          />
+          <ResultCard
+            uri="https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=800&q=80"
+            headline="$4,100 / mo"
+            sub="AI coaching app"
+            tilt="5deg"
+            stat1="300 users"
+            stat2="6 weeks"
+          />
+          <ResultCard
+            uri="https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&q=80"
+            headline="$12,500 / mo"
+            sub="B2B agency"
+            tilt="-4deg"
+            stat1="3 clients"
+            stat2="4 months"
+          />
+
+          <Text style={styles.proofFoot}>Unlock Premium to build yours.</Text>
         </ScrollView>
       </SafeAreaView>
     );
@@ -150,6 +182,26 @@ Return: name (2-5 words), tagline, description (2 sentences), whyFit (why it wor
   );
 }
 
+function ResultCard({ uri, headline, sub, tilt, stat1, stat2 }: { uri: string; headline: string; sub: string; tilt: string; stat1: string; stat2: string }) {
+  const tiltNeg = tilt.startsWith("-") ? tilt.slice(1) : `-${tilt}`;
+  return (
+    <View style={styles.resultCard}>
+      <Image source={{ uri }} style={styles.resultImage} resizeMode="cover" />
+      <View style={styles.resultOverlay} />
+      <View style={[styles.diagonalLeft, { transform: [{ rotate: tilt }] }]}>
+        <Text style={styles.diagonalText}>{stat1}</Text>
+      </View>
+      <View style={[styles.diagonalRight, { transform: [{ rotate: tiltNeg }] }]}>
+        <Text style={styles.diagonalTextAlt}>{stat2}</Text>
+      </View>
+      <View style={styles.resultCaption}>
+        <Text style={styles.resultHeadline}>{headline}</Text>
+        <Text style={styles.resultSub}>{sub}</Text>
+      </View>
+    </View>
+  );
+}
+
 function Bullet({ text }: { text: string }) {
   return (
     <View style={styles.bullet}>
@@ -184,4 +236,18 @@ const styles = StyleSheet.create({
   currentTag: { color: Colors.textDim, fontSize: 13, marginTop: 2 },
 
   hint: { color: Colors.textMuted, fontSize: 12, textAlign: "center", marginTop: 10 },
+
+  proofHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 28, marginBottom: 12, paddingHorizontal: 4 },
+  proofHeaderText: { color: Colors.accentGold, fontSize: 10, fontWeight: "900", letterSpacing: 1.6 },
+  resultCard: { height: 180, borderRadius: 20, overflow: "hidden", backgroundColor: "#111111", marginBottom: 12, position: "relative" },
+  resultImage: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%", opacity: 0.55 },
+  resultOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.35)" },
+  diagonalLeft: { position: "absolute", top: 16, left: -20, backgroundColor: Colors.accentGold, paddingHorizontal: 18, paddingVertical: 5 },
+  diagonalRight: { position: "absolute", bottom: 18, right: -20, backgroundColor: "#ffffff", paddingHorizontal: 18, paddingVertical: 5 },
+  diagonalText: { color: "#111111", fontSize: 11, fontWeight: "900", letterSpacing: 0.5 },
+  diagonalTextAlt: { color: "#111111", fontSize: 11, fontWeight: "900", letterSpacing: 0.5 },
+  resultCaption: { position: "absolute", bottom: 0, left: 0, right: 0, padding: 16 },
+  resultHeadline: { color: "#ffffff", fontSize: 26, fontWeight: "900", letterSpacing: -0.5 },
+  resultSub: { color: "rgba(255,255,255,0.85)", fontSize: 13, fontWeight: "600", marginTop: 2 },
+  proofFoot: { color: Colors.textMuted, fontSize: 11, textAlign: "center", marginTop: 8, marginBottom: 10, fontStyle: "italic" },
 });

@@ -9,6 +9,8 @@ import type { PurchasesOffering, PurchasesPackage } from "react-native-purchases
 import { GradientButton } from "@/components/GradientButton";
 import { Colors } from "@/constants/colors";
 import { useApp } from "@/providers/AppProvider";
+import { useAuth } from "@/providers/AuthProvider";
+import { submitSurveyResponse } from "@/lib/surveyTracking";
 import { PLANS, priceFor, monthlyEquivalent } from "@/constants/plans";
 import { configurePurchases, getOfferings, purchasePackage, hasActiveEntitlement } from "@/lib/purchases";
 import type { BillingCycle, PlanId } from "@/types";
@@ -22,9 +24,11 @@ type PkgMap = {
 
 export default function PaywallScreen() {
   const router = useRouter();
-  const { startSubscription } = useApp();
-  const params = useLocalSearchParams<{ retry?: string }>();
+  const { state, startSubscription } = useApp();
+  const { user } = useAuth();
+  const params = useLocalSearchParams<{ retry?: string; fromUpgrade?: string }>();
   const retry = params.retry === "1";
+  const fromUpgrade = params.fromUpgrade === "1";
 
   const [planId, setPlanId] = useState<PlanId>("base");
   const [cycle, setCycle] = useState<BillingCycle>("yearly");
@@ -84,6 +88,14 @@ export default function PaywallScreen() {
     onSuccess: (res) => {
       if (res.ok) {
         startSubscription(planId, cycle);
+        if (state.profile.email) {
+          submitSurveyResponse(state.profile, state.profile.email, user?.id ?? null).catch(() => {});
+        }
+        if (fromUpgrade) {
+          if (router.canGoBack()) router.back();
+          else router.replace("/(tabs)/tasks");
+          return;
+        }
         router.replace("/onboarding/match");
       } else {
         Alert.alert("Payment not completed", "We couldn't verify your subscription. Try again.");
@@ -102,6 +114,11 @@ export default function PaywallScreen() {
   const onStart = () => {
     if (Platform.OS === "web") {
       startSubscription(planId, cycle);
+      if (fromUpgrade) {
+        if (router.canGoBack()) router.back();
+        else router.replace("/(tabs)/tasks");
+        return;
+      }
       router.replace("/onboarding/match");
       return;
     }
@@ -109,7 +126,16 @@ export default function PaywallScreen() {
   };
 
   const onDecline = () => {
-    router.push("/onboarding/decline");
+    if (fromUpgrade) {
+      if (router.canGoBack()) router.back();
+      else router.replace("/(tabs)/tasks");
+      return;
+    }
+    if (retry) {
+      router.replace("/onboarding/complete");
+      return;
+    }
+    router.push({ pathname: "/onboarding/decline", params: fromUpgrade ? { fromUpgrade: "1" } : {} });
   };
 
   const loadingPkgs = Platform.OS !== "web" && offeringsQuery.isLoading;

@@ -12,8 +12,8 @@ export default function ResultsScreen() {
 
   return (
     <OnboardingShell
-      step={10}
-      total={11}
+      step={12}
+      total={12}
       title="Results our users see."
       subtitle="Real stats from people who stuck with it."
       canGoBack

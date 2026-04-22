@@ -64,6 +64,7 @@ const DEFAULT_SUBSCRIPTION: Subscription = {
 
 const DEFAULT_PROFILE: UserProfile = {
   name: "",
+  email: "",
   goal: null,
   goalDetail: "",
   industryDetail: "",

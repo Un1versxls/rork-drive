@@ -109,6 +109,7 @@ export interface Subscription {
 
 export interface UserProfile {
   name: string;
+  email: string;
   goal: PrimaryGoal | null;
   goalDetail: string;
   industryDetail: string;
