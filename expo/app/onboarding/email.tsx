@@ -8,6 +8,7 @@ import { useApp } from "@/providers/AppProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { Colors } from "@/constants/colors";
 import { submitSurveyResponse } from "@/lib/surveyTracking";
+import { supabase } from "@/lib/supabase";
 
 export default function EmailScreen() {
   const router = useRouter();
@@ -15,21 +16,35 @@ export default function EmailScreen() {
   const { user } = useAuth();
   const [email, setEmail] = useState<string>("");
   const [saving, setSaving] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   const onNext = async () => {
     if (!valid || saving) return;
     setSaving(true);
+    setError(null);
     const clean = email.trim().toLowerCase();
     setProfileField("email", clean);
     try {
-      await submitSurveyResponse(state.profile, clean, user?.id ?? null);
+      submitSurveyResponse(state.profile, clean, user?.id ?? null).catch((e) => console.log("[email] survey", e));
+      if (supabase) {
+        const { error: otpErr } = await supabase.auth.signInWithOtp({
+          email: clean,
+          options: { shouldCreateUser: true },
+        });
+        if (otpErr) {
+          console.log("[email] otp", otpErr.message);
+          setError("Couldn't send code. Check your email and try again.");
+          return;
+        }
+      }
+      router.push({ pathname: "/onboarding/verify", params: { email: clean } });
     } catch (e) {
       console.log("[email] submit", e);
+      setError("Something went wrong. Try again.");
     } finally {
       setSaving(false);
-      router.push("/onboarding/source");
     }
   };
 
@@ -50,7 +65,7 @@ export default function EmailScreen() {
       <View style={styles.wrap}>
         <TextInput
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(t) => { setEmail(t); if (error) setError(null); }}
           placeholder="you@email.com"
           placeholderTextColor={Colors.textMuted}
           style={styles.input}
@@ -62,7 +77,7 @@ export default function EmailScreen() {
           onSubmitEditing={onNext}
           testID="input-email"
         />
-        <Text style={styles.hint}>No spam. Just your free trial + streak reminders.</Text>
+        {error ? <Text style={styles.error}>{error}</Text> : <Text style={styles.hint}>We&apos;ll send a 6-digit code to verify it&apos;s you.</Text>}
       </View>
     </OnboardingShell>
   );
@@ -82,4 +97,5 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   hint: { color: Colors.textDim, fontSize: 13, marginTop: 12, paddingHorizontal: 4 },
+  error: { color: Colors.danger, fontSize: 13, marginTop: 12, paddingHorizontal: 4, fontWeight: "600" },
 });
