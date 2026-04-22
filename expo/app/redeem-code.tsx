@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useNavigation } from "expo-router";
 
@@ -23,20 +24,13 @@ export default function RedeemCodeScreen() {
       router.replace("/onboarding/paywall");
     }
   };
-  const { user, redeemCode, redeemPending } = useAuth();
+  const { redeemCode, redeemPending } = useAuth();
   const { grantPremiumViaCode } = useApp();
   const [code, setCode] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
   const onRedeem = async () => {
     setError(null);
-    if (!user) {
-      Alert.alert("Sign in required", "Create an account or sign in to redeem a code.", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Sign in", onPress: () => router.push("/auth") },
-      ]);
-      return;
-    }
     try {
       await redeemCode(code);
       grantPremiumViaCode();
