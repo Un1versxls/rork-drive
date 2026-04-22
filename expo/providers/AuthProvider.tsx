@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 
 import { supabase, supabaseReady } from "@/lib/supabase";
+import { findLocalCode } from "@/constants/local-codes";
 import type { AuthUser } from "@/types";
 
 interface UserAccountRow {
@@ -105,46 +106,74 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const redeemCodeMutation = useMutation({
     mutationFn: async (rawCode: string) => {
-      if (!supabase || !session) throw new Error("Sign in first");
       const code = rawCode.trim().toUpperCase();
-      const { data: existing, error: fetchErr } = await supabase
-        .from("redeem_codes")
-        .select("*")
-        .eq("code", code)
-        .eq("active", true)
-        .maybeSingle();
-      if (fetchErr) throw fetchErr;
-      if (!existing) throw new Error("Code not found");
-      if (existing.uses >= existing.max_uses) throw new Error("Code has been used up");
+      if (!code) throw new Error("Enter a code");
 
-      const { error: updErr } = await supabase
-        .from("redeem_codes")
-        .update({
-          uses: existing.uses + 1,
-          claimed_by: session.user.id,
-          active: existing.uses + 1 < existing.max_uses,
-        })
-        .eq("code", code);
-      if (updErr) throw updErr;
+      const local = findLocalCode(code);
 
-      const grantsAdmin = existing.grants_admin === true || existing.plan === "admin";
-      const patch: Record<string, unknown> = {};
-      if (grantsAdmin) patch.is_admin = true;
-      if (existing.plan === "base" || existing.plan === "premium") {
-        patch.admin_granted_premium = true;
-        patch.granted_premium_plan = existing.plan;
-      } else if (grantsAdmin) {
-        patch.admin_granted_premium = true;
-        patch.granted_premium_plan = "premium";
+      if (supabase && session) {
+        try {
+          const { data: existing, error: fetchErr } = await supabase
+            .from("redeem_codes")
+            .select("*")
+            .eq("code", code)
+            .eq("active", true)
+            .maybeSingle();
+
+          if (!fetchErr && existing) {
+            if (existing.uses >= existing.max_uses) throw new Error("Code has been used up");
+
+            const { error: updErr } = await supabase
+              .from("redeem_codes")
+              .update({
+                uses: existing.uses + 1,
+                claimed_by: session.user.id,
+                active: existing.uses + 1 < existing.max_uses,
+              })
+              .eq("code", code);
+            if (updErr) console.log("[redeem] update code error", updErr.message);
+
+            const grantsAdmin = existing.grants_admin === true || existing.plan === "admin";
+            const patch: Record<string, unknown> = {};
+            if (grantsAdmin) patch.is_admin = true;
+            if (existing.plan === "base" || existing.plan === "premium") {
+              patch.admin_granted_premium = true;
+              patch.granted_premium_plan = existing.plan;
+            } else if (grantsAdmin) {
+              patch.admin_granted_premium = true;
+              patch.granted_premium_plan = "premium";
+            }
+
+            const { error: grantErr } = await supabase
+              .from("user_accounts")
+              .update(patch)
+              .eq("id", session.user.id);
+            if (grantErr) console.log("[redeem] grant error", grantErr.message);
+
+            return (existing.plan === "admin" ? "premium" : existing.plan) as "base" | "premium";
+          }
+          if (fetchErr) console.log("[redeem] fetch error, falling back", fetchErr.message);
+        } catch (e) {
+          console.log("[redeem] network error, falling back to local", e);
+        }
       }
 
-      const { error: grantErr } = await supabase
-        .from("user_accounts")
-        .update(patch)
-        .eq("id", session.user.id);
-      if (grantErr) throw grantErr;
+      if (local) {
+        if (supabase && session) {
+          const patch: Record<string, unknown> = {};
+          if (local.grantsAdmin) patch.is_admin = true;
+          patch.admin_granted_premium = true;
+          patch.granted_premium_plan = local.plan === "admin" ? "premium" : local.plan;
+          try {
+            await supabase.from("user_accounts").update(patch).eq("id", session.user.id);
+          } catch (e) {
+            console.log("[redeem] local grant sync failed", e);
+          }
+        }
+        return (local.plan === "admin" ? "premium" : local.plan) as "base" | "premium";
+      }
 
-      return (existing.plan === "admin" ? "premium" : existing.plan) as "base" | "premium";
+      throw new Error("Code not found");
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["user-account"] });
