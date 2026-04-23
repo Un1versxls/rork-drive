@@ -8,7 +8,8 @@ import { useApp } from "@/providers/AppProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { Colors } from "@/constants/colors";
 import { submitSurveyResponse } from "@/lib/surveyTracking";
-import { supabase, supabaseReady } from "@/lib/supabase";
+import { sendVerificationCode } from "@/lib/emailVerification";
+import { supabaseReady } from "@/lib/supabase";
 
 export default function EmailScreen() {
   const router = useRouter();
@@ -26,26 +27,26 @@ export default function EmailScreen() {
     setError(null);
     const clean = email.trim().toLowerCase();
     setProfileField("email", clean);
-    try {
-      submitSurveyResponse(state.profile, clean, user?.id ?? null).catch((e) => console.log("[email] survey", e));
-      if (supabase) {
-        const { error: otpErr } = await supabase.auth.signInWithOtp({
-          email: clean,
-          options: { shouldCreateUser: true },
-        });
-        if (otpErr) {
-          console.log("[email] otp", otpErr.message);
-          router.push({ pathname: "/onboarding/verify", params: { email: clean } });
-          return;
-        }
-      }
-      router.push({ pathname: "/onboarding/verify", params: { email: clean } });
-    } catch (e) {
-      console.log("[email] submit", e);
-      router.push({ pathname: "/onboarding/verify", params: { email: clean } });
-    } finally {
+
+    submitSurveyResponse(state.profile, clean, user?.id ?? null).catch((e) =>
+      console.log("[email] survey", e),
+    );
+
+    if (!supabaseReady) {
+      router.push({ pathname: "/onboarding/verify", params: { email: clean, skipSend: "1" } });
       setSaving(false);
+      return;
     }
+
+    const result = await sendVerificationCode(clean);
+    setSaving(false);
+
+    if (!result.ok) {
+      setError(result.error ?? "Couldn't send the code. Try again.");
+      return;
+    }
+
+    router.push({ pathname: "/onboarding/verify", params: { email: clean } });
   };
 
   return (
@@ -53,10 +54,10 @@ export default function EmailScreen() {
       step={9}
       total={12}
       title="What's your email?"
-      subtitle="We'll use it for trial reminders and your account."
+      subtitle="We'll send you a 6-digit code to verify it's really you."
       footer={
         <GradientButton
-          title={saving ? "Saving…" : "Continue"}
+          title={saving ? "Sending code…" : "Send code"}
           disabled={!valid || saving}
           onPress={onNext}
         />
@@ -68,7 +69,7 @@ export default function EmailScreen() {
           onChangeText={(t) => { setEmail(t); if (error) setError(null); }}
           placeholder="you@email.com"
           placeholderTextColor={Colors.textMuted}
-          style={styles.input}
+          style={[styles.input, error ? styles.inputError : null]}
           autoFocus
           autoCapitalize="none"
           autoCorrect={false}
@@ -77,7 +78,15 @@ export default function EmailScreen() {
           onSubmitEditing={onNext}
           testID="input-email"
         />
-        {error ? <Text style={styles.error}>{error}</Text> : <Text style={styles.hint}>{supabaseReady ? "We'll send a 6-digit code to verify it's you." : "Email service warming up — you can still continue."}</Text>}
+        {error ? (
+          <Text style={styles.error}>{error}</Text>
+        ) : (
+          <Text style={styles.hint}>
+            {supabaseReady
+              ? "We'll email a 6-digit code — check your inbox (and spam)."
+              : "Email service warming up — you can still continue with a code."}
+          </Text>
+        )}
       </View>
     </OnboardingShell>
   );
@@ -96,6 +105,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: Colors.text,
   },
+  inputError: { borderColor: Colors.danger },
   hint: { color: Colors.textDim, fontSize: 13, marginTop: 12, paddingHorizontal: 4 },
   error: { color: Colors.danger, fontSize: 13, marginTop: 12, paddingHorizontal: 4, fontWeight: "600" },
 });

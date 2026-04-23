@@ -5,23 +5,26 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { GradientButton } from "@/components/GradientButton";
 import { Colors } from "@/constants/colors";
-import { supabase, supabaseReady } from "@/lib/supabase";
+import { supabaseReady } from "@/lib/supabase";
 import { findLocalCode } from "@/constants/local-codes";
 import { useApp } from "@/providers/AppProvider";
+import { sendVerificationCode, verifyCode } from "@/lib/emailVerification";
 
 const CODE_LEN = 6;
 
 export default function VerifyScreen() {
   const router = useRouter();
   const { grantPremiumViaCode } = useApp();
-  const params = useLocalSearchParams<{ email?: string }>();
+  const params = useLocalSearchParams<{ email?: string; skipSend?: string }>();
   const email = (params.email ?? "").toString();
+  const skipSend = params.skipSend === "1";
 
   const [digits, setDigits] = useState<string[]>(Array(CODE_LEN).fill(""));
   const [verifying, setVerifying] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [resendIn, setResendIn] = useState<number>(30);
   const [resending, setResending] = useState<boolean>(false);
+  const [info, setInfo] = useState<string | null>(null);
   const inputs = useRef<Array<TextInput | null>>([]);
 
   const code = useMemo(() => digits.join(""), [digits]);
@@ -63,56 +66,46 @@ export default function VerifyScreen() {
     if (!complete || verifying) return;
     setVerifying(true);
     setError(null);
-    try {
-      const local = findLocalCode(code);
-      if (local) {
-        grantPremiumViaCode();
-        router.replace("/onboarding/match");
-        return;
-      }
-      if (!supabase) {
-        router.replace("/onboarding/source");
-        return;
-      }
-      const { error: vErr } = await supabase.auth.verifyOtp({
-        email: email.toLowerCase(),
-        token: code,
-        type: "email",
-      });
-      if (vErr) {
-        console.log("[verify] otp", vErr.message);
-        setError("Invalid or expired code. Try again.");
-        return;
-      }
-      router.replace("/onboarding/source");
-    } catch (e) {
-      console.log("[verify] exception", e);
-      setError("Network issue — continuing. You can verify later in Profile.");
-      setTimeout(() => router.replace("/onboarding/source"), 800);
-    } finally {
+    setInfo(null);
+
+    const local = findLocalCode(code);
+    if (local) {
+      grantPremiumViaCode();
+      router.replace("/onboarding/match");
       setVerifying(false);
+      return;
     }
+
+    if (!supabaseReady || skipSend) {
+      setError("Verification is unavailable right now. Use an access code to continue.");
+      setVerifying(false);
+      return;
+    }
+
+    const res = await verifyCode(email, code);
+    setVerifying(false);
+    if (!res.ok) {
+      setError(res.error ?? "Invalid or expired code. Try again.");
+      return;
+    }
+    router.replace("/onboarding/source");
   };
 
   const onResend = async () => {
-    if (resendIn > 0 || resending || !supabase) return;
+    if (resendIn > 0 || resending) return;
     setResending(true);
     setError(null);
-    try {
-      const { error: rErr } = await supabase.auth.signInWithOtp({
-        email: email.toLowerCase(),
-        options: { shouldCreateUser: true },
-      });
-      if (rErr) {
-        setError("Couldn't resend. Try again in a moment.");
-        return;
-      }
-      setResendIn(30);
-      setDigits(Array(CODE_LEN).fill(""));
-      inputs.current[0]?.focus();
-    } finally {
-      setResending(false);
+    setInfo(null);
+    const res = await sendVerificationCode(email);
+    setResending(false);
+    if (!res.ok) {
+      setError(res.error ?? "Couldn't resend. Try again in a moment.");
+      return;
     }
+    setResendIn(30);
+    setDigits(Array(CODE_LEN).fill(""));
+    inputs.current[0]?.focus();
+    setInfo("New code sent. Check your inbox.");
   };
 
   return (
@@ -150,6 +143,7 @@ export default function VerifyScreen() {
         </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
+        {info && !error ? <Text style={styles.info}>{info}</Text> : null}
 
         <Pressable onPress={onResend} disabled={resendIn > 0 || resending} style={styles.resendBtn}>
           <Text style={[styles.resendText, resendIn > 0 ? styles.resendDisabled : null]}>
@@ -158,10 +152,6 @@ export default function VerifyScreen() {
         </Pressable>
 
         <Text style={styles.hint}>Didn&apos;t get it? Check your spam folder.</Text>
-
-        {!supabaseReady ? (
-          <Text style={styles.warn}>Email service unavailable right now. Tap Verify to continue with any 6-digit code.</Text>
-        ) : null}
 
         <Pressable
           onPress={() => router.replace("/redeem-code")}
@@ -194,11 +184,11 @@ const styles = StyleSheet.create({
   cellFilled: { borderColor: Colors.text },
   cellError: { borderColor: Colors.danger },
   error: { color: Colors.danger, fontSize: 13, marginTop: 16, fontWeight: "600", textAlign: "center" },
+  info: { color: Colors.text, fontSize: 13, marginTop: 16, fontWeight: "600", textAlign: "center" },
   resendBtn: { alignSelf: "center", marginTop: 22, paddingVertical: 10, paddingHorizontal: 14 },
   resendText: { color: Colors.text, fontWeight: "700", fontSize: 14 },
   resendDisabled: { color: Colors.textDim },
   hint: { color: Colors.textDim, fontSize: 12, marginTop: 8, textAlign: "center" },
-  warn: { color: Colors.accentGold, fontSize: 12, marginTop: 14, textAlign: "center", fontWeight: "700" },
   codeBtn: { alignSelf: "center", marginTop: 18, paddingVertical: 8, paddingHorizontal: 10 },
   codeText: { color: Colors.textMuted, fontSize: 12, fontWeight: "700", textDecorationLine: "underline" },
 });

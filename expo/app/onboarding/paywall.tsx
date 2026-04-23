@@ -135,6 +135,7 @@ export default function PaywallScreen() {
   };
 
   const loadingPkgs = Platform.OS !== "web" && offeringsQuery.isLoading;
+  const noOfferings = Platform.OS !== "web" && !loadingPkgs && !currentPkg;
 
   return (
     <View style={styles.root}>
@@ -221,11 +222,27 @@ export default function PaywallScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
+          {noOfferings ? (
+            <View style={styles.pendingBanner} testID="payments-pending-banner">
+              <Text style={styles.pendingTitle}>Payments pending App Store approval</Text>
+              <Text style={styles.pendingBody}>
+                Apple hasn’t activated subscriptions for this build yet. Use an access code below to unlock premium in the meantime.
+              </Text>
+            </View>
+          ) : null}
           <GradientButton
-            title={purchaseMutation.isPending ? "Opening Apple…" : planId === "premium" ? "Unlock Premium" : "Start 3-day free trial"}
+            title={
+              noOfferings
+                ? "Payments unavailable"
+                : purchaseMutation.isPending
+                ? "Opening Apple…"
+                : planId === "premium"
+                ? "Unlock Premium"
+                : "Start 3-day free trial"
+            }
             variant="gold"
             onPress={onStart}
-            disabled={purchaseMutation.isPending || loadingPkgs}
+            disabled={purchaseMutation.isPending || loadingPkgs || noOfferings}
             testID="cta-start-trial"
           />
           <Text style={styles.legal}>
@@ -372,4 +389,7 @@ const styles = StyleSheet.create({
   codeBtnText: { color: Colors.textMuted, fontSize: 11, fontWeight: "600", textDecorationLine: "underline" },
   restartBtn: { alignSelf: "center", paddingVertical: 4, paddingHorizontal: 8, marginTop: 2, opacity: 0.55 },
   restartText: { color: "#c0392b", fontSize: 9, fontWeight: "600", letterSpacing: 0.4 },
+  pendingBanner: { backgroundColor: "#fff7e6", borderWidth: 1, borderColor: "#f2d98a", borderRadius: 12, padding: 12, marginBottom: 10 },
+  pendingTitle: { color: "#7a5a00", fontSize: 13, fontWeight: "800" },
+  pendingBody: { color: "#7a5a00", fontSize: 12, marginTop: 4, lineHeight: 16 },
 });

@@ -2,12 +2,14 @@ import React, { useEffect, useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronRight, Crown, Gift, LogIn, LogOut, Pencil, RefreshCw, Shield, Star, Vibrate } from "lucide-react-native";
+import { useQuery } from "@tanstack/react-query";
+import { ChevronRight, Cloud, CloudOff, Crown, Gift, LogIn, LogOut, Pencil, RefreshCw, Shield, Star, Vibrate } from "lucide-react-native";
 
 import { Colors } from "@/constants/colors";
 import { triggerHaptic } from "@/lib/haptics";
 import { useApp } from "@/providers/AppProvider";
 import { useAuth } from "@/providers/AuthProvider";
+import { pingSupabase, supabaseReady } from "@/lib/supabase";
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -16,6 +18,22 @@ export default function ProfileScreen() {
 
   const [editing, setEditing] = useState<boolean>(false);
   const [name, setName] = useState<string>(state.profile.name);
+
+  const pingQuery = useQuery({
+    queryKey: ["supabase-ping"],
+    queryFn: pingSupabase,
+    enabled: supabaseReady,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+  const connected = !!pingQuery.data?.ok;
+  const connStatus: "unknown" | "connected" | "offline" = !supabaseReady
+    ? "offline"
+    : pingQuery.isLoading
+    ? "unknown"
+    : connected
+    ? "connected"
+    : "offline";
 
   useEffect(() => {
     if (user?.adminGrantedPremium && !isPremium) {
@@ -54,7 +72,40 @@ export default function ProfileScreen() {
     <View style={styles.root}>
       <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <Text style={styles.header}>Profile</Text>
+          <View style={styles.headerRow}>
+            <Text style={styles.header}>Profile</Text>
+            <Pressable
+              onPress={() => pingQuery.refetch()}
+              hitSlop={8}
+              style={[
+                styles.statusPill,
+                connStatus === "connected" ? styles.statusPillOn : null,
+                connStatus === "offline" ? styles.statusPillOff : null,
+              ]}
+              testID="conn-status-pill"
+            >
+              {connStatus === "connected" ? (
+                <Cloud size={11} color="#0a7f3f" />
+              ) : connStatus === "offline" ? (
+                <CloudOff size={11} color="#a33" />
+              ) : (
+                <View style={styles.statusDotUnknown} />
+              )}
+              <Text
+                style={[
+                  styles.statusText,
+                  connStatus === "connected" ? styles.statusTextOn : null,
+                  connStatus === "offline" ? styles.statusTextOff : null,
+                ]}
+              >
+                {connStatus === "connected"
+                  ? "Connected"
+                  : connStatus === "offline"
+                  ? supabaseReady ? "Offline" : "Not set up"
+                  : "Checking…"}
+              </Text>
+            </Pressable>
+          </View>
 
           <View style={styles.userCard}>
             {editing ? (
@@ -192,7 +243,15 @@ function MenuRow({ Icon, label, onPress }: { Icon: React.ComponentType<{ color: 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#ffffff" },
   scroll: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: Platform.OS === "ios" ? 140 : 120 },
-  header: { color: Colors.text, fontSize: 32, fontWeight: "900", letterSpacing: -0.5, marginBottom: 18 },
+  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 },
+  header: { color: Colors.text, fontSize: 32, fontWeight: "900", letterSpacing: -0.5 },
+  statusPill: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, backgroundColor: "#f4f4f4", borderWidth: 1, borderColor: "#eeeeee" },
+  statusPillOn: { backgroundColor: "#e8f7ee", borderColor: "#bfe5cc" },
+  statusPillOff: { backgroundColor: "#fdecec", borderColor: "#f3c6c6" },
+  statusDotUnknown: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.textMuted },
+  statusText: { fontSize: 10, fontWeight: "800", letterSpacing: 0.4, color: Colors.textDim, textTransform: "uppercase" },
+  statusTextOn: { color: "#0a7f3f" },
+  statusTextOff: { color: "#a33" },
   userCard: { padding: 18, borderRadius: 16, backgroundColor: "#fafafa", borderWidth: 1, borderColor: "#eeeeee", marginBottom: 22 },
   nameRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   userName: { color: Colors.text, fontSize: 22, fontWeight: "900" },
