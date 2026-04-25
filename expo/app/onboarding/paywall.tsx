@@ -131,13 +131,8 @@ export default function PaywallScreen() {
       else router.replace("/(tabs)/tasks");
       return;
     }
-    if (state.profile.declineReason) {
-      console.log("[paywall] survey already answered, skipping decline survey");
-      if (router.canGoBack()) router.back();
-      else router.replace("/onboarding/results");
-      return;
-    }
-    router.push({ pathname: "/onboarding/decline", params: fromUpgrade ? { fromUpgrade: "1" } : {} });
+    if (router.canGoBack()) router.back();
+    else router.replace("/onboarding/results");
   };
 
   const loadingPkgs = Platform.OS !== "web" && offeringsQuery.isLoading;
