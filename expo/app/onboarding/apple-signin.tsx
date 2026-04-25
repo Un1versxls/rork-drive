@@ -7,6 +7,7 @@ import { OnboardingShell } from "@/components/OnboardingShell";
 import { Colors } from "@/constants/colors";
 import { useApp } from "@/providers/AppProvider";
 import { submitSurveyResponse } from "@/lib/surveyTracking";
+import { upsertAppUser } from "@/lib/appUserTracking";
 import { useAuth } from "@/providers/AuthProvider";
 
 export default function AppleSignInScreen() {
@@ -15,11 +16,27 @@ export default function AppleSignInScreen() {
   const { user } = useAuth();
   const [busy, setBusy] = useState<boolean>(false);
 
-  const proceed = (email: string | null) => {
+  const proceed = (email: string | null, appleUserId: string | null, name: string | null) => {
     if (email) setProfileField("email", email.toLowerCase());
-    submitSurveyResponse(state.profile, email ?? state.profile.email ?? "", user?.id ?? null).catch((e) =>
+    if (appleUserId) setProfileField("appleUserId", appleUserId);
+    const finalEmail = email ?? state.profile.email ?? "";
+    const finalName = name ?? state.profile.name ?? null;
+    submitSurveyResponse(state.profile, finalEmail, user?.id ?? null).catch((e) =>
       console.log("[apple] survey", e),
     );
+    upsertAppUser({
+      appleUserId: appleUserId ?? state.profile.appleUserId ?? null,
+      email: finalEmail || null,
+      name: finalName,
+      subscription: {
+        plan: state.profile.subscription.plan,
+        cycle: state.profile.subscription.cycle,
+        active: state.profile.subscription.active,
+        trial: state.profile.subscription.trial,
+        source: state.profile.subscription.source,
+        startedAt: state.profile.subscription.startedAt,
+      },
+    }).catch((e) => console.log("[apple] app_users", e));
     router.replace("/onboarding/paywall");
   };
 
@@ -28,7 +45,7 @@ export default function AppleSignInScreen() {
     setBusy(true);
     try {
       if (Platform.OS !== "ios") {
-        proceed(null);
+        proceed(null, null, null);
         return;
       }
       const available = await AppleAuthentication.isAvailableAsync();
@@ -43,10 +60,11 @@ export default function AppleSignInScreen() {
         ],
       });
       console.log("[apple] credential", credential.user);
-      if (credential.fullName?.givenName && !state.profile.name) {
-        setProfileField("name", credential.fullName.givenName);
+      const givenName = credential.fullName?.givenName ?? null;
+      if (givenName && !state.profile.name) {
+        setProfileField("name", givenName);
       }
-      proceed(credential.email ?? null);
+      proceed(credential.email ?? null, credential.user ?? null, givenName ?? state.profile.name ?? null);
     } catch (e: unknown) {
       const err = e as { code?: string; message?: string };
       if (err?.code === "ERR_REQUEST_CANCELED") {
@@ -60,7 +78,7 @@ export default function AppleSignInScreen() {
     }
   };
 
-  const onSkip = () => proceed(null);
+  const onSkip = () => proceed(null, null, null);
 
   return (
     <OnboardingShell

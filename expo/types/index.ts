@@ -110,6 +110,7 @@ export interface Subscription {
 export interface UserProfile {
   name: string;
   email: string;
+  appleUserId: string | null;
   goal: PrimaryGoal | null;
   goalDetail: string;
   industryDetail: string;

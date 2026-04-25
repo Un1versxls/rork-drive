@@ -11,6 +11,7 @@ import { Colors } from "@/constants/colors";
 import { useApp } from "@/providers/AppProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { submitSurveyResponse } from "@/lib/surveyTracking";
+import { upsertAppUser } from "@/lib/appUserTracking";
 import { PLANS, priceFor, monthlyEquivalent, yearlySavings } from "@/constants/plans";
 import { configurePurchases, getOfferings, purchasePackage, hasActiveEntitlement } from "@/lib/purchases";
 import type { BillingCycle, PlanId } from "@/types";
@@ -91,6 +92,19 @@ export default function PaywallScreen() {
         if (state.profile.email) {
           submitSurveyResponse(state.profile, state.profile.email, user?.id ?? null).catch(() => {});
         }
+        upsertAppUser({
+          appleUserId: state.profile.appleUserId ?? null,
+          email: state.profile.email || null,
+          name: state.profile.name || null,
+          subscription: {
+            plan: planId,
+            cycle,
+            active: true,
+            trial: true,
+            source: "trial",
+            startedAt: new Date().toISOString(),
+          },
+        }).catch((e) => console.log("[paywall] app_users", e));
         if (fromUpgrade) {
           if (router.canGoBack()) router.back();
           else router.replace("/(tabs)/tasks");
@@ -114,6 +128,19 @@ export default function PaywallScreen() {
   const onStart = () => {
     if (Platform.OS === "web") {
       startSubscription(planId, cycle);
+      upsertAppUser({
+        appleUserId: state.profile.appleUserId ?? null,
+        email: state.profile.email || null,
+        name: state.profile.name || null,
+        subscription: {
+          plan: planId,
+          cycle,
+          active: true,
+          trial: true,
+          source: "trial",
+          startedAt: new Date().toISOString(),
+        },
+      }).catch((e) => console.log("[paywall] app_users web", e));
       if (fromUpgrade) {
         if (router.canGoBack()) router.back();
         else router.replace("/(tabs)/tasks");

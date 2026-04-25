@@ -65,6 +65,7 @@ const DEFAULT_SUBSCRIPTION: Subscription = {
 const DEFAULT_PROFILE: UserProfile = {
   name: "",
   email: "",
+  appleUserId: null,
   goal: null,
   goalDetail: "",
   industryDetail: "",
