@@ -44,7 +44,7 @@ export interface Plan {
   id: PlanId;
   name: string;
   monthlyPrice: number;
-  yearlyDiscount: number;
+  yearlyPrice: number;
   tagline: string;
   perks: string[];
   recommended?: boolean;

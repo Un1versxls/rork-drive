@@ -4,8 +4,8 @@ export const PLANS: Plan[] = [
   {
     id: "base",
     name: "Base",
-    monthlyPrice: 23.99,
-    yearlyDiscount: 20,
+    monthlyPrice: 3.99,
+    yearlyPrice: 49.99,
     tagline: "Start your side hustle",
     incomeTier: "standard",
     incomeRange: "$50 – $1,500 / month",
@@ -22,8 +22,8 @@ export const PLANS: Plan[] = [
   {
     id: "premium",
     name: "Premium",
-    monthlyPrice: 35,
-    yearlyDiscount: 30,
+    monthlyPrice: 5.99,
+    yearlyPrice: 69.99,
     tagline: "For people actually trying to make real money",
     incomeTier: "premium",
     incomeRange: "$1,500 – $10,000 / month",
@@ -47,11 +47,15 @@ export function getPlan(id: string): Plan {
 
 export function priceFor(plan: Plan, cycle: BillingCycle): number {
   if (cycle === "monthly") return plan.monthlyPrice;
-  const full = plan.monthlyPrice * 12;
-  return Math.max(0, Math.round((full - plan.yearlyDiscount) * 100) / 100);
+  return plan.yearlyPrice;
 }
 
 export function monthlyEquivalent(plan: Plan, cycle: BillingCycle): number {
   if (cycle === "monthly") return plan.monthlyPrice;
-  return Math.round((priceFor(plan, "yearly") / 12) * 100) / 100;
+  return Math.round((plan.yearlyPrice / 12) * 100) / 100;
+}
+
+export function yearlySavings(plan: Plan): number {
+  const full = plan.monthlyPrice * 12;
+  return Math.max(0, Math.round((full - plan.yearlyPrice) * 100) / 100);
 }

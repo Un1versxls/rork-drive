@@ -11,7 +11,7 @@ import { Colors } from "@/constants/colors";
 import { useApp } from "@/providers/AppProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { submitSurveyResponse } from "@/lib/surveyTracking";
-import { PLANS, priceFor, monthlyEquivalent } from "@/constants/plans";
+import { PLANS, priceFor, monthlyEquivalent, yearlySavings } from "@/constants/plans";
 import { configurePurchases, getOfferings, purchasePackage, hasActiveEntitlement } from "@/lib/purchases";
 import type { BillingCycle, PlanId } from "@/types";
 
@@ -181,8 +181,10 @@ export default function PaywallScreen() {
               cycle="yearly"
               selected={cycle === "yearly"}
               onPress={() => setCycle("yearly")}
-              headline={`$${priceFor(plan, "yearly").toFixed(2)} / year`}
-              sub={`Just $${monthlyEquivalent(plan, "yearly").toFixed(2)}/mo — save $${plan.yearlyDiscount}`}
+              headline={`${priceFor(plan, "yearly").toFixed(2)} / year`}
+              sub={yearlySavings(plan) > 0
+                ? `Just ${monthlyEquivalent(plan, "yearly").toFixed(2)}/mo — save ${yearlySavings(plan).toFixed(2)}`
+                : `Just ${monthlyEquivalent(plan, "yearly").toFixed(2)}/mo`}
               savings="BEST VALUE"
             />
             <CycleCard
