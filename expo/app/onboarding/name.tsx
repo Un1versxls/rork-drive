@@ -26,7 +26,7 @@ export default function NameScreen() {
           disabled={!valid}
           onPress={() => {
             setAnswers({ name: name.trim() });
-            router.push("/onboarding/apple-signin");
+            router.push("/onboarding/sync-accounts");
           }}
         />
       }

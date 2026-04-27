@@ -9,6 +9,7 @@ import { useApp } from "@/providers/AppProvider";
 import { submitSurveyResponse } from "@/lib/surveyTracking";
 import { upsertAppUser } from "@/lib/appUserTracking";
 import { useAuth } from "@/providers/AuthProvider";
+import { supabase, supabaseReady } from "@/lib/supabase";
 
 export default function AppleSignInScreen() {
   const router = useRouter();
@@ -61,10 +62,44 @@ export default function AppleSignInScreen() {
       });
       console.log("[apple] credential", credential.user);
       const givenName = credential.fullName?.givenName ?? null;
+      const familyName = credential.fullName?.familyName ?? null;
+      const fullName = [givenName, familyName].filter(Boolean).join(" ").trim() || givenName;
       if (givenName && !state.profile.name) {
         setProfileField("name", givenName);
       }
-      proceed(credential.email ?? null, credential.user ?? null, givenName ?? state.profile.name ?? null);
+
+      if (supabaseReady && supabase && credential.identityToken) {
+        try {
+          const { data, error } = await supabase.auth.signInWithIdToken({
+            provider: "apple",
+            token: credential.identityToken,
+          });
+          if (error) {
+            console.log("[apple] supabase signInWithIdToken error", error.message);
+          } else if (data.user) {
+            console.log("[apple] supabase session created", data.user.id);
+            const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+            if (fullName) patch.name = fullName;
+            if (credential.email) patch.email = credential.email.toLowerCase();
+            try {
+              const { error: updErr } = await supabase
+                .from("user_accounts")
+                .update(patch)
+                .eq("id", data.user.id);
+              if (updErr) console.log("[apple] user_accounts update error", updErr.message);
+            } catch (e) {
+              console.log("[apple] user_accounts update exception", e);
+            }
+          }
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Unknown";
+          console.log("[apple] supabase auth exception", msg);
+        }
+      } else if (!credential.identityToken) {
+        console.log("[apple] no identityToken — skipping supabase auth");
+      }
+
+      proceed(credential.email ?? null, credential.user ?? null, fullName ?? state.profile.name ?? null);
     } catch (e: unknown) {
       const err = e as { code?: string; message?: string };
       if (err?.code === "ERR_REQUEST_CANCELED") {
