@@ -11,6 +11,7 @@ export default function AuthScreen() {
   const router = useRouter();
   const { signIn, signUp, signInPending, signUpPending, ready } = useAuth();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -23,9 +24,13 @@ export default function AuthScreen() {
       setError("Enter a valid email and a password with at least 6 characters.");
       return;
     }
+    if (mode === "signup" && name.trim().length < 2) {
+      setError("Enter your name to create an account.");
+      return;
+    }
     try {
       if (mode === "signup") {
-        await signUp({ email, password });
+        await signUp({ email, password, name: name.trim() });
         Alert.alert("Account created", "You're signed in and synced across devices.");
       } else {
         await signIn({ email, password });
@@ -61,6 +66,21 @@ export default function AuthScreen() {
           <Text style={styles.sub}>Sync your progress across devices.</Text>
 
           <View style={styles.form}>
+            {mode === "signup" ? (
+              <>
+                <Text style={styles.label}>Name</Text>
+                <TextInput
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Your name"
+                  placeholderTextColor={Colors.textMuted}
+                  autoCapitalize="words"
+                  autoComplete="name"
+                  style={styles.input}
+                />
+                <View style={{ height: 14 }} />
+              </>
+            ) : null}
             <Text style={styles.label}>Email</Text>
             <TextInput
               value={email}

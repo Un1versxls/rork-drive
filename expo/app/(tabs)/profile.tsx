@@ -138,6 +138,26 @@ export default function ProfileScreen() {
                 <Text style={styles.signInText}>Sign in to sync across devices</Text>
               </Pressable>
             )}
+            {user ? (
+              <Pressable
+                onPress={() => {
+                  const run = () => signOut();
+                  if (Platform.OS === "web") {
+                    if (typeof window !== "undefined" && window.confirm("Sign out?")) run();
+                    return;
+                  }
+                  Alert.alert("Sign out?", "You'll need to sign in again to sync.", [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Sign out", style: "destructive", onPress: run },
+                  ]);
+                }}
+                style={styles.signOutRow}
+                testID="profile-sign-out"
+              >
+                <LogOut color={Colors.text} size={14} />
+                <Text style={styles.signInText}>Sign out</Text>
+              </Pressable>
+            ) : null}
           </View>
 
           <Text style={styles.sectionTitle}>Subscription</Text>
@@ -203,16 +223,6 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {user ? (
-            <Pressable
-              onPress={() => signOut()}
-              style={({ pressed }) => [styles.dangerBtn, pressed && { opacity: 0.7 }]}
-            >
-              <LogOut color={Colors.textDim} size={16} />
-              <Text style={styles.dangerText}>Sign out</Text>
-            </Pressable>
-          ) : null}
-
           <Pressable onPress={onReset} style={({ pressed }) => [styles.resetBtn, pressed && { opacity: 0.7 }]}>
             <Text style={styles.resetText}>Reset everything</Text>
           </Pressable>
@@ -259,6 +269,7 @@ const styles = StyleSheet.create({
   userEmail: { color: Colors.textDim, fontSize: 13, fontWeight: "600", marginTop: 6 },
   userId: { color: Colors.textMuted, fontSize: 11, marginTop: 2 },
   signInRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, backgroundColor: "#ffffff", borderWidth: 1, borderColor: "#eeeeee", alignSelf: "flex-start" },
+  signOutRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, backgroundColor: "#ffffff", borderWidth: 1, borderColor: "#eeeeee", alignSelf: "flex-start" },
   signInText: { color: Colors.text, fontSize: 13, fontWeight: "700" },
   nameInput: { color: Colors.text, fontSize: 22, fontWeight: "900", borderBottomWidth: 1, borderBottomColor: Colors.text, paddingVertical: 2 },
 

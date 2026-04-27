@@ -74,13 +74,27 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   }, [session, accountQuery.data]);
 
   const signUpMutation = useMutation({
-    mutationFn: async (params: { email: string; password: string }) => {
+    mutationFn: async (params: { email: string; password: string; name?: string }) => {
       if (!supabase) throw new Error("Supabase not configured");
+      const cleanName = params.name?.trim();
       const { data, error } = await supabase.auth.signUp({
         email: params.email.trim().toLowerCase(),
         password: params.password,
+        options: {
+          data: cleanName ? { name: cleanName, full_name: cleanName } : undefined,
+        },
       });
       if (error) throw error;
+      if (cleanName && data.user) {
+        try {
+          await supabase
+            .from("user_accounts")
+            .update({ name: cleanName })
+            .eq("id", data.user.id);
+        } catch (e) {
+          console.log("[auth] save name failed", e);
+        }
+      }
       return data;
     },
   });
