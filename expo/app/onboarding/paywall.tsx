@@ -252,19 +252,9 @@ export default function PaywallScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
-          {noOfferings ? (
-            <View style={styles.pendingBanner} testID="payments-pending-banner">
-              <Text style={styles.pendingTitle}>Payments pending App Store approval</Text>
-              <Text style={styles.pendingBody}>
-                Apple hasn’t activated subscriptions for this build yet. Use an access code below to unlock premium in the meantime.
-              </Text>
-            </View>
-          ) : null}
           <GradientButton
             title={
-              noOfferings
-                ? "Payments unavailable"
-                : purchaseMutation.isPending
+              purchaseMutation.isPending
                 ? "Opening Apple…"
                 : planId === "premium"
                 ? "Unlock Premium"
@@ -272,7 +262,7 @@ export default function PaywallScreen() {
             }
             variant="gold"
             onPress={onStart}
-            disabled={purchaseMutation.isPending || loadingPkgs || noOfferings}
+            disabled={purchaseMutation.isPending || loadingPkgs}
             testID="cta-start-trial"
           />
           <Text style={styles.legal}>
