@@ -9,10 +9,10 @@ import { GradientButton } from "@/components/GradientButton";
 import { useApp } from "@/providers/AppProvider";
 import type { PrimaryGoal } from "@/types";
 
-const OPTIONS: { id: PrimaryGoal; label: string; description: string; Icon: LucideIcon }[] = [
+const OPTIONS: { id: PrimaryGoal; label: string; description: string; Icon: LucideIcon; premium?: boolean }[] = [
   { id: "earn_income", label: "Earn extra income", description: "Side hustles, freelance, pitching", Icon: Banknote },
   { id: "build_skills", label: "Build skills", description: "Learn, practice, level up", Icon: Brain },
-  { id: "grow_business", label: "Run / grow my business", description: "Use DRIVE to get real work done on your existing business", Icon: TrendingUp },
+  { id: "grow_business", label: "Run / grow my business", description: "Use DRIVE to get real work done on your existing business", Icon: TrendingUp, premium: true },
   { id: "stay_productive", label: "Stay productive", description: "Focus, routines, follow through", Icon: Zap },
 ];
 
@@ -49,6 +49,7 @@ export default function GoalScreen() {
             Icon={o.Icon}
             selected={selected === o.id}
             onPress={() => setSelected(o.id)}
+            premium={o.premium}
             testID={`opt-${o.id}`}
           />
         ))}

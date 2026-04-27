@@ -10,10 +10,10 @@ import { useApp } from "@/providers/AppProvider";
 import type { ExperienceLevel } from "@/types";
 
 const OPTIONS: { id: ExperienceLevel; label: string; description: string; Icon: LucideIcon }[] = [
-  { id: "beginner", label: "Beginner", description: "Just getting started", Icon: Sprout },
-  { id: "intermediate", label: "Intermediate", description: "Some real reps in", Icon: Rocket },
-  { id: "advanced", label: "Advanced", description: "Confident and consistent", Icon: Flame },
-  { id: "expert", label: "Expert", description: "Helping others do this", Icon: Crown },
+  { id: "beginner", label: "Beginner", description: "Just getting started — e.g. selling on Facebook Marketplace", Icon: Sprout },
+  { id: "intermediate", label: "Intermediate", description: "Some real reps in — e.g. dog walking or local tutoring", Icon: Rocket },
+  { id: "advanced", label: "Advanced", description: "Confident and consistent — e.g. running a freelance business", Icon: Flame },
+  { id: "expert", label: "Expert", description: "Helping others do this — e.g. running a SaaS or agency", Icon: Crown },
 ];
 
 export default function ExperienceScreen() {

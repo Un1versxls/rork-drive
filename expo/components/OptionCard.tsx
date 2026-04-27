@@ -1,6 +1,6 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Check, type LucideIcon } from "lucide-react-native";
+import { Check, Crown, type LucideIcon } from "lucide-react-native";
 
 import { Colors } from "@/constants/colors";
 import { triggerHaptic } from "@/lib/haptics";
@@ -12,9 +12,10 @@ interface Props {
   onPress: () => void;
   Icon?: LucideIcon;
   testID?: string;
+  premium?: boolean;
 }
 
-export function OptionCard({ label, description, selected, onPress, Icon, testID }: Props) {
+export function OptionCard({ label, description, selected, onPress, Icon, testID, premium }: Props) {
   const handle = () => {
     triggerHaptic("select", true);
     onPress();
@@ -36,7 +37,15 @@ export function OptionCard({ label, description, selected, onPress, Icon, testID
           </View>
         ) : null}
         <View style={styles.textCol}>
-          <Text style={styles.label}>{label}</Text>
+          <View style={styles.labelRow}>
+            <Text style={styles.label}>{label}</Text>
+            {premium ? (
+              <View style={styles.premiumBadge}>
+                <Crown color="#7a5a00" size={10} strokeWidth={2.6} />
+                <Text style={styles.premiumText}>PREMIUM</Text>
+              </View>
+            ) : null}
+          </View>
           {description ? <Text style={styles.desc}>{description}</Text> : null}
         </View>
         <View style={[styles.check, selected && styles.checkSelected]}>
@@ -78,4 +87,17 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   checkSelected: { backgroundColor: Colors.text, borderColor: Colors.text },
+  labelRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
+  premiumBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "rgba(212,175,55,0.18)",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.5)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  premiumText: { color: "#7a5a00", fontSize: 9, fontWeight: "800", letterSpacing: 0.6 },
 });
