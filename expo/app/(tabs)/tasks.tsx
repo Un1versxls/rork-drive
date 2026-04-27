@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Check, Flame, RotateCcw, X } from "lucide-react-native";
+import { Check, Clock, Flame, RotateCcw, X } from "lucide-react-native";
 
 import { CelebrationOverlay } from "@/components/CelebrationOverlay";
 import { HalfwayToast } from "@/components/HalfwayToast";
@@ -26,6 +26,31 @@ function greeting(): string {
 
 function formatDate(): string {
   return new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+}
+
+function msUntilMidnight(): number {
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(24, 0, 0, 0);
+  return next.getTime() - now.getTime();
+}
+
+function formatCountdown(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+
+function useCountdown(): string {
+  const [ms, setMs] = useState<number>(msUntilMidnight());
+  useEffect(() => {
+    const id = setInterval(() => setMs(msUntilMidnight()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return formatCountdown(ms);
 }
 
 export default function TasksScreen() {
@@ -57,6 +82,7 @@ export default function TasksScreen() {
   );
 
   const progress = today.total > 0 ? today.completed / today.total : 0;
+  const countdown = useCountdown();
   const pending = useMemo(() => today.list.filter((t) => t.status === "pending"), [today.list]);
   const done = useMemo(() => today.list.filter((t) => t.status !== "pending"), [today.list]);
   const tier = getStreakTier(state.streak);
@@ -82,6 +108,11 @@ export default function TasksScreen() {
                 <Text style={[styles.streakText, { color: tier.primary }]}>{tier.label}</Text>
               </View>
             </View>
+          </View>
+
+          <View style={styles.refreshPill}>
+            <Clock size={11} color={Colors.textDim} />
+            <Text style={styles.refreshText}>New tasks in {countdown}</Text>
           </View>
 
           <View style={styles.heroCard}>
@@ -262,6 +293,17 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(212,175,55,0.12)",
   },
   streakText: { fontWeight: "900", fontSize: 10, letterSpacing: 0.5 },
+
+  refreshPill: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    alignSelf: "flex-start",
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: "#fafafa",
+    borderWidth: 1, borderColor: "#eeeeee",
+    marginBottom: 12,
+  },
+  refreshText: { color: Colors.textDim, fontSize: 11, fontWeight: "700", letterSpacing: 0.3 },
 
   heroCard: { borderRadius: 20, backgroundColor: "#fafafa", borderWidth: 1, borderColor: "#eeeeee", padding: 20, marginBottom: 14 },
   heroHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },

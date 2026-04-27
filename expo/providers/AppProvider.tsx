@@ -281,13 +281,19 @@ export const [AppProvider, useApp] = createContextHook(() => {
     industryDetail?: string;
     obstacleDetail?: string;
   }) => {
-    const next: AppState = {
+    let next: AppState = {
       ...state,
       profile: {
         ...state.profile,
         ...a,
       },
     };
+    if (state.onboarded && a.goal && a.goal !== state.profile.goal) {
+      const plan = getPlan(next.profile.subscription.plan);
+      const key = todayKey();
+      const tasks = generateDailyTasks(a.goal, plan.taskLimit, key, next.profile.businessTaskPool);
+      next = { ...next, tasks, lastActiveDate: key };
+    }
     commit(next);
   }, [state, commit]);
 
@@ -355,10 +361,15 @@ export const [AppProvider, useApp] = createContextHook(() => {
   }, [state, commit]);
 
   const setBusiness = useCallback((business: BusinessIdea, taskPool: TaskSeed[]) => {
-    const next: AppState = {
-      ...state,
-      profile: { ...state.profile, business, businessTaskPool: taskPool },
-    };
+    const plan = getPlan(state.profile.subscription.plan);
+    const key = todayKey();
+    const goal = state.profile.goal;
+    const profile = { ...state.profile, business, businessTaskPool: taskPool };
+    let next: AppState = { ...state, profile };
+    if (goal) {
+      const tasks = generateDailyTasks(goal, plan.taskLimit, key, taskPool);
+      next = { ...next, tasks, lastActiveDate: key };
+    }
     commit(next);
   }, [state, commit]);
 
