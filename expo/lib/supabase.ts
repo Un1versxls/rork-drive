@@ -2,8 +2,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 import { Platform } from "react-native";
 
-const url = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
-const anon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "";
+const FALLBACK_URL = "https://ndoihidkznqdlacpiura.supabase.co";
+const FALLBACK_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kb2loaWRrem5xZGxhY3BpdXJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDkyOTMsImV4cCI6MjA5MjIyNTI5M30.Oc7pgUEkB2Tw0mc3A7a0ih1UpiNHLpufmuNqaqnf_bE";
+
+const url = FALLBACK_URL;
+const anon = FALLBACK_ANON;
 
 export const supabaseReady: boolean = Boolean(url && anon);
 
