@@ -1,9 +1,13 @@
-import React, { useEffect, useState } from "react";
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Alert, Animated, Easing, LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, UIManager, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { Check, ChevronRight, Cloud, CloudOff, Crown, Gift, LogIn, LogOut, Pencil, RefreshCw, Shield, Sparkles, Star, Vibrate } from "lucide-react-native";
+import { Check, ChevronDown, ChevronRight, Cloud, CloudOff, Crown, Gift, LogIn, LogOut, Pencil, RefreshCw, Shield, Sparkles, Star, Vibrate } from "lucide-react-native";
+
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 import { Colors } from "@/constants/colors";
 import { triggerHaptic } from "@/lib/haptics";
@@ -20,6 +24,27 @@ export default function ProfileScreen() {
 
   const [editing, setEditing] = useState<boolean>(false);
   const [name, setName] = useState<string>(state.profile.name);
+  const [planExpanded, setPlanExpanded] = useState<boolean>(false);
+  const chevronAnim = useRef(new Animated.Value(0)).current;
+
+  const togglePlanExpanded = () => {
+    triggerHaptic("light", state.profile.hapticsEnabled);
+    LayoutAnimation.configureNext({
+      duration: 280,
+      create: { type: "easeInEaseOut", property: "opacity" },
+      update: { type: "easeInEaseOut" },
+      delete: { type: "easeInEaseOut", property: "opacity" },
+    });
+    Animated.timing(chevronAnim, {
+      toValue: planExpanded ? 0 : 1,
+      duration: 240,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+    setPlanExpanded((v) => !v);
+  };
+
+  const chevronRotate = chevronAnim.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "180deg"] });
 
   const pingQuery = useQuery({
     queryKey: ["supabase-ping"],
@@ -164,66 +189,78 @@ export default function ProfileScreen() {
 
           <Text style={styles.sectionTitle}>Subscription</Text>
           <View style={styles.card}>
-            <View style={styles.planRow}>
+            <Pressable
+              onPress={togglePlanExpanded}
+              style={styles.planHeader}
+              testID="plan-header-toggle"
+            >
               <View style={[styles.planBadge, isPremium && styles.planBadgePremium]}>
                 {isPremium ? <Crown size={12} color="#ffffff" /> : null}
                 <Text style={[styles.planBadgeText, isPremium && styles.planBadgeTextOn]}>
                   {currentPlan.name.toUpperCase()}
                 </Text>
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={styles.planHeaderText}>
                 <Text style={styles.planTitle}>
                   {hasActiveSubscription
-                    ? `${state.profile.subscription.cycle === "yearly" ? "Yearly" : "Monthly"} ${state.profile.subscription.trial ? "— free trial" : ""}`
+                    ? `${state.profile.subscription.cycle === "yearly" ? "Yearly" : "Monthly"}${state.profile.subscription.trial ? " — free trial" : ""}`
                     : "No active subscription"}
                 </Text>
                 <Text style={styles.planSub}>{currentPlan.incomeRange}</Text>
               </View>
-            </View>
+              <Animated.View style={{ transform: [{ rotate: chevronRotate }] }}>
+                <ChevronDown color={Colors.textDim} size={20} />
+              </Animated.View>
+            </Pressable>
 
-            <Text style={styles.switchTitle}>Change plan</Text>
-            <View style={styles.planChoices}>
-              {PLANS.map((p) => {
-                const isCurrent = state.profile.subscription.plan === p.id && hasActiveSubscription;
-                const isPremiumOpt = p.id === "premium";
-                return (
-                  <Pressable
-                    key={p.id}
-                    onPress={() => {
-                      const sameCycle: BillingCycle = state.profile.subscription.cycle === "monthly" ? "monthly" : "yearly";
-                      router.push({
-                        pathname: "/onboarding/paywall",
-                        params: { fromUpgrade: "1", initialPlan: p.id as PlanId, initialCycle: sameCycle },
-                      });
-                    }}
-                    style={[styles.planChoice, isCurrent && styles.planChoiceCurrent]}
-                    testID={`plan-choice-${p.id}`}
-                  >
-                    <View style={styles.planChoiceHeader}>
-                      {isPremiumOpt ? <Sparkles size={13} color={Colors.accentGold} /> : <Crown size={13} color={Colors.textDim} />}
-                      <Text style={styles.planChoiceName}>{p.name}</Text>
-                      {isCurrent ? (
-                        <View style={styles.currentPill}>
-                          <Check size={10} color="#ffffff" strokeWidth={3} />
-                          <Text style={styles.currentPillText}>CURRENT</Text>
+            {planExpanded ? (
+              <View style={styles.planDropdown}>
+                <View style={styles.planDivider} />
+                <Text style={styles.switchTitle}>Change plan</Text>
+                <View style={styles.planChoices}>
+                  {PLANS.map((p) => {
+                    const isCurrent = state.profile.subscription.plan === p.id && hasActiveSubscription;
+                    const isPremiumOpt = p.id === "premium";
+                    return (
+                      <Pressable
+                        key={p.id}
+                        onPress={() => {
+                          const sameCycle: BillingCycle = state.profile.subscription.cycle === "monthly" ? "monthly" : "yearly";
+                          router.push({
+                            pathname: "/onboarding/paywall",
+                            params: { fromUpgrade: "1", initialPlan: p.id as PlanId, initialCycle: sameCycle },
+                          });
+                        }}
+                        style={[styles.planChoice, isCurrent && styles.planChoiceCurrent]}
+                        testID={`plan-choice-${p.id}`}
+                      >
+                        <View style={styles.planChoiceHeader}>
+                          {isPremiumOpt ? <Sparkles size={13} color={Colors.accentGold} /> : <Crown size={13} color={Colors.textDim} />}
+                          <Text style={styles.planChoiceName}>{p.name}</Text>
+                          {isCurrent ? (
+                            <View style={styles.currentPill}>
+                              <Check size={10} color="#ffffff" strokeWidth={3} />
+                              <Text style={styles.currentPillText}>CURRENT</Text>
+                            </View>
+                          ) : null}
                         </View>
-                      ) : null}
-                    </View>
-                    <Text style={styles.planChoicePrice}>${monthlyEquivalent(p, "yearly").toFixed(2)}<Text style={styles.planChoicePriceSub}>/mo</Text></Text>
-                    <Text style={styles.planChoiceRange}>{p.incomeRange}</Text>
-                    {yearlySavings(p) > 0 ? (
-                      <Text style={styles.planChoiceSave}>Save ${yearlySavings(p).toFixed(0)} yearly</Text>
-                    ) : null}
-                    {!isCurrent ? (
-                      <View style={styles.planChoiceCta}>
-                        <Text style={styles.planChoiceCtaText}>{isPremium && p.id === "base" ? "Switch" : isPremiumOpt && !isPremium ? "Upgrade" : "Switch"}</Text>
-                        <ChevronRight color={Colors.text} size={14} />
-                      </View>
-                    ) : null}
-                  </Pressable>
-                );
-              })}
-            </View>
+                        <Text style={styles.planChoicePrice}>${monthlyEquivalent(p, "yearly").toFixed(2)}<Text style={styles.planChoicePriceSub}>/mo</Text></Text>
+                        <Text style={styles.planChoiceRange}>{p.incomeRange}</Text>
+                        {yearlySavings(p) > 0 ? (
+                          <Text style={styles.planChoiceSave}>Save ${yearlySavings(p).toFixed(0)} yearly</Text>
+                        ) : null}
+                        {!isCurrent ? (
+                          <View style={styles.planChoiceCta}>
+                            <Text style={styles.planChoiceCtaText}>{isPremium && p.id === "base" ? "Switch" : isPremiumOpt && !isPremium ? "Upgrade" : "Switch"}</Text>
+                            <ChevronRight color={Colors.text} size={14} />
+                          </View>
+                        ) : null}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
           </View>
 
           <Text style={styles.sectionTitle}>Your business</Text>
@@ -316,6 +353,10 @@ const styles = StyleSheet.create({
   sectionTitle: { color: Colors.textDim, fontWeight: "800", fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 10, marginTop: 4 },
   card: { padding: 16, borderRadius: 16, backgroundColor: "#ffffff", borderWidth: 1, borderColor: "#eeeeee", marginBottom: 18 },
   planRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  planHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
+  planHeaderText: { flex: 1 },
+  planDropdown: { marginTop: 14 },
+  planDivider: { height: 1, backgroundColor: "#f0f0f0", marginBottom: 4 },
   planBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: "#fafafa", borderWidth: 1, borderColor: "#eeeeee" },
   planBadgePremium: { backgroundColor: Colors.accentGold, borderColor: Colors.accentGold },
   planBadgeText: { color: Colors.text, fontSize: 11, fontWeight: "900", letterSpacing: 0.8 },
@@ -324,7 +365,7 @@ const styles = StyleSheet.create({
   planSub: { color: Colors.textDim, fontSize: 12, marginTop: 2 },
   upgradeBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 14, paddingVertical: 12, borderRadius: 999, backgroundColor: Colors.accentGold },
   upgradeText: { color: "#ffffff", fontSize: 14, fontWeight: "800" },
-  switchTitle: { color: Colors.textDim, fontWeight: "800", fontSize: 10, letterSpacing: 1.1, textTransform: "uppercase", marginTop: 18, marginBottom: 10 },
+  switchTitle: { color: Colors.textDim, fontWeight: "800", fontSize: 10, letterSpacing: 1.1, textTransform: "uppercase", marginTop: 14, marginBottom: 12 },
   planChoices: { flexDirection: "row", gap: 10 },
   planChoice: { flex: 1, padding: 12, borderRadius: 14, borderWidth: 1.5, borderColor: "#eeeeee", backgroundColor: "#fafafa" },
   planChoiceCurrent: { borderColor: Colors.text, backgroundColor: "#ffffff" },
