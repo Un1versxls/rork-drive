@@ -31,12 +31,20 @@ const CustomSchema = z.object({
 
 export default function CustomScreen() {
   const router = useRouter();
-  const { isPremium, setBusiness, state } = useApp();
+  const { isPremium, setBusiness, state, customBuildsRemaining, customBuildsThisMonth, customBuildLimit } = useApp();
   const [idea, setIdea] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
+  const outOfBuilds = customBuildsRemaining <= 0;
 
   const onGenerate = async () => {
     if (!idea.trim()) return;
+    if (outOfBuilds) {
+      Alert.alert(
+        "Monthly limit reached",
+        `Premium includes ${customBuildLimit} custom builds per month. Your limit resets at the start of next month.`
+      );
+      return;
+    }
     setLoading(true);
     try {
       const prompt = `The user wants to build their OWN business / project. Take their idea and turn it into a structured business plan + 6-8 daily tasks.
@@ -145,6 +153,21 @@ Return: name (2-5 words), tagline, description (2 sentences), whyFit (why it wor
         <Text style={styles.h1}>Build your own</Text>
         <Text style={styles.sub}>Tell us what you want to build. We&apos;ll handle the daily tasks.</Text>
 
+        <View style={styles.quotaCard}>
+          <View style={styles.quotaRow}>
+            <Sparkles color={Colors.accentGold} size={14} />
+            <Text style={styles.quotaLabel}>MONTHLY CUSTOM BUILDS</Text>
+          </View>
+          <View style={styles.quotaCountRow}>
+            <Text style={styles.quotaCount}>{customBuildsRemaining}</Text>
+            <Text style={styles.quotaCountSub}>/ {customBuildLimit} left this month</Text>
+          </View>
+          <View style={styles.quotaBarTrack}>
+            <View style={[styles.quotaBarFill, { width: `${(customBuildsThisMonth / customBuildLimit) * 100}%` }]} />
+          </View>
+          <Text style={styles.quotaHint}>Resets on the 1st of next month.</Text>
+        </View>
+
         <TextInput
           value={idea}
           onChangeText={setIdea}
@@ -153,6 +176,7 @@ Return: name (2-5 words), tagline, description (2 sentences), whyFit (why it wor
           multiline
           style={styles.input}
           maxLength={400}
+          editable={!outOfBuilds}
         />
 
         {state.profile.business && state.profile.business.id.startsWith("custom-") ? (
@@ -168,14 +192,16 @@ Return: name (2-5 words), tagline, description (2 sentences), whyFit (why it wor
 
         <View style={{ height: 16 }} />
         <GradientButton
-          title={loading ? "Generating your plan…" : "Generate my plan"}
+          title={outOfBuilds ? "Limit reached — back next month" : loading ? "Generating your plan…" : "Generate my plan"}
           onPress={onGenerate}
-          disabled={!idea.trim() || loading}
+          disabled={!idea.trim() || loading || outOfBuilds}
           loading={loading}
           icon={loading ? <ActivityIndicator color="#ffffff" /> : undefined}
         />
         <Text style={styles.hint}>
-          This replaces your current business. Your streak is kept.
+          {outOfBuilds
+            ? `You've used all ${customBuildLimit} custom builds for this month.`
+            : "This replaces your current business. Your streak is kept."}
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -236,6 +262,16 @@ const styles = StyleSheet.create({
   currentTag: { color: Colors.textDim, fontSize: 13, marginTop: 2 },
 
   hint: { color: Colors.textMuted, fontSize: 12, textAlign: "center", marginTop: 10 },
+
+  quotaCard: { marginTop: 4, marginBottom: 16, padding: 16, borderRadius: 16, backgroundColor: "#fafafa", borderWidth: 1, borderColor: "#eeeeee" },
+  quotaRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  quotaLabel: { color: Colors.accentGold, fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
+  quotaCountRow: { flexDirection: "row", alignItems: "baseline", gap: 8, marginTop: 8 },
+  quotaCount: { color: Colors.text, fontSize: 28, fontWeight: "900", letterSpacing: -0.5 },
+  quotaCountSub: { color: Colors.textDim, fontSize: 13, fontWeight: "600" },
+  quotaBarTrack: { height: 6, borderRadius: 3, backgroundColor: "#eeeeee", overflow: "hidden", marginTop: 10 },
+  quotaBarFill: { height: "100%", backgroundColor: Colors.accentGold, borderRadius: 3 },
+  quotaHint: { color: Colors.textMuted, fontSize: 11, marginTop: 8 },
 
   proofHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 28, marginBottom: 12, paddingHorizontal: 4 },
   proofHeaderText: { color: Colors.accentGold, fontSize: 10, fontWeight: "900", letterSpacing: 1.6 },

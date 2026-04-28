@@ -135,6 +135,8 @@ export interface UserProfile {
   lastRatePromptAt: string | null;
   hasRated: boolean;
   onboardingStep: string | null;
+  customBuildMonth: string | null;
+  customBuildCount: number;
 }
 
 export interface AuthUser {

@@ -90,6 +90,8 @@ const DEFAULT_PROFILE: UserProfile = {
   lastRatePromptAt: null,
   hasRated: false,
   onboardingStep: null,
+  customBuildMonth: null,
+  customBuildCount: 0,
 };
 
 const DEFAULT_STATE: AppState = {
@@ -364,7 +366,18 @@ export const [AppProvider, useApp] = createContextHook(() => {
     const plan = getPlan(state.profile.subscription.plan);
     const key = todayKey();
     const goal = state.profile.goal;
-    const profile = { ...state.profile, business, businessTaskPool: taskPool };
+    const isCustom = business.id.startsWith("custom-");
+    const monthKey = key.slice(0, 7);
+    const sameMonth = state.profile.customBuildMonth === monthKey;
+    const nextCount = isCustom ? (sameMonth ? state.profile.customBuildCount + 1 : 1) : state.profile.customBuildCount;
+    const nextMonth = isCustom ? monthKey : state.profile.customBuildMonth;
+    const profile = {
+      ...state.profile,
+      business,
+      businessTaskPool: taskPool,
+      customBuildMonth: nextMonth,
+      customBuildCount: nextCount,
+    };
     let next: AppState = { ...state, profile };
     if (goal) {
       const tasks = generateDailyTasks(goal, plan.taskLimit, key, taskPool);
@@ -506,6 +519,14 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const isPremium = state.profile.subscription.plan === "premium" && state.profile.subscription.active;
   const hasActiveSubscription = state.profile.subscription.active;
 
+  const CUSTOM_BUILD_MONTHLY_LIMIT = 2;
+  const customBuildsThisMonth = useMemo(() => {
+    const monthKey = todayKey().slice(0, 7);
+    return state.profile.customBuildMonth === monthKey ? state.profile.customBuildCount : 0;
+  }, [state.profile.customBuildMonth, state.profile.customBuildCount]);
+  const customBuildsRemaining = Math.max(0, CUSTOM_BUILD_MONTHLY_LIMIT - customBuildsThisMonth);
+  const customBuildLimit = CUSTOM_BUILD_MONTHLY_LIMIT;
+
   return useMemo(() => ({
     hydrated,
     state,
@@ -519,6 +540,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
     currentPlan,
     isPremium,
     hasActiveSubscription,
+    customBuildsThisMonth,
+    customBuildsRemaining,
+    customBuildLimit,
     pendingAchievements,
     setAnswers,
     setOnboardingStep,
@@ -538,5 +562,5 @@ export const [AppProvider, useApp] = createContextHook(() => {
     undoTask,
     resetOnboarding,
     dismissPendingAchievement,
-  }), [hydrated, state, today, weeklyActivity, totalCompleted, totalSkipped, level, levelProgress, currentPlan, isPremium, hasActiveSubscription, pendingAchievements, setAnswers, setOnboardingStep, startSubscription, grantPremiumViaCode, cancelSubscription, setDeclineReason, markRated, markRatePromptSeen, setBusiness, setProfileField, setNotificationPrefs, equipEffect, completeOnboarding, completeTask, skipTask, undoTask, resetOnboarding, dismissPendingAchievement]);
+  }), [hydrated, state, today, weeklyActivity, totalCompleted, totalSkipped, level, levelProgress, currentPlan, isPremium, hasActiveSubscription, customBuildsThisMonth, customBuildsRemaining, customBuildLimit, pendingAchievements, setAnswers, setOnboardingStep, startSubscription, grantPremiumViaCode, cancelSubscription, setDeclineReason, markRated, markRatePromptSeen, setBusiness, setProfileField, setNotificationPrefs, equipEffect, completeOnboarding, completeTask, skipTask, undoTask, resetOnboarding, dismissPendingAchievement]);
 });
