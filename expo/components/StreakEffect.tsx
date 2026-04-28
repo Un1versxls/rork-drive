@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Flame } from "lucide-react-native";
+import { Flame, Sparkles } from "lucide-react-native";
 
 import { getStreakTier, type StreakTierMeta } from "@/constants/streak-tiers";
 
@@ -80,13 +80,23 @@ export function StreakEffect({
   }, [pulse, rotate, flicker, tier.rotationSpeed]);
 
   useEffect(() => {
-    if (triggerKey === undefined) return;
+    if (triggerKey === undefined || triggerKey === 0) return;
     burst.setValue(0);
     Animated.sequence([
-      Animated.timing(burst, { toValue: 1, duration: 300, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-      Animated.timing(burst, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      Animated.timing(burst, { toValue: 1, duration: 350, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(burst, { toValue: 0, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
     ]).start();
   }, [triggerKey, burst]);
+
+  const burstSparks = useMemo(
+    () => Array.from({ length: 14 }).map((_, i) => ({
+      id: i,
+      angle: (i / 14) * Math.PI * 2,
+      distance: 0.7 + Math.random() * 0.4,
+      delay: Math.random() * 80,
+    })),
+    []
+  );
 
   const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
   const glowOpacity = Animated.multiply(
@@ -287,22 +297,104 @@ export function StreakEffect({
         />
       ) : null}
 
-      {/* Tap burst */}
+      {/* Tap burst — shockwave rings */}
       {triggerKey !== undefined ? (
-        <Animated.View
-          style={[
-            styles.absCenter,
-            {
-              width: ringSize * 1.3,
-              height: ringSize * 1.3,
-              borderRadius: 9999,
-              borderWidth: 3,
-              borderColor: tier.primary,
-              opacity: burstOpacity,
-              transform: [{ scale: burstScale }],
-            },
-          ]}
-        />
+        <>
+          <Animated.View
+            style={[
+              styles.absCenter,
+              {
+                width: ringSize * 1.4,
+                height: ringSize * 1.4,
+                borderRadius: 9999,
+                borderWidth: 4,
+                borderColor: tier.primary,
+                opacity: burstOpacity,
+                transform: [{ scale: burstScale }],
+              },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.absCenter,
+              {
+                width: ringSize * 1.1,
+                height: ringSize * 1.1,
+                borderRadius: 9999,
+                borderWidth: 2,
+                borderColor: tier.secondary,
+                opacity: burstOpacity,
+                transform: [{ scale: burst.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.6] }) }],
+              },
+            ]}
+          />
+          {/* Bright flash */}
+          <Animated.View
+            style={[
+              styles.absCenter,
+              {
+                width: ringSize * 1.2,
+                height: ringSize * 1.2,
+                opacity: burst.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0, 0.7, 0] }),
+              },
+            ]}
+          >
+            <LinearGradient
+              colors={["rgba(255,235,170,0.95)", "rgba(255,140,40,0.55)", "rgba(255,80,0,0)"]}
+              style={styles.glowFill}
+            />
+          </Animated.View>
+          {/* Explosive sparks */}
+          {burstSparks.map((sp) => {
+            const tx = Math.cos(sp.angle) * ringSize * sp.distance;
+            const ty = Math.sin(sp.angle) * ringSize * sp.distance;
+            const translateX = burst.interpolate({ inputRange: [0, 1], outputRange: [0, tx] });
+            const translateY = burst.interpolate({ inputRange: [0, 1], outputRange: [0, ty] });
+            const sparkOpacity = burst.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0, 1, 0] });
+            const sparkScale = burst.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.4, 1.2, 0.6] });
+            return (
+              <Animated.View
+                key={sp.id}
+                style={[
+                  styles.absCenter,
+                  {
+                    width: 18,
+                    height: 18,
+                    opacity: sparkOpacity,
+                    transform: [{ translateX }, { translateY }, { scale: sparkScale }, { rotate: `${(sp.angle * 180) / Math.PI}deg` }],
+                  },
+                ]}
+              >
+                <Sparkles size={18} color={tier.secondary} fill={tier.primary} strokeWidth={1.5} />
+              </Animated.View>
+            );
+          })}
+          {/* Erupting flames */}
+          {burstSparks.slice(0, 8).map((sp) => {
+            const tx = Math.cos(sp.angle) * ringSize * 0.6;
+            const ty = Math.sin(sp.angle) * ringSize * 0.6 - 20;
+            const translateX = burst.interpolate({ inputRange: [0, 1], outputRange: [0, tx] });
+            const translateY = burst.interpolate({ inputRange: [0, 1], outputRange: [0, ty] });
+            const fOpacity = burst.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 1, 0] });
+            const fScale = burst.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1.1] });
+            return (
+              <Animated.View
+                key={`bf-${sp.id}`}
+                style={[
+                  styles.absCenter,
+                  {
+                    width: 28,
+                    height: 28,
+                    opacity: fOpacity,
+                    transform: [{ translateX }, { translateY }, { scale: fScale }],
+                  },
+                ]}
+              >
+                <Flame size={28} color={tier.primary} fill={tier.secondary} strokeWidth={0} />
+              </Animated.View>
+            );
+          })}
+        </>
       ) : null}
     </View>
   );

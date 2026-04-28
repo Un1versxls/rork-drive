@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from "react";
-import { LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Text, UIManager, View } from "react-native";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import { Animated, Easing, LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Text, UIManager, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronDown, Flame } from "lucide-react-native";
+import * as Haptics from "expo-haptics";
 
 import { StreakEffect } from "@/components/StreakEffect";
 import { Colors } from "@/constants/colors";
@@ -44,6 +45,34 @@ export default function ProgressScreen() {
     setShowAdvanced((s) => !s);
   };
 
+  const [burstKey, setBurstKey] = useState<number>(0);
+  const [cooldownUntil, setCooldownUntil] = useState<number>(0);
+  const heroScale = useRef(new Animated.Value(1)).current;
+  const COOLDOWN_MS = 5000;
+  const [, force] = useState<number>(0);
+
+  const onStreakPress = useCallback(() => {
+    const now = Date.now();
+    if (now < cooldownUntil) return;
+    setBurstKey((k) => k + 1);
+    setCooldownUntil(now + COOLDOWN_MS);
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+      setTimeout(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {}), 180);
+    }
+    Animated.sequence([
+      Animated.timing(heroScale, { toValue: 1.12, duration: 160, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.spring(heroScale, { toValue: 1, friction: 4, tension: 80, useNativeDriver: true }),
+    ]).start();
+    const tick = setInterval(() => {
+      force((n) => n + 1);
+      if (Date.now() >= now + COOLDOWN_MS) clearInterval(tick);
+    }, 200);
+  }, [cooldownUntil, heroScale]);
+
+  const remaining = Math.max(0, cooldownUntil - Date.now());
+  const onCooldown = remaining > 0;
+
   return (
     <View style={styles.root}>
       <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
@@ -52,12 +81,24 @@ export default function ProgressScreen() {
           <Text style={styles.sub}>Small wins. Every day.</Text>
 
           <View style={styles.streakHero}>
-            <StreakEffect streak={state.streak} size={160} />
+            <Pressable
+              onPress={onStreakPress}
+              disabled={onCooldown}
+              testID="streak-tap"
+              style={({ pressed }) => [styles.streakPressable, pressed && !onCooldown ? { opacity: 0.92 } : null]}
+            >
+              <Animated.View style={{ transform: [{ scale: heroScale }] }}>
+                <StreakEffect streak={state.streak} size={160} triggerKey={burstKey} />
+              </Animated.View>
+            </Pressable>
             <View style={styles.tierRow}>
               <Flame size={16} color={tier.primary} />
               <Text style={[styles.tierLabel, { color: tier.primary }]}>{tier.label.toUpperCase()}</Text>
             </View>
             <Text style={styles.streakNum}>{state.streak}<Text style={styles.streakUnit}> days</Text></Text>
+            <Text style={styles.tapHint}>
+              {onCooldown ? `cooling down · ${Math.ceil(remaining / 1000)}s` : "tap the flame"}
+            </Text>
           </View>
 
           <View style={styles.headlines}>
@@ -125,6 +166,8 @@ const styles = StyleSheet.create({
   sub: { color: Colors.textDim, fontSize: 14, marginTop: 4, marginBottom: 18 },
 
   streakHero: { alignItems: "center", paddingVertical: 20, marginBottom: 18 },
+  streakPressable: { alignItems: "center", justifyContent: "center" },
+  tapHint: { color: Colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1.5, marginTop: 6, textTransform: "uppercase" },
   tierRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10 },
   tierLabel: { fontSize: 12, fontWeight: "900", letterSpacing: 2 },
   streakNum: { color: Colors.text, fontSize: 48, fontWeight: "900", letterSpacing: -1.5, marginTop: 6 },
