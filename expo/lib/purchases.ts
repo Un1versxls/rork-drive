@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import type {
   CustomerInfo,
   PurchasesOffering,
@@ -6,6 +7,10 @@ import type {
 } from "react-native-purchases";
 
 let configured = false;
+
+export function isExpoGo(): boolean {
+  return Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+}
 
 function getRCToken(): string | undefined {
   if (__DEV__ || Platform.OS === "web") {
@@ -21,6 +26,11 @@ function getRCToken(): string | undefined {
 export async function configurePurchases(): Promise<void> {
   if (configured) return;
   if (Platform.OS === "web") {
+    configured = true;
+    return;
+  }
+  if (isExpoGo()) {
+    console.log("[purchases] skipped: Expo Go has no native StoreKit. Use a dev build or TestFlight to test purchases.");
     configured = true;
     return;
   }
@@ -41,6 +51,7 @@ export async function configurePurchases(): Promise<void> {
 
 export async function getOfferings(): Promise<PurchasesOffering | null> {
   if (Platform.OS === "web") return null;
+  if (isExpoGo()) return null;
   await configurePurchases();
   try {
     const Purchases = require("react-native-purchases").default;
