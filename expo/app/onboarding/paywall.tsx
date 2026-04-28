@@ -27,12 +27,12 @@ export default function PaywallScreen() {
   const router = useRouter();
   const { state, startSubscription, resetOnboarding } = useApp();
   const { user } = useAuth();
-  const params = useLocalSearchParams<{ retry?: string; fromUpgrade?: string }>();
+  const params = useLocalSearchParams<{ retry?: string; fromUpgrade?: string; initialPlan?: string; initialCycle?: string }>();
   const retry = params.retry === "1";
   const fromUpgrade = params.fromUpgrade === "1";
 
-  const [planId, setPlanId] = useState<PlanId>("base");
-  const [cycle, setCycle] = useState<BillingCycle>("yearly");
+  const [planId, setPlanId] = useState<PlanId>(params.initialPlan === "premium" ? "premium" : "base");
+  const [cycle, setCycle] = useState<BillingCycle>(params.initialCycle === "monthly" ? "monthly" : "yearly");
 
   const plan = PLANS.find((p) => p.id === planId) ?? PLANS[0];
 

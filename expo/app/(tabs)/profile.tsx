@@ -3,13 +3,15 @@ import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextI
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Cloud, CloudOff, Crown, Gift, LogIn, LogOut, Pencil, RefreshCw, Shield, Star, Vibrate } from "lucide-react-native";
+import { Check, ChevronRight, Cloud, CloudOff, Crown, Gift, LogIn, LogOut, Pencil, RefreshCw, Shield, Sparkles, Star, Vibrate } from "lucide-react-native";
 
 import { Colors } from "@/constants/colors";
 import { triggerHaptic } from "@/lib/haptics";
 import { useApp } from "@/providers/AppProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { pingSupabase, supabaseReady } from "@/lib/supabase";
+import { PLANS, monthlyEquivalent, yearlySavings } from "@/constants/plans";
+import type { BillingCycle, PlanId } from "@/types";
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -178,12 +180,50 @@ export default function ProfileScreen() {
                 <Text style={styles.planSub}>{currentPlan.incomeRange}</Text>
               </View>
             </View>
-            {!isPremium ? (
-              <Pressable onPress={() => router.push({ pathname: "/onboarding/paywall", params: { fromUpgrade: "1" } })} style={styles.upgradeBtn}>
-                <Crown color="#ffffff" size={14} />
-                <Text style={styles.upgradeText}>Upgrade to Premium</Text>
-              </Pressable>
-            ) : null}
+
+            <Text style={styles.switchTitle}>Change plan</Text>
+            <View style={styles.planChoices}>
+              {PLANS.map((p) => {
+                const isCurrent = state.profile.subscription.plan === p.id && hasActiveSubscription;
+                const isPremiumOpt = p.id === "premium";
+                return (
+                  <Pressable
+                    key={p.id}
+                    onPress={() => {
+                      const sameCycle: BillingCycle = state.profile.subscription.cycle === "monthly" ? "monthly" : "yearly";
+                      router.push({
+                        pathname: "/onboarding/paywall",
+                        params: { fromUpgrade: "1", initialPlan: p.id as PlanId, initialCycle: sameCycle },
+                      });
+                    }}
+                    style={[styles.planChoice, isCurrent && styles.planChoiceCurrent]}
+                    testID={`plan-choice-${p.id}`}
+                  >
+                    <View style={styles.planChoiceHeader}>
+                      {isPremiumOpt ? <Sparkles size={13} color={Colors.accentGold} /> : <Crown size={13} color={Colors.textDim} />}
+                      <Text style={styles.planChoiceName}>{p.name}</Text>
+                      {isCurrent ? (
+                        <View style={styles.currentPill}>
+                          <Check size={10} color="#ffffff" strokeWidth={3} />
+                          <Text style={styles.currentPillText}>CURRENT</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <Text style={styles.planChoicePrice}>${monthlyEquivalent(p, "yearly").toFixed(2)}<Text style={styles.planChoicePriceSub}>/mo</Text></Text>
+                    <Text style={styles.planChoiceRange}>{p.incomeRange}</Text>
+                    {yearlySavings(p) > 0 ? (
+                      <Text style={styles.planChoiceSave}>Save ${yearlySavings(p).toFixed(0)} yearly</Text>
+                    ) : null}
+                    {!isCurrent ? (
+                      <View style={styles.planChoiceCta}>
+                        <Text style={styles.planChoiceCtaText}>{isPremium && p.id === "base" ? "Switch" : isPremiumOpt && !isPremium ? "Upgrade" : "Switch"}</Text>
+                        <ChevronRight color={Colors.text} size={14} />
+                      </View>
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
 
           <Text style={styles.sectionTitle}>Your business</Text>
@@ -284,6 +324,20 @@ const styles = StyleSheet.create({
   planSub: { color: Colors.textDim, fontSize: 12, marginTop: 2 },
   upgradeBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 14, paddingVertical: 12, borderRadius: 999, backgroundColor: Colors.accentGold },
   upgradeText: { color: "#ffffff", fontSize: 14, fontWeight: "800" },
+  switchTitle: { color: Colors.textDim, fontWeight: "800", fontSize: 10, letterSpacing: 1.1, textTransform: "uppercase", marginTop: 18, marginBottom: 10 },
+  planChoices: { flexDirection: "row", gap: 10 },
+  planChoice: { flex: 1, padding: 12, borderRadius: 14, borderWidth: 1.5, borderColor: "#eeeeee", backgroundColor: "#fafafa" },
+  planChoiceCurrent: { borderColor: Colors.text, backgroundColor: "#ffffff" },
+  planChoiceHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
+  planChoiceName: { color: Colors.text, fontWeight: "900", fontSize: 14, flex: 1 },
+  currentPill: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: Colors.text, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 999 },
+  currentPillText: { color: "#ffffff", fontSize: 8, fontWeight: "900", letterSpacing: 0.6 },
+  planChoicePrice: { color: Colors.text, fontSize: 20, fontWeight: "900", letterSpacing: -0.5 },
+  planChoicePriceSub: { color: Colors.textDim, fontSize: 11, fontWeight: "700" },
+  planChoiceRange: { color: Colors.textDim, fontSize: 11, fontWeight: "600", marginTop: 2 },
+  planChoiceSave: { color: Colors.accentGold, fontSize: 10, fontWeight: "800", marginTop: 4, letterSpacing: 0.3 },
+  planChoiceCta: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 2, marginTop: 8 },
+  planChoiceCtaText: { color: Colors.text, fontSize: 11, fontWeight: "800" },
   cancelSubBtn: { alignSelf: "flex-start", marginTop: 12 },
   cancelSubText: { color: Colors.textDim, fontSize: 12, fontWeight: "700" },
   tinyCancel: { alignSelf: "center", marginTop: 12, paddingVertical: 4, paddingHorizontal: 8 },
