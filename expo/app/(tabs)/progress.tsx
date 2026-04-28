@@ -27,18 +27,67 @@ export default function ProgressScreen() {
   const completionRate = 100 - skipRate;
   const percentileOfNewUsers = Math.min(95, 40 + Math.min(55, totalCompleted));
 
-  const headline: { title: string; sub: string; emoji: string } = (() => {
-    if (weekMinutes > 0) {
-      return { emoji: "💪", title: `${weekMinutes} minutes of real work`, sub: "this past week" };
-    }
-    if (state.streak >= 2) {
-      return { emoji: "🔥", title: `${state.streak} days on fire`, sub: "keep the chain going" };
-    }
-    if (totalCompleted >= 5) {
-      return { emoji: "🏆", title: `You finished more tasks than ${percentileOfNewUsers}% of new users`, sub: "and you're just warming up" };
+  const motivationFacts = useMemo<{ emoji: string; title: string; sub: string }[]>(() => {
+    const pace = Math.max(1, weekCompleted);
+    const businessDays = Math.max(30, Math.round(95 - pace * 1.4));
+    const sideIncomeDays = Math.max(21, Math.round(120 - pace * 2));
+    const masteryHours = Math.max(8, weekMinutes * 4 + totalCompleted * 8);
+    const yearTasks = Math.max(50, totalCompleted * 12 + weekCompleted * 30);
+    const focusMinutes = Math.max(45, weekMinutes * 6 + 90);
+    const compoundWeeks = Math.max(6, 14 - Math.min(8, Math.floor(state.streak / 3)));
+    return [
+      { emoji: "🚀", title: `At this rate you'll have a fully autonomous business in about ${businessDays} days`, sub: "compounding daily wins" },
+      { emoji: "💸", title: `You're roughly ${sideIncomeDays} days from your first profitable side income`, sub: "keep stacking small bets" },
+      { emoji: "🧠", title: `On track for ${masteryHours}+ deep-work hours this quarter`, sub: "that's how mastery is built" },
+      { emoji: "📈", title: `Project ${yearTasks} finished tasks over the next 12 months`, sub: "future you is going to thank you" },
+      { emoji: "⚡", title: `${focusMinutes} minutes of focus banked toward your next big launch`, sub: "momentum is currency" },
+      { emoji: "🌱", title: `${compoundWeeks} more weeks like this and your habits compound past 99% of people`, sub: "quietly becoming dangerous" },
+      { emoji: "🏁", title: `You're closer to shipping than you think — ${Math.max(7, 30 - state.streak)} clean days to go`, sub: "finish lines reward consistency" },
+      { emoji: "🔥", title: `${state.streak || 1}-day streak energy → top 5% of builders this month`, sub: "don't break the chain" },
+      { emoji: "💼", title: `At this pace, a profitable product is roughly ${Math.max(45, 110 - pace * 2)} days out`, sub: "keep moving" },
+      { emoji: "🛠️", title: `You ship more before noon than most people ship in a week`, sub: "this is your unfair advantage" },
+    ];
+  }, [weekCompleted, weekMinutes, totalCompleted, state.streak]);
+
+  const dayIndex = useMemo(() => {
+    const d = new Date();
+    const start = new Date(d.getFullYear(), 0, 0).getTime();
+    return Math.floor((d.getTime() - start) / 86400000);
+  }, []);
+
+  const [factOffset, setFactOffset] = useState<number>(0);
+  const [factCooldownUntil, setFactCooldownUntil] = useState<number>(0);
+  const factOpacity = useRef(new Animated.Value(1)).current;
+  const factTranslate = useRef(new Animated.Value(0)).current;
+
+  const baseHeadline: { title: string; sub: string; emoji: string } = (() => {
+    if (state.streak >= 2 || totalCompleted >= 5 || weekMinutes > 0) {
+      const idx = (dayIndex + factOffset) % motivationFacts.length;
+      return motivationFacts[idx];
     }
     return { emoji: "✨", title: "Finish your first task", sub: "your stats unlock once you start moving" };
   })();
+  const headline = baseHeadline;
+
+  const onFactPress = useCallback(() => {
+    const now = Date.now();
+    if (now < factCooldownUntil) return;
+    setFactCooldownUntil(now + 10000);
+    if (Platform.OS !== "web") {
+      Haptics.selectionAsync().catch(() => {});
+    }
+    Animated.parallel([
+      Animated.timing(factOpacity, { toValue: 0, duration: 140, useNativeDriver: true }),
+      Animated.timing(factTranslate, { toValue: -8, duration: 140, useNativeDriver: true }),
+    ]).start(() => {
+      setFactOffset((o) => o + 1);
+      factTranslate.setValue(8);
+      Animated.parallel([
+        Animated.timing(factOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.timing(factTranslate, { toValue: 0, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      ]).start();
+    });
+  }, [factCooldownUntil, factOpacity, factTranslate]);
 
   const toggleAdvanced = () => {
     if (Platform.OS !== "web") LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -102,13 +151,15 @@ export default function ProgressScreen() {
           </View>
 
           <View style={styles.headlines}>
-            <View style={styles.headCard} testID="progress-insight">
-              <Text style={styles.headEmoji}>{headline.emoji}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.headTitle}>{headline.title}</Text>
-                <Text style={styles.headSub}>{headline.sub}</Text>
-              </View>
-            </View>
+            <Pressable onPress={onFactPress} testID="progress-insight">
+              <Animated.View style={[styles.headCard, { opacity: factOpacity, transform: [{ translateY: factTranslate }] }]}>
+                <Text style={styles.headEmoji}>{headline.emoji}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.headTitle}>{headline.title}</Text>
+                  <Text style={styles.headSub}>{headline.sub}</Text>
+                </View>
+              </Animated.View>
+            </Pressable>
           </View>
 
           <View style={styles.week}>
