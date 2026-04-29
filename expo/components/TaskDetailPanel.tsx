@@ -195,7 +195,7 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
             <ScrollView
               ref={scrollRef}
               style={styles.scrollView}
-              contentContainerStyle={[styles.scroll, chatOpen && { paddingBottom: 220 }]}
+              contentContainerStyle={[styles.scroll, chatOpen && { paddingBottom: 360 }]}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               onContentSizeChange={() => {
@@ -254,6 +254,12 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
                 if (willOpen && messages.length === 0) askQuickStart();
                 if (willOpen) {
                   setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
+                  setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 320);
+                  setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 600);
+                }
+              }} onLayout={() => {
+                if (chatOpen) {
+                  setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
                 }
               }} style={styles.coachToggle}>
                 <View style={styles.coachIcon}>
