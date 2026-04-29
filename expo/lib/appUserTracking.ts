@@ -78,6 +78,75 @@ function buildPayload(input: AppUserUpsertInput): Record<string, unknown> {
   return payload;
 }
 
+export interface AppUserRow {
+  id: string;
+  user_id: string | null;
+  apple_user_id: string | null;
+  email: string | null;
+  name: string | null;
+  subscription_plan: PlanId | null;
+  subscription_cycle: BillingCycle | null;
+  subscription_active: boolean | null;
+  subscription_trial: boolean | null;
+  subscription_source: Subscription["source"] | null;
+  subscription_started_at: string | null;
+  goal: string | null;
+  skill_topic: string | null;
+  experience: string | null;
+  time_commitment: string | null;
+  priority: string | null;
+  industry: string | null;
+  budget: string | null;
+  obstacle: string | null;
+  source: string | null;
+  decline_reason: string | null;
+  business_id: string | null;
+  business_name: string | null;
+  business_tagline: string | null;
+  onboarded: boolean | null;
+  points: number | null;
+  streak: number | null;
+  best_streak: number | null;
+  last_active_date: string | null;
+}
+
+const APP_USER_COLUMNS = "id, user_id, apple_user_id, email, name, subscription_plan, subscription_cycle, subscription_active, subscription_trial, subscription_source, subscription_started_at, goal, skill_topic, experience, time_commitment, priority, industry, budget, obstacle, source, decline_reason, business_id, business_name, business_tagline, onboarded, points, streak, best_streak, last_active_date";
+
+export async function fetchAppUser(by: { userId?: string | null; email?: string | null }): Promise<AppUserRow | null> {
+  if (!supabaseReady || !supabase) return null;
+  try {
+    if (by.userId) {
+      const { data, error } = await supabase
+        .from("app_users")
+        .select(APP_USER_COLUMNS)
+        .eq("user_id", by.userId)
+        .maybeSingle();
+      if (error) {
+        console.log("[app_users] fetch by user_id error", error.message);
+      } else if (data) {
+        return data as AppUserRow;
+      }
+    }
+    if (by.email) {
+      const lowered = by.email.trim().toLowerCase();
+      const { data, error } = await supabase
+        .from("app_users")
+        .select(APP_USER_COLUMNS)
+        .eq("email", lowered)
+        .maybeSingle();
+      if (error) {
+        console.log("[app_users] fetch by email error", error.message);
+        return null;
+      }
+      return (data as AppUserRow) ?? null;
+    }
+    return null;
+  } catch (e) {
+    console.log("[app_users] fetch exception", e);
+    return null;
+  }
+}
+
 export async function upsertAppUser(input: AppUserUpsertInput): Promise<{ ok: boolean; error?: string }> {
   if (!supabaseReady || !supabase) {
     console.log("[app_users] supabase not ready, skipping upsert");

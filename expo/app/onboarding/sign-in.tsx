@@ -7,11 +7,13 @@ import { GradientButton } from "@/components/GradientButton";
 import { Colors } from "@/constants/colors";
 import { useAuth } from "@/providers/AuthProvider";
 import { useApp } from "@/providers/AppProvider";
+import { fetchAppUser } from "@/lib/appUserTracking";
+import { supabase } from "@/lib/supabase";
 
 export default function OnboardingSignInScreen() {
   const router = useRouter();
   const { signIn, signInPending, ready } = useAuth();
-  const { setProfileField } = useApp();
+  const { setProfileField, hydrateFromAppUser } = useApp();
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +32,22 @@ export default function OnboardingSignInScreen() {
       const clean = email.trim().toLowerCase();
       await signIn({ email: clean, password });
       setProfileField("email", clean);
+      let userId: string | null = null;
+      try {
+        const { data } = await supabase!.auth.getUser();
+        userId = data.user?.id ?? null;
+      } catch (err) {
+        console.log("[sign-in] getUser failed", err);
+      }
+      const row = await fetchAppUser({ userId, email: clean });
+      if (row) {
+        const ready = hydrateFromAppUser(row);
+        if (ready) {
+          console.log("[sign-in] existing user — going to dashboard");
+          router.replace("/(tabs)/tasks");
+          return;
+        }
+      }
       console.log("[sign-in] success, advancing onboarding");
       router.replace("/onboarding/source");
     } catch (e) {

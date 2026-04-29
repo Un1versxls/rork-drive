@@ -8,7 +8,7 @@ import { ACHIEVEMENTS } from "@/constants/achievements";
 import { getPlan, PLANS } from "@/constants/plans";
 import { generateDailyTasks } from "@/constants/task-pool";
 import { triggerHaptic } from "@/lib/haptics";
-import { upsertAppUser, buildSyncFromAppState } from "@/lib/appUserTracking";
+import { upsertAppUser, buildSyncFromAppState, type AppUserRow } from "@/lib/appUserTracking";
 import { supabase } from "@/lib/supabase";
 import type {
   AppState,
@@ -492,6 +492,52 @@ export const [AppProvider, useApp] = createContextHook(() => {
     triggerHaptic("tap", state.profile.hapticsEnabled);
   }, [state, commit]);
 
+  const hydrateFromAppUser = useCallback((row: AppUserRow): boolean => {
+    const profile: UserProfile = {
+      ...state.profile,
+      name: row.name ?? state.profile.name,
+      email: row.email ?? state.profile.email,
+      goal: (row.goal as PrimaryGoal | null) ?? state.profile.goal,
+      skillTopic: (row.skill_topic as SkillTopic | null) ?? state.profile.skillTopic,
+      experience: (row.experience as ExperienceLevel | null) ?? state.profile.experience,
+      time: (row.time_commitment as TimeCommitment | null) ?? state.profile.time,
+      priority: (row.priority as Priority | null) ?? state.profile.priority,
+      industry: (row.industry as Industry | null) ?? state.profile.industry,
+      budget: (row.budget as Budget | null) ?? state.profile.budget,
+      obstacle: (row.obstacle as Obstacle | null) ?? state.profile.obstacle,
+      source: (row.source as Source | null) ?? state.profile.source,
+      declineReason: (row.decline_reason as DeclineReason | null) ?? state.profile.declineReason,
+      business: row.business_id && row.business_name ? {
+        id: row.business_id,
+        name: row.business_name,
+        tagline: row.business_tagline ?? "",
+        match: 100,
+        why: "",
+        category: state.profile.industry ?? "local_services",
+      } as BusinessIdea : state.profile.business,
+      subscription: {
+        active: row.subscription_active ?? state.profile.subscription.active,
+        plan: (row.subscription_plan as PlanId | null) ?? state.profile.subscription.plan,
+        cycle: (row.subscription_cycle as BillingCycle | null) ?? state.profile.subscription.cycle,
+        trial: row.subscription_trial ?? state.profile.subscription.trial,
+        startedAt: row.subscription_started_at ?? state.profile.subscription.startedAt,
+        source: (row.subscription_source as Subscription["source"] | null) ?? state.profile.subscription.source,
+      },
+    };
+    const onboarded = row.onboarded === true || state.onboarded;
+    const next: AppState = {
+      ...state,
+      onboarded,
+      points: row.points ?? state.points,
+      streak: row.streak ?? state.streak,
+      bestStreak: row.best_streak ?? state.bestStreak,
+      lastActiveDate: row.last_active_date ?? state.lastActiveDate,
+      profile,
+    };
+    commit(next);
+    return onboarded && !!profile.goal;
+  }, [state, commit]);
+
   const resetOnboarding = useCallback(() => {
     const next: AppState = { ...DEFAULT_STATE };
     commit(next);
@@ -585,6 +631,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     skipTask,
     undoTask,
     resetOnboarding,
+    hydrateFromAppUser,
     dismissPendingAchievement,
-  }), [hydrated, state, today, weeklyActivity, totalCompleted, totalSkipped, level, levelProgress, currentPlan, isPremium, hasActiveSubscription, customBuildsThisMonth, customBuildsRemaining, customBuildLimit, pendingAchievements, setAnswers, setOnboardingStep, startSubscription, grantPremiumViaCode, cancelSubscription, setDeclineReason, markRated, markRatePromptSeen, setBusiness, setProfileField, setNotificationPrefs, equipEffect, completeOnboarding, completeTask, skipTask, undoTask, resetOnboarding, dismissPendingAchievement]);
+  }), [hydrated, state, today, weeklyActivity, totalCompleted, totalSkipped, level, levelProgress, currentPlan, isPremium, hasActiveSubscription, customBuildsThisMonth, customBuildsRemaining, customBuildLimit, pendingAchievements, setAnswers, setOnboardingStep, startSubscription, grantPremiumViaCode, cancelSubscription, setDeclineReason, markRated, markRatePromptSeen, setBusiness, setProfileField, setNotificationPrefs, equipEffect, completeOnboarding, completeTask, skipTask, undoTask, resetOnboarding, hydrateFromAppUser, dismissPendingAchievement]);
 });

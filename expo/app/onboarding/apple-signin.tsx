@@ -8,17 +8,17 @@ import { OnboardingShell } from "@/components/OnboardingShell";
 import { Colors } from "@/constants/colors";
 import { useApp } from "@/providers/AppProvider";
 import { submitSurveyResponse } from "@/lib/surveyTracking";
-import { upsertAppUser } from "@/lib/appUserTracking";
+import { upsertAppUser, fetchAppUser } from "@/lib/appUserTracking";
 import { useAuth } from "@/providers/AuthProvider";
 import { supabase, supabaseReady } from "@/lib/supabase";
 
 export default function AppleSignInScreen() {
   const router = useRouter();
-  const { state, setProfileField } = useApp();
+  const { state, setProfileField, hydrateFromAppUser } = useApp();
   const { user } = useAuth();
   const [busy, setBusy] = useState<boolean>(false);
 
-  const proceed = (email: string | null, appleUserId: string | null, name: string | null) => {
+  const proceed = async (email: string | null, appleUserId: string | null, name: string | null, supabaseUserId: string | null) => {
     if (email) setProfileField("email", email.toLowerCase());
     if (appleUserId) setProfileField("appleUserId", appleUserId);
     const finalEmail = email ?? state.profile.email ?? "";
@@ -39,6 +39,15 @@ export default function AppleSignInScreen() {
         startedAt: state.profile.subscription.startedAt,
       },
     }).catch((e) => console.log("[apple] app_users", e));
+    const row = await fetchAppUser({ userId: supabaseUserId, email: finalEmail || null });
+    if (row) {
+      const ready = hydrateFromAppUser(row);
+      if (ready) {
+        console.log("[apple] existing user — going to dashboard");
+        router.replace("/(tabs)/tasks");
+        return;
+      }
+    }
     if (state.profile.goal === "grow_business") {
       router.replace("/onboarding/paywall");
     } else {
@@ -51,7 +60,7 @@ export default function AppleSignInScreen() {
     setBusy(true);
     try {
       if (Platform.OS !== "ios") {
-        proceed(null, null, null);
+        await proceed(null, null, null, null);
         return;
       }
       const available = await AppleAuthentication.isAvailableAsync();
@@ -73,6 +82,7 @@ export default function AppleSignInScreen() {
         setProfileField("name", givenName);
       }
 
+      let supabaseUserId: string | null = null;
       if (supabaseReady && supabase && credential.identityToken) {
         try {
           const { data, error } = await supabase.auth.signInWithIdToken({
@@ -82,6 +92,7 @@ export default function AppleSignInScreen() {
           if (error) {
             console.log("[apple] supabase signInWithIdToken error", error.message);
           } else if (data.user) {
+            supabaseUserId = data.user.id;
             console.log("[apple] supabase session created", data.user.id);
             const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
             if (fullName) patch.name = fullName;
@@ -104,7 +115,7 @@ export default function AppleSignInScreen() {
         console.log("[apple] no identityToken — skipping supabase auth");
       }
 
-      proceed(credential.email ?? null, credential.user ?? null, fullName ?? state.profile.name ?? null);
+      await proceed(credential.email ?? null, credential.user ?? null, fullName ?? state.profile.name ?? null, supabaseUserId);
     } catch (e: unknown) {
       const err = e as { code?: string; message?: string };
       if (err?.code === "ERR_REQUEST_CANCELED") {
@@ -118,7 +129,7 @@ export default function AppleSignInScreen() {
     }
   };
 
-  const onSkip = () => proceed(null, null, null);
+  const onSkip = () => { void proceed(null, null, null, null); };
 
   return (
     <OnboardingShell
