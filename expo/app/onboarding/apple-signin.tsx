@@ -49,7 +49,11 @@ export default function AppleSignInScreen() {
       }
     }
     if (state.profile.goal === "grow_business") {
-      router.replace("/onboarding/paywall");
+      if (state.profile.business) {
+        router.replace("/onboarding/plan-summary");
+      } else {
+        router.replace("/onboarding/paywall");
+      }
     } else {
       router.replace("/onboarding/source");
     }

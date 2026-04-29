@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { ScrollView, StyleSheet } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Banknote, Brain, TrendingUp, type LucideIcon } from "lucide-react-native";
 
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { OptionCard } from "@/components/OptionCard";
 import { GradientButton } from "@/components/GradientButton";
+import { Colors } from "@/constants/colors";
 import { useApp } from "@/providers/AppProvider";
 import type { PrimaryGoal } from "@/types";
 
@@ -27,22 +28,34 @@ export default function GoalScreen() {
       title="What's your goal?"
       subtitle="We'll tailor your daily tasks to it."
       footer={
-        <GradientButton
-          title="Continue"
-          disabled={!selected}
-          onPress={() => {
-            if (!selected) return;
-            setAnswers({ goal: selected });
-            if (selected === "grow_business") {
-              router.push("/onboarding/build-business");
-            } else if (selected === "build_skills") {
-              router.push("/onboarding/skill-topic");
-            } else {
-              router.push("/onboarding/experience");
-            }
-          }}
-          testID="cta-continue"
-        />
+        <View style={styles.footerWrap}>
+          <GradientButton
+            title="Continue"
+            disabled={!selected}
+            onPress={() => {
+              if (!selected) return;
+              setAnswers({ goal: selected });
+              if (selected === "grow_business") {
+                router.push("/onboarding/build-business");
+              } else if (selected === "build_skills") {
+                router.push("/onboarding/skill-topic");
+              } else {
+                router.push("/onboarding/experience");
+              }
+            }}
+            testID="cta-continue"
+          />
+          <Pressable
+            onPress={() => router.push("/onboarding/sign-in")}
+            hitSlop={10}
+            style={styles.signInBtn}
+            testID="goal-signin"
+          >
+            <Text style={styles.signInText}>
+              Already have an account? <Text style={styles.signInLink}>Sign in</Text>
+            </Text>
+          </Pressable>
+        </View>
       }
     >
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
@@ -63,4 +76,10 @@ export default function GoalScreen() {
   );
 }
 
-const styles = StyleSheet.create({ list: { paddingBottom: 12 } });
+const styles = StyleSheet.create({
+  list: { paddingBottom: 12 },
+  footerWrap: { gap: 8 },
+  signInBtn: { alignSelf: "center", paddingVertical: 8, paddingHorizontal: 12 },
+  signInText: { color: Colors.textDim, fontSize: 13, fontWeight: "600" },
+  signInLink: { color: Colors.text, fontWeight: "800", textDecorationLine: "underline" },
+});
