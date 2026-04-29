@@ -191,7 +191,7 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
               </Pressable>
             </View>
 
-            <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <Text style={styles.title}>{task.title}</Text>
               <Text style={styles.desc}>{task.description}</Text>
 
@@ -294,7 +294,7 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
                 </View>
               ) : null}
 
-              <View style={{ height: 16 }} />
+              <View style={{ height: 24 }} />
             </ScrollView>
 
             <View style={styles.footerRow}>
@@ -348,7 +348,8 @@ const styles = StyleSheet.create({
   pillDot: { width: 6, height: 6, borderRadius: 3 },
   pillText: { fontSize: 11, fontWeight: "800", letterSpacing: 0.4 },
   closeBtn: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: Colors.bgAlt, borderWidth: 1, borderColor: Colors.border },
-  scroll: { paddingBottom: 16 },
+  scrollView: { flex: 1 },
+  scroll: { paddingBottom: 24, flexGrow: 1 },
   title: { color: Colors.text, fontSize: 24, fontWeight: "900", letterSpacing: -0.5, lineHeight: 28 },
   desc: { color: Colors.textDim, fontSize: 14, lineHeight: 20, marginTop: 8 },
   metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 14 },
@@ -379,7 +380,7 @@ const styles = StyleSheet.create({
   coachIcon: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: Colors.accentDim },
   coachTitle: { color: Colors.text, fontWeight: "800", fontSize: 14 },
   coachSub: { color: Colors.textDim, fontSize: 11, marginTop: 2 },
-  chatBox: { marginTop: 10, padding: 12, paddingBottom: 20, marginBottom: 18, borderRadius: 16, backgroundColor: Colors.bgAlt, borderWidth: 1, borderColor: Colors.border },
+  chatBox: { marginTop: 10, padding: 12, paddingBottom: 16, marginBottom: 8, borderRadius: 16, backgroundColor: Colors.bgAlt, borderWidth: 1, borderColor: Colors.border },
   chatBanner: { flexDirection: "row", alignItems: "center", gap: 6, padding: 8, borderRadius: 10, backgroundColor: Colors.accentDim, marginBottom: 10 },
   chatBannerText: { color: Colors.accentDeep, fontSize: 11, fontWeight: "700", flex: 1 },
   chatMsgs: { gap: 8 },
