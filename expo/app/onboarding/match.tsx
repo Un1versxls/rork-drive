@@ -62,6 +62,11 @@ export default function MatchScreen() {
   const plan = getPlan(state.profile.subscription.plan);
   const [stepIdx, setStepIdx] = useState<number>(0);
   const [error] = useState<string | null>(null);
+  const hasRunRef = useRef<boolean>(false);
+  const profileRef = useRef(state.profile);
+  profileRef.current = state.profile;
+  const planRef = useRef(plan);
+  planRef.current = plan;
 
   const pulse = useRef(new Animated.Value(0)).current;
   const rotate = useRef(new Animated.Value(0)).current;
@@ -84,9 +89,30 @@ export default function MatchScreen() {
   }, [pulse, rotate]);
 
   useEffect(() => {
+    if (hasRunRef.current) return;
+    hasRunRef.current = true;
     let cancelled = false;
+    let didNavigate = false;
+    const navigate = (path: "/onboarding/plan-summary") => {
+      if (didNavigate || cancelled) return;
+      didNavigate = true;
+      router.replace(path);
+    };
+    // Hard timeout: never let user be stuck more than 25s
+    const hardTimeout = setTimeout(() => {
+      if (didNavigate || cancelled) return;
+      console.log("[match] hard timeout, using fallback");
+      const fb = fallbackIdeas();
+      try {
+        syncIdeasToLibrary(fb.ideas, fb.pools, { goal: profileRef.current.goal, experience: profileRef.current.experience }).catch(() => {});
+      } catch {}
+      setBusiness(fb.ideas[0], fb.pools[0]);
+      setStepIdx(STEPS.length - 1);
+      navigate("/onboarding/plan-summary");
+    }, 25000);
     const run = async () => {
-      const p = state.profile;
+      const p = profileRef.current;
+      const planLocal = planRef.current;
 
       try {
         // Step 1: check library for matching entries first
@@ -108,9 +134,9 @@ User profile:
 - Industry interest: ${p.industry ? INDUSTRY_LABEL[p.industry] : "any"}
 - Starting budget: ${p.budget}
 - Biggest obstacle: ${p.obstacle}
-- Plan tier: ${plan.name} (${plan.incomeTier})
-- Target monthly income range: ${plan.incomeRange}
-${plan.premiumBusinesses ? "- PREMIUM MODE: user has unlocked high-ticket businesses. Prefer scalable, higher-revenue ideas (agencies, SaaS, premium services, e-commerce brands, consulting, productized services) with realistic paths to $1,000\u2013$10,000+/month." : "- Standard tier: focus on beginner-friendly side hustles and starter businesses with realistic earnings of $0\u2013$1,000/month. Avoid suggesting capital-heavy or enterprise-scale ideas."}
+- Plan tier: ${planLocal.name} (${planLocal.incomeTier})
+- Target monthly income range: ${planLocal.incomeRange}
+${planLocal.premiumBusinesses ? "- PREMIUM MODE: user has unlocked high-ticket businesses. Prefer scalable, higher-revenue ideas (agencies, SaaS, premium services, e-commerce brands, consulting, productized services) with realistic paths to $1,000\u2013$10,000+/month." : "- Standard tier: focus on beginner-friendly side hustles and starter businesses with realistic earnings of $0\u2013$1,000/month. Avoid suggesting capital-heavy or enterprise-scale ideas."}
 
 IMPORTANT: The idea MUST match the user's income tier. Its startupCost and timeToIncome should fit the tier.
 
@@ -139,31 +165,34 @@ Return:
         setStepIdx(STEPS.length - 1);
 
         setTimeout(() => {
-          if (cancelled) return;
-          router.replace("/onboarding/plan-summary");
-        }, 500);
+          navigate("/onboarding/plan-summary");
+        }, 400);
       } catch (e) {
         console.log("[match] error", e);
-        if (cancelled) return;
+        if (cancelled || didNavigate) return;
 
-        // Try pure library fallback
-        const library = await fetchActiveLibrary();
-        if (library.length >= 1) {
-          const picked = entryToIdea(library[0]);
-          setBusiness(picked.idea, picked.pool);
-          router.replace("/onboarding/plan-summary");
-          return;
+        try {
+          const library = await fetchActiveLibrary();
+          if (library.length >= 1) {
+            const picked = entryToIdea(library[0]);
+            setBusiness(picked.idea, picked.pool);
+            navigate("/onboarding/plan-summary");
+            return;
+          }
+        } catch (libErr) {
+          console.log("[match] library fallback error", libErr);
         }
 
         const fallback = fallbackIdeas();
         syncIdeasToLibrary(fallback.ideas, fallback.pools, { goal: p.goal, experience: p.experience }).catch(() => {});
         setBusiness(fallback.ideas[0], fallback.pools[0]);
-        router.replace("/onboarding/plan-summary");
+        navigate("/onboarding/plan-summary");
       }
     };
     run();
-    return () => { cancelled = true; };
-  }, [state.profile, router]);
+    return () => { cancelled = true; clearTimeout(hardTimeout); };
+     
+  }, []);
 
   const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] });
   const glow = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.7] });
