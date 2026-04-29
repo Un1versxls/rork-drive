@@ -294,8 +294,15 @@ export default function TryFreeScreen() {
               },
             ]}
           >
+            <View style={styles.sideBtnMute} pointerEvents="none" />
+            <View style={styles.sideBtnVolUp} pointerEvents="none" />
+            <View style={styles.sideBtnVolDown} pointerEvents="none" />
+            <View style={styles.sideBtnPower} pointerEvents="none" />
             <View style={styles.phoneFrameInner}>
-            <View style={styles.dynamicIsland} />
+            <View style={styles.dynamicIsland}>
+              <View style={styles.dynamicCam} />
+            </View>
+            <View style={styles.homeIndicator} pointerEvents="none" />
             <View style={styles.phoneScreen}>
               <View style={styles.phoneStatus}>
                 <Text style={styles.phoneTime}>9:41</Text>
@@ -435,10 +442,20 @@ export default function TryFreeScreen() {
                     <Sparkles size={10} color="#ffffff" />
                   </View>
                   <Text style={styles.aiTitle}>Ask DRIVE AI</Text>
+                  <View style={styles.aiLiveDot} />
                 </View>
-                <Text style={styles.aiAnswer}>
-                  &ldquo;Pick 5 shops near you with weak Instagram. DM the owner — short, specific, with one tweak idea. I&apos;ll draft it…&rdquo;
-                </Text>
+                <View style={styles.userBubble}>
+                  <Text style={styles.userBubbleText}>How do I pitch local shops?</Text>
+                </View>
+                <View style={styles.aiBubble}>
+                  <Text style={styles.aiAnswer}>
+                    Try this DM:{`\n`}&ldquo;Hi — noticed your IG. I&apos;d redo your bio + 1 reel free. Game?&rdquo;
+                  </Text>
+                </View>
+                <View style={styles.aiActions}>
+                  <View style={styles.aiChip}><Text style={styles.aiChipText}>✨ Use draft</Text></View>
+                  <View style={styles.aiChipDim}><Text style={styles.aiChipDimText}>Refine</Text></View>
+                </View>
                 <View style={styles.aiTyping}>
                   <View style={styles.typingDot} />
                   <View style={[styles.typingDot, styles.typingDot2]} />
@@ -531,43 +548,106 @@ const styles = StyleSheet.create({
   },
 
   phone: {
-    width: 248,
-    height: 396,
-    borderRadius: 46,
-    padding: 3,
-    backgroundColor: "#1a1a1a",
+    width: 232,
+    height: 472,
+    borderRadius: 52,
+    padding: 4,
+    backgroundColor: "#1c1c1e",
     shadowColor: "#000",
-    shadowOpacity: 0.4,
-    shadowRadius: 32,
-    shadowOffset: { width: 0, height: 22 },
-    elevation: 24,
+    shadowOpacity: 0.45,
+    shadowRadius: 36,
+    shadowOffset: { width: 0, height: 24 },
+    elevation: 26,
+    borderWidth: 1.5,
+    borderColor: "#2a2a2c",
   },
   phoneFrameInner: {
     flex: 1,
-    borderRadius: 43,
+    borderRadius: 47,
     padding: 5,
-    backgroundColor: "#0a0a0a",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "#050505",
+    borderWidth: 1.5,
+    borderColor: "#000000",
+  },
+  sideBtnMute: {
+    position: "absolute",
+    left: -2,
+    top: 92,
+    width: 3,
+    height: 26,
+    borderTopLeftRadius: 2,
+    borderBottomLeftRadius: 2,
+    backgroundColor: "#0f0f10",
+  },
+  sideBtnVolUp: {
+    position: "absolute",
+    left: -2,
+    top: 132,
+    width: 3,
+    height: 42,
+    borderTopLeftRadius: 2,
+    borderBottomLeftRadius: 2,
+    backgroundColor: "#0f0f10",
+  },
+  sideBtnVolDown: {
+    position: "absolute",
+    left: -2,
+    top: 184,
+    width: 3,
+    height: 42,
+    borderTopLeftRadius: 2,
+    borderBottomLeftRadius: 2,
+    backgroundColor: "#0f0f10",
+  },
+  sideBtnPower: {
+    position: "absolute",
+    right: -2,
+    top: 152,
+    width: 3,
+    height: 64,
+    borderTopRightRadius: 2,
+    borderBottomRightRadius: 2,
+    backgroundColor: "#0f0f10",
   },
   dynamicIsland: {
     position: "absolute",
     top: 12,
     alignSelf: "center",
-    width: 92,
-    height: 28,
+    width: 96,
+    height: 30,
     borderRadius: 18,
     backgroundColor: "#000000",
     zIndex: 5,
-    borderWidth: 0.5,
-    borderColor: "rgba(255,255,255,0.04)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    paddingRight: 8,
+  },
+  dynamicCam: {
+    width: 7,
+    height: 7,
+    borderRadius: 999,
+    backgroundColor: "#1a1a2e",
+    borderWidth: 1,
+    borderColor: "#0a0a14",
+  },
+  homeIndicator: {
+    position: "absolute",
+    bottom: 8,
+    alignSelf: "center",
+    width: 92,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.65)",
+    zIndex: 6,
   },
   phoneScreen: {
     flex: 1,
-    borderRadius: 38,
+    borderRadius: 42,
     backgroundColor: "#ffffff",
     padding: 14,
     paddingTop: 50,
+    paddingBottom: 18,
     overflow: "hidden",
   },
   phoneStatus: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
@@ -723,12 +803,60 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 8,
     right: 8,
-    bottom: 8,
+    bottom: 18,
     backgroundColor: "#0a0a0a",
     padding: 12,
     paddingTop: 16,
-    borderRadius: 18,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.25)",
   },
+  aiLiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: "#22c55e",
+    marginLeft: 4,
+  },
+  userBubble: {
+    alignSelf: "flex-end",
+    backgroundColor: "#1f1f24",
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderBottomRightRadius: 3,
+    marginBottom: 6,
+    maxWidth: "85%",
+  },
+  userBubbleText: { color: "#ffffff", fontSize: 10, fontWeight: "600" },
+  aiBubble: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(212,175,55,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.35)",
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+    borderRadius: 12,
+    borderBottomLeftRadius: 3,
+    maxWidth: "92%",
+  },
+  aiActions: { flexDirection: "row", gap: 6, marginTop: 8 },
+  aiChip: {
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: Colors.accentGold,
+  },
+  aiChipText: { color: "#1a1208", fontSize: 9, fontWeight: "900" },
+  aiChipDim: {
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  aiChipDimText: { color: "#e5e5e5", fontSize: 9, fontWeight: "800" },
   aiHandle: {
     position: "absolute",
     top: 6,
