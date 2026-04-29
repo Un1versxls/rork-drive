@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Easing, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Check, Sparkles } from "lucide-react-native";
@@ -254,6 +254,12 @@ export default function TryFreeScreen() {
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+        >
         <View style={styles.headerSection}>
           <View style={styles.eyebrowPill}>
             <Animated.View style={{ opacity: sparkleOpacity }}>
@@ -466,6 +472,7 @@ export default function TryFreeScreen() {
             </View>
           </Animated.View>
         </View>
+        </ScrollView>
 
         <View style={styles.footer}>
           <Text style={styles.noPay}>No payment due now</Text>
@@ -502,6 +509,8 @@ function BackdropGlow() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#ffffff" },
   safe: { flex: 1, paddingHorizontal: 22 },
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 24 },
   headerSection: { paddingTop: 18, alignItems: "center" },
   eyebrowPill: {
     flexDirection: "row",
@@ -518,7 +527,7 @@ const styles = StyleSheet.create({
   title: { color: Colors.text, fontSize: 30, fontWeight: "900", letterSpacing: -0.6, textAlign: "center", marginTop: 12, lineHeight: 36 },
   subtitle: { color: Colors.textDim, fontSize: 14, textAlign: "center", marginTop: 8, lineHeight: 20, maxWidth: 320 },
 
-  stage: { flex: 1, alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  stage: { height: 520, alignItems: "center", justifyContent: "center", overflow: "hidden", marginTop: 12 },
   glow: {
     position: "absolute",
     width: 360,
