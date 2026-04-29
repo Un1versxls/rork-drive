@@ -25,6 +25,10 @@ export default function TryFreeScreen() {
   const aiPanel = useRef(new Animated.Value(0)).current;
   const checkPop = useRef(new Animated.Value(0)).current;
   const sparkleOpacity = useRef(new Animated.Value(0)).current;
+  const streakPop = useRef(new Animated.Value(0)).current;
+  const streakCount = useRef(new Animated.Value(7)).current;
+  const [streakDisplay, setStreakDisplay] = React.useState<number>(7);
+  const pointsPop = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.sequence([
@@ -54,10 +58,15 @@ export default function TryFreeScreen() {
     ).start();
 
     let cancelled = false;
+    const streakListener = streakCount.addListener(({ value }) => {
+      setStreakDisplay(Math.round(value));
+    });
 
     const runLoop = async () => {
       while (!cancelled) {
-        await new Promise<void>((resolve) => setTimeout(resolve, 1100));
+        streakCount.setValue(7);
+        setStreakDisplay(7);
+        await new Promise<void>((resolve) => setTimeout(resolve, 900));
         if (cancelled) return;
         // tap task
         Animated.parallel([
@@ -68,7 +77,7 @@ export default function TryFreeScreen() {
           ]),
         ]).start();
 
-        await new Promise<void>((resolve) => setTimeout(resolve, 950));
+        await new Promise<void>((resolve) => setTimeout(resolve, 850));
         if (cancelled) return;
         // AI panel slides up
         Animated.parallel([
@@ -76,7 +85,7 @@ export default function TryFreeScreen() {
           Animated.spring(aiPanel, { toValue: 1, friction: 7, tension: 80, useNativeDriver: true }),
         ]).start();
 
-        await new Promise<void>((resolve) => setTimeout(resolve, 1700));
+        await new Promise<void>((resolve) => setTimeout(resolve, 1600));
         if (cancelled) return;
         // complete task
         Animated.parallel([
@@ -85,12 +94,23 @@ export default function TryFreeScreen() {
           Animated.spring(checkPop, { toValue: 1, friction: 4, tension: 140, useNativeDriver: true }),
         ]).start();
 
-        await new Promise<void>((resolve) => setTimeout(resolve, 1200));
+        await new Promise<void>((resolve) => setTimeout(resolve, 280));
+        if (cancelled) return;
+        // streak goes up + points pop
+        Animated.parallel([
+          Animated.spring(streakPop, { toValue: 1, friction: 4, tension: 160, useNativeDriver: true }),
+          Animated.spring(pointsPop, { toValue: 1, friction: 4, tension: 160, useNativeDriver: true }),
+          Animated.timing(streakCount, { toValue: 8, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
+        ]).start();
+
+        await new Promise<void>((resolve) => setTimeout(resolve, 1100));
         if (cancelled) return;
         // reset
         Animated.parallel([
           Animated.timing(stepValue, { toValue: STEP.IDLE, duration: 350, useNativeDriver: false }),
           Animated.timing(checkPop, { toValue: 0, duration: 300, useNativeDriver: true }),
+          Animated.timing(streakPop, { toValue: 0, duration: 300, useNativeDriver: true }),
+          Animated.timing(pointsPop, { toValue: 0, duration: 300, useNativeDriver: true }),
         ]).start();
       }
     };
@@ -98,8 +118,9 @@ export default function TryFreeScreen() {
 
     return () => {
       cancelled = true;
+      streakCount.removeListener(streakListener);
     };
-  }, [phoneFall, phoneBounce, tableShadow, stepValue, tapPulse, aiPanel, checkPop, sparkleOpacity]);
+  }, [phoneFall, phoneBounce, tableShadow, stepValue, tapPulse, aiPanel, checkPop, sparkleOpacity, streakPop, streakCount, pointsPop]);
 
   const fallTranslateY = phoneFall.interpolate({ inputRange: [0, 1], outputRange: [-460, 0] });
   const bounceTranslateY = phoneBounce.interpolate({ inputRange: [0, 1], outputRange: [0, -24] });
@@ -124,6 +145,11 @@ export default function TryFreeScreen() {
   });
 
   const checkScale = checkPop.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+  const streakScale = streakPop.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.25, 1.1] });
+  const streakGlow = streakPop.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+  const pointsScale = pointsPop.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.2, 1.08] });
+  const plusOneTranslate = streakPop.interpolate({ inputRange: [0, 1], outputRange: [0, -22] });
+  const plusOneOpacity = streakPop.interpolate({ inputRange: [0, 0.2, 0.8, 1], outputRange: [0, 1, 1, 0] });
 
   return (
     <View style={styles.root}>
@@ -182,13 +208,22 @@ export default function TryFreeScreen() {
               <Text style={styles.phoneSub}>3 tasks · keep your streak</Text>
 
               <View style={styles.streakRow}>
-                <View style={styles.streakChip}>
+                <Animated.View style={[styles.streakChip, { transform: [{ scale: streakScale }] }]}>
+                  <Animated.View style={[styles.streakGlow, { opacity: streakGlow }]} pointerEvents="none" />
                   <Text style={styles.streakEmoji}>🔥</Text>
-                  <Text style={styles.streakText}>7 day streak</Text>
-                </View>
-                <View style={styles.pointsChip}>
+                  <Text style={styles.streakText}>{streakDisplay} day streak</Text>
+                  <Animated.Text
+                    style={[
+                      styles.plusOne,
+                      { opacity: plusOneOpacity, transform: [{ translateY: plusOneTranslate }] },
+                    ]}
+                  >
+                    +1
+                  </Animated.Text>
+                </Animated.View>
+                <Animated.View style={[styles.pointsChip, { transform: [{ scale: pointsScale }] }]}>
                   <Text style={styles.pointsText}>+120 pts</Text>
-                </View>
+                </Animated.View>
               </View>
 
               <Animated.View
@@ -407,6 +442,21 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 4,
     paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999,
     backgroundColor: "#fff7ed", borderWidth: 1, borderColor: "#fed7aa",
+    overflow: "visible",
+  },
+  streakGlow: {
+    position: "absolute",
+    top: -3, left: -3, right: -3, bottom: -3,
+    borderRadius: 999,
+    backgroundColor: "rgba(251,146,60,0.35)",
+  },
+  plusOne: {
+    position: "absolute",
+    right: 4,
+    top: -2,
+    color: "#ea580c",
+    fontSize: 11,
+    fontWeight: "900",
   },
   streakEmoji: { fontSize: 10 },
   streakText: { color: "#9a3412", fontSize: 9, fontWeight: "900" },
