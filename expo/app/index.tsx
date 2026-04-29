@@ -2,10 +2,14 @@ import React, { useEffect, useState } from "react";
 import { Redirect } from "expo-router";
 
 import { useApp } from "@/providers/AppProvider";
+import { useAuth } from "@/providers/AuthProvider";
 import { SplashLoader } from "@/components/SplashLoader";
+
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 export default function Index() {
   const { hydrated, state } = useApp();
+  const { booting, session } = useAuth();
   const [minShown, setMinShown] = useState<boolean>(false);
 
   useEffect(() => {
@@ -13,8 +17,17 @@ export default function Index() {
     return () => clearTimeout(t);
   }, []);
 
-  if (!hydrated || !minShown) {
+  if (!hydrated || !minShown || booting) {
     return <SplashLoader />;
+  }
+
+  const lastSignedInAtRaw = session?.user?.last_sign_in_at ?? null;
+  const lastSignedInMs = lastSignedInAtRaw ? new Date(lastSignedInAtRaw).getTime() : 0;
+  const signedInRecently = !!session && lastSignedInMs > 0 && Date.now() - lastSignedInMs < THIRTY_DAYS_MS;
+
+  // If the user has a valid Supabase session from the past 30 days, keep them on the dashboard.
+  if (signedInRecently && state.onboarded) {
+    return <Redirect href="/(tabs)/tasks" />;
   }
 
   if (!state.onboarded) {
