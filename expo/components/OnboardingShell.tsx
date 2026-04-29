@@ -27,7 +27,7 @@ const PREV_STEP: Record<string, Href> = {
   "/onboarding/source": "/onboarding/apple-signin",
   "/onboarding/match": "/onboarding/source",
   "/onboarding/business": "/onboarding/match",
-  "/onboarding/plan-summary": "/onboarding/business",
+  "/onboarding/plan-summary": "/onboarding/source",
   "/onboarding/try-free": "/onboarding/plan-summary",
   "/onboarding/paywall": "/onboarding/try-free",
   "/onboarding/decline": "/onboarding/paywall",

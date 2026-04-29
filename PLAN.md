@@ -28,3 +28,4 @@
 - [x] Make paywall unclosable in trial flow (no X button); only back arrow → /try-free; embed plan summary card at top
 - [x] On app close during try-free or paywall, resume to /onboarding/plan-summary (where Start my plan button lives)
 - [x] Update OnboardingShell PREV_STEP map for new ordering (source → match → business → plan-summary → try-free → paywall → complete)
+- [x] Skip the 3-business picker: match generates a single business idea, sets it directly, and routes to plan-summary (with a "swap anytime, free" note)

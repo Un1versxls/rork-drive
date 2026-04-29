@@ -17,7 +17,7 @@ const STEPS = [
   "Checking the library",
   "Matching your goals",
   "Factoring in your time & obstacles",
-  "Drafting business ideas",
+  "Drafting your business",
   "Building your task roadmap",
 ];
 
@@ -40,8 +40,8 @@ const TaskSeedSchema = z.object({
 });
 
 const MatchSchema = z.object({
-  ideas: z.array(BusinessSchema).length(3),
-  taskPools: z.array(z.array(TaskSeedSchema).min(6).max(10)).length(3),
+  idea: BusinessSchema,
+  taskPool: z.array(TaskSeedSchema).min(6).max(10),
 });
 
 const INDUSTRY_LABEL: Record<Industry, string> = {
@@ -58,7 +58,7 @@ const INDUSTRY_LABEL: Record<Industry, string> = {
 
 export default function MatchScreen() {
   const router = useRouter();
-  const { state } = useApp();
+  const { state, setBusiness } = useApp();
   const plan = getPlan(state.profile.subscription.plan);
   const [stepIdx, setStepIdx] = useState<number>(0);
   const [error] = useState<string | null>(null);
@@ -97,7 +97,7 @@ export default function MatchScreen() {
           return entry.matching_goals.includes(p.goal);
         });
 
-        const prompt = `You are a business matchmaker. Generate exactly 3 personalized, realistic business ideas the user could start this month. Each idea must feel tangible and specific — not generic.
+        const prompt = `You are a business matchmaker. Pick the SINGLE best personalized, realistic business idea the user could start this month. It must feel tangible and specific — not generic.
 
 User profile:
 - Name: ${p.name || "the user"}
@@ -112,17 +112,15 @@ User profile:
 - Target monthly income range: ${plan.incomeRange}
 ${plan.premiumBusinesses ? "- PREMIUM MODE: user has unlocked high-ticket businesses. Prefer scalable, higher-revenue ideas (agencies, SaaS, premium services, e-commerce brands, consulting, productized services) with realistic paths to $1,000\u2013$10,000+/month." : "- Standard tier: focus on beginner-friendly side hustles and starter businesses with realistic earnings of $0\u2013$1,000/month. Avoid suggesting capital-heavy or enterprise-scale ideas."}
 
-IMPORTANT: All 3 ideas MUST match the user's income tier. Their startupCost and timeToIncome should fit the tier. Do NOT suggest $10k/mo businesses to a Free user, and do NOT suggest $20/mo hustles to an Elite/Unlimited user.
+IMPORTANT: The idea MUST match the user's income tier. Its startupCost and timeToIncome should fit the tier.
 
 ${matching.length > 0 ? `Existing library entries you may REUSE (preferred if a great fit). Keep the same id if reusing:
 ${matching.slice(0, 12).map((e) => `- id:${e.id} | ${e.name} — ${e.tagline ?? ""}`).join("\n")}
 ` : ""}
 
 Return:
-- ideas: an array of exactly 3 businesses with id (short kebab-case), name (2-5 words, catchy), tagline (under 10 words), description (2 sentences), whyFit (1-2 sentences tying to the user's inputs), startupCost (string like "$0–$200"), timeToIncome (string like "2–4 weeks"), firstMilestones (3-5 concrete first milestones).
-- taskPools: an array of exactly 3 task arrays (one per idea, in the same order). Each pool has 6-8 tasks with title (short, action-verb), description (one concrete sentence), category (one of: focus, skill, health, growth, mindset, hustle), difficulty (1, 2, or 3). Tasks must be specific to that business.
-
-Mix: prefer reusing 1-2 library entries when they fit, and invent 1-2 fresh ones.`;
+- idea: a single business with id (short kebab-case), name (2-5 words, catchy), tagline (under 10 words), description (2 sentences), whyFit (1-2 sentences tying to the user's inputs), startupCost (string like "$0–$200"), timeToIncome (string like "2–4 weeks"), firstMilestones (3-5 concrete first milestones).
+- taskPool: an array of 6-8 tasks with title (short, action-verb), description (one concrete sentence), category (one of: focus, skill, health, growth, mindset, hustle), difficulty (1, 2, or 3). Tasks must be specific to that business.`;
 
         const result = await generateObject({
           messages: [{ role: "user", content: prompt }],
@@ -131,22 +129,18 @@ Mix: prefer reusing 1-2 library entries when they fit, and invent 1-2 fresh ones
 
         if (cancelled) return;
 
-        const ideas: BusinessIdea[] = result.ideas.map((i) => ({ ...i }));
-        const pools: TaskSeed[][] = result.taskPools.map((pool) => pool.map((t) => ({ ...t })));
+        const idea: BusinessIdea = { ...result.idea };
+        const pool: TaskSeed[] = result.taskPool.map((t) => ({ ...t }));
 
-        // Sync any new ideas to the central library
-        syncIdeasToLibrary(ideas, pools, { goal: p.goal, experience: p.experience }).catch(() => {});
+        // Sync to the central library
+        syncIdeasToLibrary([idea], [pool], { goal: p.goal, experience: p.experience }).catch(() => {});
 
+        setBusiness(idea, pool);
         setStepIdx(STEPS.length - 1);
 
         setTimeout(() => {
           if (cancelled) return;
-          router.replace({
-            pathname: "/onboarding/business",
-            params: {
-              payload: JSON.stringify({ ideas, pools }),
-            },
-          });
+          router.replace("/onboarding/plan-summary");
         }, 500);
       } catch (e) {
         console.log("[match] error", e);
@@ -154,24 +148,17 @@ Mix: prefer reusing 1-2 library entries when they fit, and invent 1-2 fresh ones
 
         // Try pure library fallback
         const library = await fetchActiveLibrary();
-        if (library.length >= 3) {
-          const picked = library.slice(0, 3).map(entryToIdea);
-          const ideas = picked.map((p2) => p2.idea);
-          const pools = picked.map((p2) => p2.pool);
-          router.replace({
-            pathname: "/onboarding/business",
-            params: { payload: JSON.stringify({ ideas, pools }) },
-          });
+        if (library.length >= 1) {
+          const picked = entryToIdea(library[0]);
+          setBusiness(picked.idea, picked.pool);
+          router.replace("/onboarding/plan-summary");
           return;
         }
 
         const fallback = fallbackIdeas();
-        // Seed library with fallback so user has something editable
         syncIdeasToLibrary(fallback.ideas, fallback.pools, { goal: p.goal, experience: p.experience }).catch(() => {});
-        router.replace({
-          pathname: "/onboarding/business",
-          params: { payload: JSON.stringify(fallback) },
-        });
+        setBusiness(fallback.ideas[0], fallback.pools[0]);
+        router.replace("/onboarding/plan-summary");
       }
     };
     run();
@@ -212,7 +199,7 @@ Mix: prefer reusing 1-2 library entries when they fit, and invent 1-2 fresh ones
           </View>
 
           <Text style={styles.eyebrow}>BUILDING YOUR MATCH</Text>
-          <Text style={styles.title}>Crafting 3 businesses{`\n`}tailored to you</Text>
+          <Text style={styles.title}>Crafting a business{`\n`}tailored to you</Text>
 
           <View style={styles.stepsBox}>
             {STEPS.map((s, i) => (

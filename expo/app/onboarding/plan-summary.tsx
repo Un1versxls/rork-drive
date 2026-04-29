@@ -126,7 +126,7 @@ export default function PlanSummaryScreen() {
   const prevPath: Href = useMemo(() => {
     if (profile.goal === "grow_business") return "/onboarding/build-business";
     if (profile.goal === "build_skills") return "/onboarding/source";
-    return "/onboarding/business";
+    return "/onboarding/source";
   }, [profile.goal]);
 
   const eyebrow = useMemo(() => {
@@ -191,6 +191,15 @@ export default function PlanSummaryScreen() {
           <Text style={styles.empty}>Setting up your plan...</Text>
         )}
 
+        {!isSkill && profile.goal !== "grow_business" ? (
+          <View style={styles.swapNote}>
+            <Sparkles size={11} color={Colors.accentDeep} />
+            <Text style={styles.swapNoteText}>
+              Not in love with this one? You can swap your business anytime — free, no limits.
+            </Text>
+          </View>
+        ) : null}
+
         <View style={styles.assuranceBox}>
           <Text style={styles.assuranceTitle}>What happens next</Text>
           <Text style={styles.assuranceText}>
@@ -243,4 +252,17 @@ const styles = StyleSheet.create({
   },
   assuranceTitle: { color: Colors.text, fontSize: 14, fontWeight: "900", marginBottom: 4 },
   assuranceText: { color: Colors.textDim, fontSize: 13, lineHeight: 19 },
+  swapNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: "rgba(212,175,55,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.3)",
+  },
+  swapNoteText: { color: Colors.text, fontSize: 12, fontWeight: "600", flex: 1, lineHeight: 17 },
 });
