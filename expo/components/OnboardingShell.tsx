@@ -42,9 +42,10 @@ interface Props {
   children: React.ReactNode;
   footer: React.ReactNode;
   canGoBack?: boolean;
+  prevPath?: Href;
 }
 
-export function OnboardingShell({ step, total, title, subtitle, children, footer, canGoBack = true }: Props) {
+export function OnboardingShell({ step, total, title, subtitle, children, footer, canGoBack = true, prevPath }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const { setOnboardingStep } = useApp();
@@ -77,6 +78,10 @@ export function OnboardingShell({ step, total, title, subtitle, children, footer
               onPress={() => {
                 if (router.canGoBack()) {
                   router.back();
+                  return;
+                }
+                if (prevPath) {
+                  router.replace(prevPath);
                   return;
                 }
                 const prev = pathname ? PREV_STEP[pathname] : undefined;

@@ -18,6 +18,8 @@ export default function TryFreeScreen() {
   const router = useRouter();
 
   const phoneFall = useRef(new Animated.Value(0)).current;
+  const phoneBounce = useRef(new Animated.Value(0)).current;
+  const tableShadow = useRef(new Animated.Value(0)).current;
   const stepValue = useRef(new Animated.Value(0)).current;
   const tapPulse = useRef(new Animated.Value(0)).current;
   const aiPanel = useRef(new Animated.Value(0)).current;
@@ -26,13 +28,22 @@ export default function TryFreeScreen() {
 
   useEffect(() => {
     Animated.sequence([
-      Animated.delay(120),
-      Animated.spring(phoneFall, {
+      Animated.delay(140),
+      Animated.timing(phoneFall, {
         toValue: 1,
-        friction: 6,
-        tension: 60,
+        duration: 520,
+        easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
       }),
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(phoneBounce, { toValue: 1, duration: 140, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+          Animated.timing(phoneBounce, { toValue: 0.35, duration: 180, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+          Animated.timing(phoneBounce, { toValue: 0.7, duration: 120, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+          Animated.timing(phoneBounce, { toValue: 0, duration: 220, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+        ]),
+        Animated.timing(tableShadow, { toValue: 1, duration: 360, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      ]),
     ]).start();
 
     Animated.loop(
@@ -88,11 +99,14 @@ export default function TryFreeScreen() {
     return () => {
       cancelled = true;
     };
-  }, [phoneFall, stepValue, tapPulse, aiPanel, checkPop, sparkleOpacity]);
+  }, [phoneFall, phoneBounce, tableShadow, stepValue, tapPulse, aiPanel, checkPop, sparkleOpacity]);
 
-  const phoneTranslateY = phoneFall.interpolate({ inputRange: [0, 1], outputRange: [-420, 0] });
-  const phoneRotate = phoneFall.interpolate({ inputRange: [0, 1], outputRange: ["-22deg", "-4deg"] });
-  const phoneScale = phoneFall.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
+  const fallTranslateY = phoneFall.interpolate({ inputRange: [0, 1], outputRange: [-460, 0] });
+  const bounceTranslateY = phoneBounce.interpolate({ inputRange: [0, 1], outputRange: [0, -24] });
+  const phoneRotate = phoneFall.interpolate({ inputRange: [0, 1], outputRange: ["-26deg", "-3deg"] });
+  const phoneScale = phoneFall.interpolate({ inputRange: [0, 0.7, 1], outputRange: [0.78, 0.92, 1] });
+  const shadowScale = tableShadow.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1] });
+  const shadowOpacity = tableShadow.interpolate({ inputRange: [0, 1], outputRange: [0, 0.35] });
 
   const tapScale = tapPulse.interpolate({ inputRange: [0, 1], outputRange: [0.4, 2.2] });
   const tapOpacity = tapPulse.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0, 0.7, 0] });
@@ -130,19 +144,30 @@ export default function TryFreeScreen() {
         <View style={styles.stage}>
           <BackdropGlow />
 
+          <View style={styles.tableWrap} pointerEvents="none">
+            <View style={styles.tableSurface} />
+            <Animated.View
+              style={[
+                styles.tableShadow,
+                { opacity: shadowOpacity, transform: [{ scaleX: shadowScale }, { scaleY: shadowScale }] },
+              ]}
+            />
+          </View>
+
           <Animated.View
             style={[
               styles.phone,
               {
                 transform: [
-                  { translateY: phoneTranslateY },
+                  { translateY: Animated.add(fallTranslateY, bounceTranslateY) },
                   { rotate: phoneRotate },
                   { scale: phoneScale },
                 ],
               },
             ]}
           >
-            <View style={styles.phoneNotch} />
+            <View style={styles.phoneFrameInner}>
+            <View style={styles.dynamicIsland} />
             <View style={styles.phoneScreen}>
               <View style={styles.phoneStatus}>
                 <Text style={styles.phoneTime}>9:41</Text>
@@ -245,6 +270,7 @@ export default function TryFreeScreen() {
                 </View>
               </Animated.View>
             </View>
+            </View>
           </Animated.View>
         </View>
 
@@ -307,35 +333,65 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "rgba(212,175,55,0.16)",
   },
+  tableWrap: {
+    position: "absolute",
+    bottom: 12,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  },
+  tableSurface: {
+    width: "110%",
+    height: 1,
+    backgroundColor: "rgba(0,0,0,0.05)",
+  },
+  tableShadow: {
+    position: "absolute",
+    bottom: -10,
+    width: 220,
+    height: 22,
+    borderRadius: 999,
+    backgroundColor: "#000000",
+  },
 
   phone: {
-    width: 240,
-    height: 380,
-    borderRadius: 38,
-    backgroundColor: "#0a0a0a",
-    padding: 8,
+    width: 248,
+    height: 396,
+    borderRadius: 46,
+    padding: 3,
+    backgroundColor: "#1a1a1a",
     shadowColor: "#000",
-    shadowOpacity: 0.35,
-    shadowRadius: 30,
-    shadowOffset: { width: 0, height: 18 },
-    elevation: 20,
+    shadowOpacity: 0.4,
+    shadowRadius: 32,
+    shadowOffset: { width: 0, height: 22 },
+    elevation: 24,
   },
-  phoneNotch: {
+  phoneFrameInner: {
+    flex: 1,
+    borderRadius: 43,
+    padding: 5,
+    backgroundColor: "#0a0a0a",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  dynamicIsland: {
     position: "absolute",
-    top: 14,
+    top: 12,
     alignSelf: "center",
-    width: 70,
-    height: 18,
-    borderRadius: 12,
+    width: 92,
+    height: 28,
+    borderRadius: 18,
     backgroundColor: "#000000",
     zIndex: 5,
+    borderWidth: 0.5,
+    borderColor: "rgba(255,255,255,0.04)",
   },
   phoneScreen: {
     flex: 1,
-    borderRadius: 30,
+    borderRadius: 38,
     backgroundColor: "#ffffff",
     padding: 14,
-    paddingTop: 36,
+    paddingTop: 50,
     overflow: "hidden",
   },
   phoneStatus: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { Clock, DollarSign, Sparkles, Target } from "lucide-react-native";
 
 import { OnboardingShell } from "@/components/OnboardingShell";
@@ -123,6 +123,12 @@ export default function PlanSummaryScreen() {
 
   const business = profile.business;
 
+  const prevPath: Href = useMemo(() => {
+    if (profile.goal === "grow_business") return "/onboarding/build-business";
+    if (profile.goal === "build_skills") return "/onboarding/source";
+    return "/onboarding/business";
+  }, [profile.goal]);
+
   const eyebrow = useMemo(() => {
     if (isSkill) return "YOUR CRASH COURSE";
     if (profile.goal === "grow_business") return "YOUR PLAN";
@@ -136,6 +142,7 @@ export default function PlanSummaryScreen() {
       title={business ? `Meet ${business.name}.` : "Your plan is ready."}
       subtitle={business?.tagline ?? "Here's everything we picked for you."}
       canGoBack
+      prevPath={prevPath}
       footer={
         <GradientButton
           title="Start my plan"
