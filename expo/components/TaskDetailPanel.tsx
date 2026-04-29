@@ -225,7 +225,7 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
               style={styles.scrollView}
               contentContainerStyle={[
                 styles.scroll,
-                chatOpen && { paddingBottom: 320 + (Platform.OS === "ios" ? keyboardHeight : 0) },
+                chatOpen && { paddingBottom: 600 + (Platform.OS === "ios" ? keyboardHeight : Platform.OS === "android" ? 240 : 0) },
               ]}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
