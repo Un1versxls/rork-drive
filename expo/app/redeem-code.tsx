@@ -35,7 +35,7 @@ export default function RedeemCodeScreen() {
       await redeemCode(code);
       grantPremiumViaCode();
       Alert.alert("Success", "Your code has been applied.");
-      router.replace("/onboarding/match");
+      router.replace("/onboarding/complete");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Invalid code";
       setError(msg);
