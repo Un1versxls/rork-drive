@@ -225,7 +225,7 @@ Return:
             <GradientButton
               title="Create my tasks"
               variant="gold"
-              onPress={() => router.push("/onboarding/paywall")}
+              onPress={() => router.push("/onboarding/plan-summary")}
               testID="bb-create-tasks"
             />
             <Pressable

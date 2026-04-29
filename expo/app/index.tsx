@@ -19,6 +19,11 @@ export default function Index() {
 
   if (!state.onboarded) {
     const step = state.profile.onboardingStep;
+    // If the user closed the app on the unclosable trial pages, send them back
+    // to the plan summary (their last "safe" page with the Start my plan button).
+    if (step === "/onboarding/try-free" || step === "/onboarding/paywall") {
+      return <Redirect href="/onboarding/plan-summary" />;
+    }
     if (step && step !== "/") {
       return <Redirect href={step as never} />;
     }

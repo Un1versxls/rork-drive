@@ -49,7 +49,7 @@ export default function DeclineScreen() {
               else router.replace("/(tabs)/tasks");
               return;
             }
-            router.replace({ pathname: "/onboarding/paywall", params: { retry: "1" } });
+            router.replace({ pathname: "/onboarding/try-free", params: { retry: "1" } });
           }}
         />
       }

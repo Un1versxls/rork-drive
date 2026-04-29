@@ -9,6 +9,11 @@ import { GradientButton } from "@/components/GradientButton";
 import { useApp } from "@/providers/AppProvider";
 import type { Source } from "@/types";
 
+function nextAfterSource(goal: string | null): string {
+  if (goal === "earn_income") return "/onboarding/match";
+  return "/onboarding/plan-summary";
+}
+
 const OPTIONS: { id: Source; label: string; Icon: LucideIcon }[] = [
   { id: "tiktok", label: "TikTok", Icon: Music2 },
   { id: "instagram", label: "Instagram", Icon: Instagram },
@@ -35,7 +40,7 @@ export default function SourceScreen() {
           onPress={() => {
             if (!selected) return;
             setAnswers({ source: selected });
-            router.push("/onboarding/paywall");
+            router.push(nextAfterSource(state.profile.goal));
           }}
         />
       }

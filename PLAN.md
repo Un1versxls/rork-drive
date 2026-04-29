@@ -19,3 +19,12 @@
 - [x] Generate a Crash Course pseudo-business with topic-tuned tasks for build_skills after paywall
 - [x] Show learning-themed motivation insights on progress page when goal === build_skills
 - [x] Rebrand "Your Business" → "Your Crash Course" on tasks/profile/complete for build_skills
+
+## Cal-AI-style paywall flow
+- [x] Move match → business plan generation BEFORE paywall (was after)
+- [x] Create /onboarding/plan-summary showing the user's full plan with "Start my plan" CTA
+- [x] Auto-set crash course on plan-summary mount for build_skills (moved from paywall onSuccess)
+- [x] Create /onboarding/try-free unclosable page: phone-thrown-onto-screen demo, looping task tap → AI panel → complete animation, "no payment due now" + "Continue for free" CTA
+- [x] Make paywall unclosable in trial flow (no X button); only back arrow → /try-free; embed plan summary card at top
+- [x] On app close during try-free or paywall, resume to /onboarding/plan-summary (where Start my plan button lives)
+- [x] Update OnboardingShell PREV_STEP map for new ordering (source → match → business → plan-summary → try-free → paywall → complete)

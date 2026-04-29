@@ -51,7 +51,7 @@ export default function BusinessScreen() {
           title="Start with this one"
           onPress={() => {
             setBusiness(ideas[selectedIdx], pools[selectedIdx]);
-            router.push("/onboarding/complete");
+            router.push("/onboarding/plan-summary");
           }}
         />
       }

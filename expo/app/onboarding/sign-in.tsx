@@ -31,7 +31,7 @@ export default function OnboardingSignInScreen() {
       await signIn({ email: clean, password });
       setProfileField("email", clean);
       console.log("[sign-in] success, advancing onboarding");
-      router.replace("/onboarding/paywall");
+      router.replace("/onboarding/source");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Couldn't sign in. Check your details.";
       console.log("[sign-in] failed", msg);

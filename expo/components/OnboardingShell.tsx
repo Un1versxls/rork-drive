@@ -25,11 +25,13 @@ const PREV_STEP: Record<string, Href> = {
   "/onboarding/email": "/onboarding/sync-accounts",
   "/onboarding/verify": "/onboarding/email",
   "/onboarding/source": "/onboarding/apple-signin",
-  "/onboarding/paywall": "/onboarding/source",
-  "/onboarding/decline": "/onboarding/paywall",
-  "/onboarding/match": "/onboarding/paywall",
+  "/onboarding/match": "/onboarding/source",
   "/onboarding/business": "/onboarding/match",
-  "/onboarding/complete": "/onboarding/business",
+  "/onboarding/plan-summary": "/onboarding/business",
+  "/onboarding/try-free": "/onboarding/plan-summary",
+  "/onboarding/paywall": "/onboarding/try-free",
+  "/onboarding/decline": "/onboarding/paywall",
+  "/onboarding/complete": "/onboarding/paywall",
 };
 
 interface Props {
