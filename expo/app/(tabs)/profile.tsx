@@ -21,7 +21,7 @@ import type { BillingCycle, PlanId } from "@/types";
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { state, currentPlan, isPremium, hasActiveSubscription, setProfileField, resetOnboarding, cancelSubscription, grantPremiumViaCode, totalCompleted, level } = useApp();
+  const { state, currentPlan, isPremium, hasActiveSubscription, setProfileField, resetOnboarding, cancelSubscription, grantPremiumViaCode, totalCompleted, level, businessSwitchesRemaining, businessSwitchLimit } = useApp();
   const { user, signOut } = useAuth();
 
   const [editing, setEditing] = useState<boolean>(false);
@@ -319,9 +319,33 @@ export default function ProfileScreen() {
               <Text style={styles.bizName}>{state.profile.business.name}</Text>
               <Text style={styles.bizTag}>{state.profile.business.tagline}</Text>
               {state.profile.goal !== "build_skills" ? (
-                <Pressable onPress={() => router.push("/onboarding/match")} style={styles.linkRow}>
+                <Pressable
+                  onPress={() => {
+                    triggerHaptic("light", state.profile.hapticsEnabled);
+                    if (businessSwitchesRemaining <= 0) {
+                      const title = "Out of swaps this month";
+                      const msg = `You've used all ${businessSwitchLimit} business swaps. Want to re-onboard from scratch? This will reset your answers and pick a new business.`;
+                      if (Platform.OS === "web") {
+                        const ok = typeof window !== "undefined" && window.confirm(`${title}\n\n${msg}`);
+                        if (ok) { resetOnboarding(); router.replace("/onboarding"); }
+                        return;
+                      }
+                      Alert.alert(title, msg, [
+                        { text: "Not now", style: "cancel" },
+                        { text: "Re-onboard", style: "destructive", onPress: () => { resetOnboarding(); router.replace("/onboarding"); } },
+                      ]);
+                      return;
+                    }
+                    router.push("/onboarding/match");
+                  }}
+                  style={styles.linkRow}
+                  testID="find-new-matches"
+                >
                   <RefreshCw color={Colors.text} size={14} />
                   <Text style={styles.linkText}>Find new matches</Text>
+                  <View style={styles.swapBadge}>
+                    <Text style={styles.swapBadgeText}>x{businessSwitchesRemaining}</Text>
+                  </View>
                 </Pressable>
               ) : null}
             </View>
@@ -440,6 +464,8 @@ const styles = StyleSheet.create({
   bizTag: { color: Colors.textDim, fontSize: 13, marginTop: 2 },
   linkRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 12, alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 8, borderRadius: 999, backgroundColor: "#fafafa", borderWidth: 1, borderColor: "#eeeeee" },
   linkText: { color: Colors.text, fontSize: 12, fontWeight: "700" },
+  swapBadge: { marginLeft: 4, minWidth: 22, height: 18, paddingHorizontal: 6, borderRadius: 9, backgroundColor: "#d4af37", alignItems: "center", justifyContent: "center", shadowColor: "#d4af37", shadowOpacity: 0.4, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } },
+  swapBadgeText: { color: "#ffffff", fontSize: 10, fontWeight: "900", letterSpacing: 0.3 },
 
   menuRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 14, paddingHorizontal: 14, borderRadius: 14, backgroundColor: "#ffffff", borderWidth: 1, borderColor: "#eeeeee", marginBottom: 8 },
   menuLabel: { color: Colors.text, fontSize: 15, fontWeight: "700", flex: 1 },
