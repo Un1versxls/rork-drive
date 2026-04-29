@@ -71,7 +71,7 @@ export default function VerifyScreen() {
     const local = findLocalCode(code);
     if (local) {
       grantPremiumViaCode();
-      router.replace("/onboarding/match");
+      router.replace("/onboarding/paywall");
       setVerifying(false);
       return;
     }
@@ -88,7 +88,7 @@ export default function VerifyScreen() {
       setError(res.error ?? "Invalid or expired code. Try again.");
       return;
     }
-    router.replace("/onboarding/source");
+    router.replace("/onboarding/paywall");
   };
 
   const onResend = async () => {

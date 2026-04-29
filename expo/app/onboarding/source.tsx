@@ -35,7 +35,7 @@ export default function SourceScreen() {
           onPress={() => {
             if (!selected) return;
             setAnswers({ source: selected });
-            router.push("/onboarding/results");
+            router.push("/onboarding/paywall");
           }}
         />
       }

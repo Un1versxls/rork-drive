@@ -34,7 +34,7 @@ export default function PriorityScreen() {
           onPress={() => {
             if (!selected) return;
             setAnswers({ priority: selected });
-            router.push("/onboarding/industry");
+            router.push("/onboarding/results");
           }}
         />
       }

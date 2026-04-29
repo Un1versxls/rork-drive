@@ -1,17 +1,15 @@
-# Enable the purchase button so you can test subscriptions
+# Onboarding flow rework
 
-## What changes
+## Goals
+- "Run / grow my business" should skip onboarding questions, go straight to a custom-business builder, then to the paywall.
+- Different question paths for build_skills / stay_productive (no business assignment).
+- earn_income keeps current business-matching flow.
+- Move the reviews/results page to the middle of the questionnaire with fade-in + stars-pop animations.
 
-- Remove the "Payments unavailable" disabled state on the paywall button so it always lets you tap through to Apple's purchase sheet.
-- Hide the "Payments pending App Store approval" banner.
-- Keep the rest of the paywall (pricing, plan toggle, access-code option) exactly as it is.
-
-## About testing on Expo Go
-
-Real Apple subscription payments **will not work in Expo Go** — RevenueCat needs the native StoreKit module, which only exists in a real build (TestFlight or a dev build). In Expo Go you'll either see no offerings or get a "purchases not available" error when you tap the button.
-
-To actually test payments you need to:
-- Install the TestFlight build on a real iOS device, **or**
-- Run a custom dev client build (not Expo Go).
-
-Once you're on TestFlight, sign in with a Sandbox Apple ID under Settings → App Store → Sandbox Account, then tap the button to trigger Apple's purchase sheet.
+## Tasks
+- [x] Update goal.tsx to route grow_business → /onboarding/build-business
+- [x] Create /onboarding/build-business with X (back to goal) and Create tasks → paywall
+- [x] Animate results.tsx (review fade-ins, stars pop one-by-one)
+- [x] Insert results mid-flow (after priority); for skills/productive skip industry+budget
+- [x] Paywall routes to /complete (not /match) for grow_business / build_skills / stay_productive
+- [x] Update verify.tsx and source.tsx flow accordingly

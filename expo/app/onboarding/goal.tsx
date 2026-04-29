@@ -34,7 +34,11 @@ export default function GoalScreen() {
           onPress={() => {
             if (!selected) return;
             setAnswers({ goal: selected });
-            router.push("/onboarding/experience");
+            if (selected === "grow_business") {
+              router.push("/onboarding/build-business");
+            } else {
+              router.push("/onboarding/experience");
+            }
           }}
           testID="cta-continue"
         />

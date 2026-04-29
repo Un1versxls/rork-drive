@@ -110,7 +110,12 @@ export default function PaywallScreen() {
           else router.replace("/(tabs)/tasks");
           return;
         }
-        router.replace("/onboarding/match");
+        const goal = state.profile.goal;
+        if (goal === "earn_income") {
+          router.replace("/onboarding/match");
+        } else {
+          router.replace("/onboarding/complete");
+        }
       } else {
         Alert.alert("Payment not completed", "We couldn't verify your subscription. Try again.");
       }
@@ -146,7 +151,12 @@ export default function PaywallScreen() {
         else router.replace("/(tabs)/tasks");
         return;
       }
-      router.replace("/onboarding/match");
+      const goal = state.profile.goal;
+      if (goal === "earn_income") {
+        router.replace("/onboarding/match");
+      } else {
+        router.replace("/onboarding/complete");
+      }
       return;
     }
     purchaseMutation.mutate();
@@ -159,7 +169,7 @@ export default function PaywallScreen() {
       return;
     }
     if (router.canGoBack()) router.back();
-    else router.replace("/onboarding/results");
+    else router.replace("/onboarding/goal");
   };
 
   const loadingPkgs = Platform.OS !== "web" && offeringsQuery.isLoading;
