@@ -31,10 +31,12 @@ const CustomSchema = z.object({
 
 export default function CustomScreen() {
   const router = useRouter();
-  const { isPremium, setBusiness, state, customBuildsRemaining, customBuildsThisMonth, customBuildLimit } = useApp();
+  const { isPremium, setBusiness, state, customBuildsRemaining, customBuildsThisMonth, customBuildLimit, businessSwitchesRemaining, businessSwitchLimit } = useApp();
   const [idea, setIdea] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const outOfBuilds = customBuildsRemaining <= 0;
+  const hasBusiness = !!state.profile.business;
+  const outOfSwitches = hasBusiness && businessSwitchesRemaining <= 0;
 
   const onGenerate = async () => {
     if (!idea.trim()) return;
@@ -42,6 +44,13 @@ export default function CustomScreen() {
       Alert.alert(
         "Monthly limit reached",
         `Premium includes ${customBuildLimit} custom builds per month. Your limit resets at the start of next month.`
+      );
+      return;
+    }
+    if (outOfSwitches) {
+      Alert.alert(
+        "Business switch limit reached",
+        `You can switch your business up to ${businessSwitchLimit} times per month. Your limit resets at the start of next month.`
       );
       return;
     }
@@ -69,7 +78,14 @@ Return: name (2-5 words), tagline, description (2 sentences), whyFit (why it wor
         firstMilestones: result.firstMilestones,
       };
       const pool: TaskSeed[] = result.taskPool.map((t) => ({ ...t }));
-      setBusiness(business, pool);
+      const res = setBusiness(business, pool);
+      if (!res.ok) {
+        Alert.alert(
+          "Business switch limit reached",
+          `You can switch your business up to ${businessSwitchLimit} times per month. Your limit resets at the start of next month.`
+        );
+        return;
+      }
       Alert.alert("Done!", "Your custom business is live. Check Tasks tomorrow for your first day.");
       router.push("/(tabs)/tasks");
     } catch (e) {
@@ -192,16 +208,18 @@ Return: name (2-5 words), tagline, description (2 sentences), whyFit (why it wor
 
         <View style={{ height: 16 }} />
         <GradientButton
-          title={outOfBuilds ? "Limit reached — back next month" : loading ? "Generating your plan…" : "Generate my plan"}
+          title={outOfBuilds || outOfSwitches ? "Limit reached — back next month" : loading ? "Generating your plan…" : "Generate my plan"}
           onPress={onGenerate}
-          disabled={!idea.trim() || loading || outOfBuilds}
+          disabled={!idea.trim() || loading || outOfBuilds || outOfSwitches}
           loading={loading}
           icon={loading ? <ActivityIndicator color="#ffffff" /> : undefined}
         />
         <Text style={styles.hint}>
           {outOfBuilds
             ? `You've used all ${customBuildLimit} custom builds for this month.`
-            : "This replaces your current business. Your streak is kept."}
+            : outOfSwitches
+            ? `You've used all ${businessSwitchLimit} business switches for this month.`
+            : `This replaces your current business (${businessSwitchesRemaining}/${businessSwitchLimit} switches left this month). Your streak is kept.`}
         </Text>
       </ScrollView>
     </SafeAreaView>

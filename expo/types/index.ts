@@ -148,6 +148,8 @@ export interface UserProfile {
   onboardingStep: string | null;
   customBuildMonth: string | null;
   customBuildCount: number;
+  businessSwitchMonth: string | null;
+  businessSwitchCount: number;
 }
 
 export interface AuthUser {
