@@ -39,7 +39,11 @@ export default function AppleSignInScreen() {
         startedAt: state.profile.subscription.startedAt,
       },
     }).catch((e) => console.log("[apple] app_users", e));
-    router.replace("/onboarding/source");
+    if (state.profile.goal === "grow_business") {
+      router.replace("/onboarding/paywall");
+    } else {
+      router.replace("/onboarding/source");
+    }
   };
 
   const onApple = async () => {

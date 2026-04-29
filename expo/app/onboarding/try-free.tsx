@@ -6,6 +6,8 @@ import { Check, Sparkles } from "lucide-react-native";
 
 import { GradientButton } from "@/components/GradientButton";
 import { Colors } from "@/constants/colors";
+import { useApp } from "@/providers/AppProvider";
+import { useAuth } from "@/providers/AuthProvider";
 
 const STEP = {
   IDLE: 0,
@@ -16,6 +18,9 @@ const STEP = {
 
 export default function TryFreeScreen() {
   const router = useRouter();
+  const { state } = useApp();
+  const { user } = useAuth();
+  const needsSignIn = state.profile.goal === "grow_business" && !user;
 
   const phoneEntry = useRef(new Animated.Value(0)).current;
   const phoneExit = useRef(new Animated.Value(0)).current;
@@ -479,7 +484,7 @@ export default function TryFreeScreen() {
           <GradientButton
             title="Continue for free"
             variant="gold"
-            onPress={() => router.push("/onboarding/paywall")}
+            onPress={() => router.push(needsSignIn ? "/onboarding/apple-signin" : "/onboarding/paywall")}
             testID="cta-try-free"
           />
           <Text style={styles.legal}>Cancel anytime — we&apos;ll remind you 24h before your trial ends.</Text>
