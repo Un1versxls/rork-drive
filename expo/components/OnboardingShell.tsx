@@ -11,6 +11,7 @@ const PREV_STEP: Record<string, Href> = {
   "/onboarding/goal": "/onboarding",
   "/onboarding/build-business": "/onboarding/goal",
   "/onboarding/experience": "/onboarding/goal",
+  "/onboarding/skill-topic": "/onboarding/goal",
   "/onboarding/time": "/onboarding/experience",
   "/onboarding/priority": "/onboarding/time",
   "/onboarding/results": "/onboarding/priority",

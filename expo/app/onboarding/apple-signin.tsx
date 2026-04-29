@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Mail } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as AppleAuthentication from "expo-apple-authentication";
 
@@ -136,6 +137,22 @@ export default function AppleSignInScreen() {
               <Text style={styles.fallbackText}>{busy ? "Continuing…" : "Continue"}</Text>
             </Pressable>
           )}
+
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <Pressable
+            onPress={() => router.push("/onboarding/email")}
+            style={({ pressed }) => [styles.emailBtn, pressed && { opacity: 0.85 }]}
+            testID="apple-email-btn"
+          >
+            <Mail color={Colors.text} size={18} />
+            <Text style={styles.emailText}>Sign up with email</Text>
+          </Pressable>
+
           <Pressable onPress={onSkip} hitSlop={10} style={styles.skipBtn} testID="apple-skip-btn">
             <Text style={styles.skipText}>Skip for now</Text>
           </Pressable>
@@ -152,7 +169,7 @@ export default function AppleSignInScreen() {
           </Text>
         </View>
         <Text style={styles.privacy}>
-          We use Apple Sign In so your email stays private. We never share your info.
+          Use Apple to keep your email private, or sign up with your email — we never share your info.
         </Text>
       </View>
     </OnboardingShell>
@@ -181,6 +198,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   fallbackText: { color: "#ffffff", fontSize: 17, fontWeight: "800" },
+  divider: { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: 4 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: "#eeeeee" },
+  dividerText: { color: Colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1 },
+  emailBtn: {
+    height: 54,
+    borderRadius: 14,
+    backgroundColor: "#ffffff",
+    borderWidth: 1.5,
+    borderColor: "#e6e6e6",
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 10,
+  },
+  emailText: { color: Colors.text, fontSize: 16, fontWeight: "800" },
   skipBtn: { alignSelf: "center", paddingVertical: 8, paddingHorizontal: 12 },
   skipText: { color: Colors.textMuted, fontSize: 12, fontWeight: "600", textDecorationLine: "underline" },
 });

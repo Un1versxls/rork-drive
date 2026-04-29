@@ -27,8 +27,46 @@ export default function ProgressScreen() {
   const completionRate = 100 - skipRate;
   const percentileOfNewUsers = Math.min(95, 40 + Math.min(55, totalCompleted));
 
+  const isLearning = state.profile.goal === "build_skills";
+  const skillTopic = state.profile.skillTopic;
+  const skillLabel = (() => {
+    switch (skillTopic) {
+      case "code": return "coding";
+      case "business": return "business";
+      case "marketing": return "marketing";
+      case "design": return "design";
+      case "content": return "writing";
+      case "languages": return "your new language";
+      case "speaking": return "speaking";
+      case "finance": return "finance";
+      default: return "your skill";
+    }
+  })();
+
   const motivationFacts = useMemo<{ emoji: string; title: string; sub: string }[]>(() => {
     const pace = Math.max(1, weekCompleted);
+
+    if (isLearning) {
+      const masteryHours = Math.max(8, weekMinutes * 4 + totalCompleted * 8);
+      const focusMinutes = Math.max(45, weekMinutes * 6 + 90);
+      const compoundWeeks = Math.max(6, 14 - Math.min(8, Math.floor(state.streak / 3)));
+      const fluentWeeks = Math.max(8, 24 - Math.min(16, Math.floor(state.streak / 2)));
+      const yearReps = Math.max(50, totalCompleted * 12 + weekCompleted * 30);
+      const milestoneDays = Math.max(14, Math.round(60 - pace * 1.2));
+      return [
+        { emoji: "🧠", title: `On track for ${masteryHours}+ hours of deep ${skillLabel} practice this quarter`, sub: "that's how mastery is built" },
+        { emoji: "📚", title: `${fluentWeeks} more weeks at this pace and ${skillLabel} starts feeling automatic`, sub: "this is the messy middle" },
+        { emoji: "⚡", title: `${focusMinutes} focused minutes banked into ${skillLabel}`, sub: "reps compound quietly" },
+        { emoji: "🌱", title: `${compoundWeeks} more weeks like this puts you past 99% of casual learners`, sub: "consistency > intensity" },
+        { emoji: "🎯", title: `Roughly ${milestoneDays} days to your next clear ${skillLabel} milestone`, sub: "keep showing up" },
+        { emoji: "🔁", title: `Project ${yearReps} reps over the next 12 months`, sub: "future you is dangerous" },
+        { emoji: "🔥", title: `${state.streak || 1}-day streak → you're learning faster than people who 'binge' it`, sub: "don't break the chain" },
+        { emoji: "✍️", title: `You can teach what you've learned this week to someone else`, sub: "that's the real test" },
+        { emoji: "📖", title: `Spaced reps at this rate beat a weekend cram every single time`, sub: "the science is on your side" },
+        { emoji: "🏆", title: `You're stacking ${skillLabel} reps most people quit before unlocking`, sub: "quietly becoming great" },
+      ];
+    }
+
     const businessDays = Math.max(30, Math.round(95 - pace * 1.4));
     const sideIncomeDays = Math.max(21, Math.round(120 - pace * 2));
     const masteryHours = Math.max(8, weekMinutes * 4 + totalCompleted * 8);
@@ -47,7 +85,7 @@ export default function ProgressScreen() {
       { emoji: "💼", title: `At this pace, a profitable product is roughly ${Math.max(45, 110 - pace * 2)} days out`, sub: "keep moving" },
       { emoji: "🛠️", title: `You ship more before noon than most people ship in a week`, sub: "this is your unfair advantage" },
     ];
-  }, [weekCompleted, weekMinutes, totalCompleted, state.streak]);
+  }, [weekCompleted, weekMinutes, totalCompleted, state.streak, isLearning, skillLabel]);
 
   const dayIndex = useMemo(() => {
     const d = new Date();

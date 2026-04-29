@@ -29,12 +29,16 @@ export default function CompleteScreen() {
             {state.profile.name ? `Let's go, ${state.profile.name}.` : "You're all set."}
           </Text>
           <Text style={styles.subtitle}>
-            Your business is matched and your first tasks are ready.
+            {state.profile.goal === "build_skills"
+              ? "Your crash course is locked in and your first tasks are ready."
+              : state.profile.goal === "earn_income" || state.profile.goal === "grow_business"
+              ? "Your business is matched and your first tasks are ready."
+              : "Your daily plan is ready to go."}
           </Text>
 
           {state.profile.business ? (
             <View style={styles.card}>
-              <Text style={styles.cardLabel}>YOUR BUSINESS</Text>
+              <Text style={styles.cardLabel}>{state.profile.goal === "build_skills" ? "YOUR CRASH COURSE" : "YOUR BUSINESS"}</Text>
               <Text style={styles.cardName}>{state.profile.business.name}</Text>
               <Text style={styles.cardTag}>{state.profile.business.tagline}</Text>
             </View>

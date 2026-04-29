@@ -13,3 +13,9 @@
 - [x] Insert results mid-flow (after priority); for skills/productive skip industry+budget
 - [x] Paywall routes to /complete (not /match) for grow_business / build_skills / stay_productive
 - [x] Update verify.tsx and source.tsx flow accordingly
+- [x] Remove stay_productive option from goal screen
+- [x] Add /onboarding/skill-topic for build_skills (code, business, marketing, design, content, languages, speaking, finance)
+- [x] Add email signup option alongside Apple Sign In on apple-signin screen
+- [x] Generate a Crash Course pseudo-business with topic-tuned tasks for build_skills after paywall
+- [x] Show learning-themed motivation insights on progress page when goal === build_skills
+- [x] Rebrand "Your Business" → "Your Crash Course" on tasks/profile/complete for build_skills

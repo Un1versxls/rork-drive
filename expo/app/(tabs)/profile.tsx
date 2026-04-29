@@ -263,15 +263,17 @@ export default function ProfileScreen() {
             ) : null}
           </View>
 
-          <Text style={styles.sectionTitle}>Your business</Text>
+          <Text style={styles.sectionTitle}>{state.profile.goal === "build_skills" ? "Your crash course" : "Your business"}</Text>
           {state.profile.business ? (
             <View style={styles.card}>
               <Text style={styles.bizName}>{state.profile.business.name}</Text>
               <Text style={styles.bizTag}>{state.profile.business.tagline}</Text>
-              <Pressable onPress={() => router.push("/onboarding/match")} style={styles.linkRow}>
-                <RefreshCw color={Colors.text} size={14} />
-                <Text style={styles.linkText}>Find new matches</Text>
-              </Pressable>
+              {state.profile.goal !== "build_skills" ? (
+                <Pressable onPress={() => router.push("/onboarding/match")} style={styles.linkRow}>
+                  <RefreshCw color={Colors.text} size={14} />
+                  <Text style={styles.linkText}>Find new matches</Text>
+                </Pressable>
+              ) : null}
             </View>
           ) : null}
 

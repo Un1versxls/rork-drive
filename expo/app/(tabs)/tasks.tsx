@@ -130,7 +130,7 @@ export default function TasksScreen() {
 
           {state.profile.business ? (
             <View style={styles.bizCard}>
-              <Text style={styles.bizLabel}>YOUR BUSINESS</Text>
+              <Text style={styles.bizLabel}>{state.profile.goal === "build_skills" ? "YOUR CRASH COURSE" : "YOUR BUSINESS"}</Text>
               <Text style={styles.bizName}>{state.profile.business.name}</Text>
               <Text style={styles.bizTag}>{state.profile.business.tagline}</Text>
             </View>

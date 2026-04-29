@@ -14,7 +14,106 @@ import { submitSurveyResponse } from "@/lib/surveyTracking";
 import { upsertAppUser } from "@/lib/appUserTracking";
 import { PLANS, priceFor, monthlyEquivalent, yearlySavings } from "@/constants/plans";
 import { configurePurchases, getOfferings, purchasePackage, hasActiveEntitlement } from "@/lib/purchases";
-import type { BillingCycle, PlanId } from "@/types";
+import type { BillingCycle, BusinessIdea, PlanId, SkillTopic, TaskSeed } from "@/types";
+
+const SKILL_LABELS: Record<SkillTopic, string> = {
+  code: "Code",
+  business: "Business",
+  marketing: "Marketing",
+  design: "Design",
+  content: "Content & Writing",
+  languages: "Languages",
+  speaking: "Public Speaking",
+  finance: "Personal Finance",
+};
+
+const SKILL_TASKS: Record<SkillTopic, TaskSeed[]> = {
+  code: [
+    { title: "Build one tiny feature", description: "Write code for a small piece of a real project today.", category: "skill", difficulty: 2 },
+    { title: "Read 10 mins of docs", description: "Pick a tool you use and dig into its docs.", category: "skill", difficulty: 1 },
+    { title: "Solve one practice problem", description: "LeetCode, codewars, or rebuild something from scratch.", category: "skill", difficulty: 3 },
+    { title: "Refactor your worst file", description: "Take 15 minutes to clean up something messy you wrote.", category: "focus", difficulty: 2 },
+    { title: "Ship a commit", description: "Anything — just push code today.", category: "hustle", difficulty: 1 },
+    { title: "Read someone else's code", description: "Pick an open-source repo and read for 10 minutes.", category: "mindset", difficulty: 1 },
+  ],
+  business: [
+    { title: "Study one great company", description: "Pick a company and figure out exactly how they make money.", category: "skill", difficulty: 2 },
+    { title: "Negotiate something small", description: "A bill, a price, a deadline — practice the skill.", category: "hustle", difficulty: 3 },
+    { title: "Write a 1-page strategy", description: "Pick a problem, draft how you'd solve it as an operator.", category: "focus", difficulty: 2 },
+    { title: "Read 10 mins on leadership", description: "Article, podcast, or book on leading people.", category: "skill", difficulty: 1 },
+    { title: "Map your network", description: "List 5 people you should reach out to this month.", category: "growth", difficulty: 1 },
+    { title: "Reflect on a decision", description: "Write what you'd do differently next time.", category: "mindset", difficulty: 1 },
+  ],
+  marketing: [
+    { title: "Write 5 hooks", description: "Punchy opening lines for posts, ads or emails.", category: "skill", difficulty: 2 },
+    { title: "Study a viral post", description: "Break down structure, hook, and emotion.", category: "skill", difficulty: 1 },
+    { title: "Post one thing publicly", description: "Tweet, short, or reel — ship it.", category: "hustle", difficulty: 2 },
+    { title: "Audit a brand", description: "Pick a brand you like and write 3 things they nail.", category: "growth", difficulty: 2 },
+    { title: "Draft an email", description: "Write a short marketing email someone would actually open.", category: "focus", difficulty: 2 },
+    { title: "Track one metric", description: "Pick one number that matters and check on it.", category: "mindset", difficulty: 1 },
+  ],
+  design: [
+    { title: "Redesign one screen", description: "Take an app screen and make a better version in Figma.", category: "skill", difficulty: 3 },
+    { title: "Copy a great UI", description: "Pixel-clone something you admire to learn the moves.", category: "skill", difficulty: 2 },
+    { title: "Daily UI prompt", description: "15 mins on one Daily UI challenge.", category: "focus", difficulty: 1 },
+    { title: "Refine your typography", description: "Pick one project and fix the type system.", category: "skill", difficulty: 2 },
+    { title: "Save 3 inspirations", description: "Build your taste — collect refs that hit you.", category: "growth", difficulty: 1 },
+    { title: "Get a critique", description: "Share work and ask for one piece of feedback.", category: "mindset", difficulty: 2 },
+  ],
+  content: [
+    { title: "Write 200 words", description: "On anything — the reps build the muscle.", category: "skill", difficulty: 1 },
+    { title: "Outline one piece", description: "Headline, hook, 3 beats, CTA.", category: "focus", difficulty: 2 },
+    { title: "Edit ruthlessly", description: "Cut 20% from something you've written.", category: "skill", difficulty: 2 },
+    { title: "Study a great writer", description: "Read 10 mins of someone you want to write like.", category: "mindset", difficulty: 1 },
+    { title: "Publish a draft", description: "Hit post on something imperfect.", category: "hustle", difficulty: 3 },
+    { title: "Steal one structure", description: "Borrow a hook or format and remix it for your topic.", category: "growth", difficulty: 1 },
+  ],
+  languages: [
+    { title: "15 mins of practice", description: "App, flashcards, or a podcast in your target language.", category: "skill", difficulty: 1 },
+    { title: "Learn 10 new words", description: "Real ones you'd actually use in conversation.", category: "skill", difficulty: 2 },
+    { title: "Speak out loud", description: "5 minutes describing your day in the new language.", category: "hustle", difficulty: 2 },
+    { title: "Watch with subs", description: "10 mins of TV or YouTube in your target language.", category: "mindset", difficulty: 1 },
+    { title: "Write 3 sentences", description: "Journal a few lines about today.", category: "focus", difficulty: 1 },
+    { title: "Find a partner", description: "Message someone to chat or swap languages.", category: "growth", difficulty: 2 },
+  ],
+  speaking: [
+    { title: "Record a 60-sec take", description: "Talk about one idea on camera, no edits.", category: "skill", difficulty: 2 },
+    { title: "Study a great talk", description: "Watch 10 mins of a speaker you admire — note their moves.", category: "skill", difficulty: 1 },
+    { title: "Practice one story", description: "Tell a 90-second story out loud, twice.", category: "focus", difficulty: 2 },
+    { title: "Drill your filler words", description: "Speak for 2 mins without 'um' or 'like'.", category: "skill", difficulty: 3 },
+    { title: "Write your hook", description: "Draft an opening line that earns attention.", category: "growth", difficulty: 1 },
+    { title: "Pitch a friend", description: "Give your elevator pitch and ask for honest feedback.", category: "hustle", difficulty: 2 },
+  ],
+  finance: [
+    { title: "Track every dollar", description: "Log today's spending honestly.", category: "focus", difficulty: 1 },
+    { title: "Read 10 mins on money", description: "Article, chapter or essay about finance.", category: "skill", difficulty: 1 },
+    { title: "Review a subscription", description: "Audit one recurring charge — keep or kill.", category: "hustle", difficulty: 1 },
+    { title: "Run a 5-yr projection", description: "Quick napkin math on saving + investing.", category: "skill", difficulty: 3 },
+    { title: "Auto-invest something", description: "Even $5. Build the habit, not the size.", category: "growth", difficulty: 2 },
+    { title: "Write your money goal", description: "One number you want to hit by year-end.", category: "mindset", difficulty: 1 },
+  ],
+};
+
+function crashCourseFor(topic: SkillTopic | null): { idea: BusinessIdea; pool: TaskSeed[] } {
+  const t: SkillTopic = topic ?? "code";
+  const label = SKILL_LABELS[t];
+  const idea: BusinessIdea = {
+    id: `crashcourse-${t}`,
+    name: `${label} Crash Course`,
+    tagline: `Daily reps to actually learn ${label.toLowerCase()}`,
+    description: `A focused daily plan that turns ${label.toLowerCase()} from a topic you read about into a skill you actually own. Small reps, every day.`,
+    whyFit: `You picked ${label.toLowerCase()} — these tasks are tuned to compound week over week.`,
+    startupCost: "Free",
+    timeToIncome: "Skill > income",
+    firstMilestones: [
+      "Finish your first 7 days without skipping",
+      "Hit a 14-day streak",
+      "Ship something you can show someone",
+      "Teach what you learned in your own words",
+    ],
+  };
+  return { idea, pool: SKILL_TASKS[t] };
+}
 
 type PkgMap = {
   base_monthly?: PurchasesPackage;
@@ -25,7 +124,7 @@ type PkgMap = {
 
 export default function PaywallScreen() {
   const router = useRouter();
-  const { state, startSubscription, resetOnboarding } = useApp();
+  const { state, startSubscription, resetOnboarding, setBusiness } = useApp();
   const { user } = useAuth();
   const params = useLocalSearchParams<{ retry?: string; fromUpgrade?: string; initialPlan?: string; initialCycle?: string }>();
   const retry = params.retry === "1";
@@ -114,6 +213,10 @@ export default function PaywallScreen() {
         if (goal === "earn_income") {
           router.replace("/onboarding/match");
         } else {
+          if (goal === "build_skills") {
+            const cc = crashCourseFor(state.profile.skillTopic);
+            setBusiness(cc.idea, cc.pool);
+          }
           router.replace("/onboarding/complete");
         }
       } else {
@@ -155,6 +258,10 @@ export default function PaywallScreen() {
       if (goal === "earn_income") {
         router.replace("/onboarding/match");
       } else {
+        if (goal === "build_skills") {
+          const cc = crashCourseFor(state.profile.skillTopic);
+          setBusiness(cc.idea, cc.pool);
+        }
         router.replace("/onboarding/complete");
       }
       return;

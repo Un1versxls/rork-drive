@@ -22,6 +22,7 @@ import type {
   PlanId,
   PrimaryGoal,
   Priority,
+  SkillTopic,
   Source,
   Subscription,
   TaskSeed,
@@ -67,6 +68,7 @@ const DEFAULT_PROFILE: UserProfile = {
   email: "",
   appleUserId: null,
   goal: null,
+  skillTopic: null,
   goalDetail: "",
   industryDetail: "",
   obstacleDetail: "",
@@ -278,6 +280,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     budget?: Budget;
     obstacle?: Obstacle;
     source?: Source;
+    skillTopic?: SkillTopic;
     name?: string;
     goalDetail?: string;
     industryDetail?: string;

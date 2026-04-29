@@ -32,6 +32,16 @@ export type Obstacle =
 
 export type Source = "tiktok" | "instagram" | "friend" | "creator" | "other";
 
+export type SkillTopic =
+  | "code"
+  | "business"
+  | "marketing"
+  | "design"
+  | "content"
+  | "languages"
+  | "speaking"
+  | "finance";
+
 export type DeclineReason = "too_expensive" | "not_worth" | "no_money" | "browsing" | "other";
 
 export type PlanId = "base" | "premium";
@@ -112,6 +122,7 @@ export interface UserProfile {
   email: string;
   appleUserId: string | null;
   goal: PrimaryGoal | null;
+  skillTopic: SkillTopic | null;
   goalDetail: string;
   industryDetail: string;
   obstacleDetail: string;

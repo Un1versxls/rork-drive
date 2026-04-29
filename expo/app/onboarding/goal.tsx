@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
-import { Banknote, Brain, TrendingUp, Zap, type LucideIcon } from "lucide-react-native";
+import { Banknote, Brain, TrendingUp, type LucideIcon } from "lucide-react-native";
 
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { OptionCard } from "@/components/OptionCard";
@@ -11,9 +11,8 @@ import type { PrimaryGoal } from "@/types";
 
 const OPTIONS: { id: PrimaryGoal; label: string; description: string; Icon: LucideIcon; premium?: boolean }[] = [
   { id: "earn_income", label: "Earn extra income", description: "Side hustles, freelance, pitching", Icon: Banknote },
-  { id: "build_skills", label: "Build skills", description: "Learn, practice, level up", Icon: Brain },
+  { id: "build_skills", label: "Learn a skill", description: "Master code, marketing, design and more", Icon: Brain },
   { id: "grow_business", label: "Run / grow my business", description: "Use DRIVE to get real work done on your existing business", Icon: TrendingUp, premium: true },
-  { id: "stay_productive", label: "Stay productive", description: "Focus, routines, follow through", Icon: Zap },
 ];
 
 export default function GoalScreen() {
@@ -36,6 +35,8 @@ export default function GoalScreen() {
             setAnswers({ goal: selected });
             if (selected === "grow_business") {
               router.push("/onboarding/build-business");
+            } else if (selected === "build_skills") {
+              router.push("/onboarding/skill-topic");
             } else {
               router.push("/onboarding/experience");
             }
