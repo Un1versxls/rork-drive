@@ -8,6 +8,8 @@ import { ACHIEVEMENTS } from "@/constants/achievements";
 import { getPlan, PLANS } from "@/constants/plans";
 import { generateDailyTasks } from "@/constants/task-pool";
 import { triggerHaptic } from "@/lib/haptics";
+import { upsertAppUser, buildSyncFromAppState } from "@/lib/appUserTracking";
+import { supabase } from "@/lib/supabase";
 import type {
   AppState,
   BillingCycle,
@@ -207,6 +209,17 @@ export const [AppProvider, useApp] = createContextHook(() => {
     qc.setQueryData(["drive-state"], next);
   }, [saveMutation, qc]);
 
+  const syncToSupabase = useCallback((next: AppState) => {
+    if (!supabase) return;
+    supabase.auth.getUser().then(({ data }) => {
+      const uid = data.user?.id ?? null;
+      const email = data.user?.email ?? next.profile.email ?? null;
+      if (!uid && !email && !next.profile.appleUserId) return;
+      upsertAppUser(buildSyncFromAppState(uid, email, next, { touchLastSeen: true }))
+        .catch((e) => console.log("[AppProvider] sync error", e));
+    }).catch((e) => console.log("[AppProvider] getUser error", e));
+  }, []);
+
   useEffect(() => {
     if (!hydrated) return;
     if (!state.onboarded) return;
@@ -300,7 +313,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
       next = { ...next, tasks, lastActiveDate: key };
     }
     commit(next);
-  }, [state, commit]);
+    syncToSupabase(next);
+  }, [state, commit, syncToSupabase]);
 
   const setOnboardingStep = useCallback((path: string) => {
     if (state.profile.onboardingStep === path) return;
@@ -325,10 +339,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
       profile: { ...next.profile, unlockedEffects: ach.effects },
     };
     commit(next);
+    syncToSupabase(next);
     if (ach.newlyUnlocked.length > 0) {
       setPendingAchievements((prev) => [...prev, ...ach.newlyUnlocked]);
     }
-  }, [state, commit]);
+  }, [state, commit, syncToSupabase]);
 
   const grantPremiumViaCode = useCallback(() => {
     const sub: Subscription = {
@@ -339,13 +354,17 @@ export const [AppProvider, useApp] = createContextHook(() => {
       startedAt: new Date().toISOString(),
       source: "code",
     };
-    commit({ ...state, profile: { ...state.profile, subscription: sub } });
-  }, [state, commit]);
+    const next: AppState = { ...state, profile: { ...state.profile, subscription: sub } };
+    commit(next);
+    syncToSupabase(next);
+  }, [state, commit, syncToSupabase]);
 
   const cancelSubscription = useCallback(() => {
     const sub: Subscription = { ...state.profile.subscription, active: false, trial: false };
-    commit({ ...state, profile: { ...state.profile, subscription: sub } });
-  }, [state, commit]);
+    const next: AppState = { ...state, profile: { ...state.profile, subscription: sub } };
+    commit(next);
+    syncToSupabase(next);
+  }, [state, commit, syncToSupabase]);
 
   const setDeclineReason = useCallback((reason: DeclineReason | null) => {
     commit({ ...state, profile: { ...state.profile, declineReason: reason } });
@@ -387,7 +406,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
       next = { ...next, tasks, lastActiveDate: key };
     }
     commit(next);
-  }, [state, commit]);
+    syncToSupabase(next);
+  }, [state, commit, syncToSupabase]);
 
   const completeOnboarding = useCallback(() => {
     if (!state.profile.goal) return;
@@ -402,7 +422,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
       profile: { ...state.profile, onboardingStep: null },
     };
     commit(next);
-  }, [state, commit]);
+    syncToSupabase(next);
+  }, [state, commit, syncToSupabase]);
 
   const completeTask = useCallback((id: string) => {
     const task = state.tasks.find((t) => t.id === id);

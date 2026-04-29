@@ -5,6 +5,7 @@ import type { Session } from "@supabase/supabase-js";
 
 import { supabase, supabaseReady } from "@/lib/supabase";
 import { findLocalCode } from "@/constants/local-codes";
+import { upsertAppUser } from "@/lib/appUserTracking";
 import type { AuthUser } from "@/types";
 
 interface UserAccountRow {
@@ -43,10 +44,24 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setBooting(false);
+      if (data.session?.user) {
+        upsertAppUser({
+          userId: data.session.user.id,
+          email: data.session.user.email ?? null,
+          touchLastSeen: true,
+        }).catch((e) => console.log("[auth] sync on boot failed", e));
+      }
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       qc.invalidateQueries({ queryKey: ["user-account"] });
+      if (s?.user && (_event === "SIGNED_IN" || _event === "TOKEN_REFRESHED" || _event === "USER_UPDATED")) {
+        upsertAppUser({
+          userId: s.user.id,
+          email: s.user.email ?? null,
+          touchLastSeen: true,
+        }).catch((e) => console.log("[auth] sync on auth change failed", e));
+      }
     });
     return () => { sub.subscription.unsubscribe(); };
   }, [qc]);

@@ -67,6 +67,8 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
   const [input, setInput] = useState<string>("");
   const [thinking, setThinking] = useState<boolean>(false);
   const scrollRef = useRef<ScrollView | null>(null);
+  const chatBoxYRef = useRef<number>(0);
+  const inputRowYRef = useRef<number>(0);
 
   const steps = useMemo<TaskStep[]>(() => (task ? generateSteps(task) : []), [task]);
   const meta = task ? CATEGORY_META[task.category] : null;
@@ -195,14 +197,9 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
             <ScrollView
               ref={scrollRef}
               style={styles.scrollView}
-              contentContainerStyle={[styles.scroll, chatOpen && { paddingBottom: 360 }]}
+              contentContainerStyle={[styles.scroll, chatOpen && { paddingBottom: 120 }]}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
-              onContentSizeChange={() => {
-                if (chatOpen) {
-                  requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
-                }
-              }}
             >
               <Text style={styles.title}>{task.title}</Text>
               <Text style={styles.desc}>{task.description}</Text>
@@ -253,13 +250,13 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
                 triggerHaptic("tap", hapticsEnabled);
                 if (willOpen && messages.length === 0) askQuickStart();
                 if (willOpen) {
-                  setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
-                  setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 320);
-                  setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 600);
-                }
-              }} onLayout={() => {
-                if (chatOpen) {
-                  setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+                  const scrollToInput = () => {
+                    const y = Math.max(0, chatBoxYRef.current - 24);
+                    scrollRef.current?.scrollTo({ y, animated: true });
+                  };
+                  setTimeout(scrollToInput, 160);
+                  setTimeout(scrollToInput, 380);
+                  setTimeout(scrollToInput, 700);
                 }
               }} style={styles.coachToggle}>
                 <View style={styles.coachIcon}>
@@ -277,7 +274,12 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
               </Pressable>
 
               {chatOpen ? (
-                <View style={styles.chatBox}>
+                <View
+                  style={styles.chatBox}
+                  onLayout={(e) => {
+                    chatBoxYRef.current = e.nativeEvent.layout.y;
+                  }}
+                >
                   <View style={styles.chatBanner}>
                     <MessageCircle color={Colors.accentDeep} size={12} />
                     <Text style={styles.chatBannerText}>The coach only asks questions — it won&apos;t do the work for you.</Text>
@@ -294,7 +296,12 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
                       </View>
                     ) : null}
                   </View>
-                  <View style={styles.inputRow}>
+                  <View
+                    style={styles.inputRow}
+                    onLayout={(e) => {
+                      inputRowYRef.current = chatBoxYRef.current + e.nativeEvent.layout.y;
+                    }}
+                  >
                     <TextInput
                       value={input}
                       onChangeText={setInput}
@@ -303,6 +310,10 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
                       style={styles.input}
                       multiline
                       testID="coach-input"
+                      onFocus={() => {
+                        const y = Math.max(0, inputRowYRef.current - 80);
+                        setTimeout(() => scrollRef.current?.scrollTo({ y, animated: true }), 100);
+                      }}
                     />
                     <Pressable
                       onPress={sendToCoach}
