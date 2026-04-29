@@ -17,42 +17,29 @@ const STEP = {
 export default function TryFreeScreen() {
   const router = useRouter();
 
-  const phoneFall = useRef(new Animated.Value(0)).current;
+  const phoneEntry = useRef(new Animated.Value(0)).current;
+  const phoneExit = useRef(new Animated.Value(0)).current;
   const phoneBounce = useRef(new Animated.Value(0)).current;
   const tableShadow = useRef(new Animated.Value(0)).current;
+  const entryDirection = useRef<'top' | 'left' | 'right'>('top');
+  const [, forceRerender] = React.useState<number>(0);
   const stepValue = useRef(new Animated.Value(0)).current;
   const tapPulse = useRef(new Animated.Value(0)).current;
   const aiPanel = useRef(new Animated.Value(0)).current;
   const checkPop = useRef(new Animated.Value(0)).current;
   const sparkleOpacity = useRef(new Animated.Value(0)).current;
   const streakPop = useRef(new Animated.Value(0)).current;
-  const flamePop = useRef(new Animated.Value(0)).current;
+  const flameSplash = useRef(new Animated.Value(0)).current;
+  const flameSplash2 = useRef(new Animated.Value(0)).current;
+  const flameDroplets = useRef(new Animated.Value(0)).current;
   const streakCount = useRef(new Animated.Value(7)).current;
   const [streakDisplay, setStreakDisplay] = React.useState<number>(7);
   const pointsPop = useRef(new Animated.Value(0)).current;
   const splash = useRef(new Animated.Value(0)).current;
   const splash2 = useRef(new Animated.Value(0)).current;
+  const goldStreak = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.sequence([
-      Animated.delay(140),
-      Animated.timing(phoneFall, {
-        toValue: 1,
-        duration: 520,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.parallel([
-        Animated.sequence([
-          Animated.timing(phoneBounce, { toValue: 1, duration: 140, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-          Animated.timing(phoneBounce, { toValue: 0.35, duration: 180, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-          Animated.timing(phoneBounce, { toValue: 0.7, duration: 120, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-          Animated.timing(phoneBounce, { toValue: 0, duration: 220, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-        ]),
-        Animated.timing(tableShadow, { toValue: 1, duration: 360, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-      ]),
-    ]).start();
-
     Animated.loop(
       Animated.sequence([
         Animated.timing(sparkleOpacity, { toValue: 1, duration: 1200, useNativeDriver: true }),
@@ -65,62 +52,121 @@ export default function TryFreeScreen() {
       setStreakDisplay(Math.round(value));
     });
 
+    const enterPhone = (first: boolean): Promise<void> => {
+      const dirs: Array<'top' | 'left' | 'right'> = first
+        ? ['top']
+        : ['left', 'right', 'top'];
+      entryDirection.current = dirs[Math.floor(Math.random() * dirs.length)];
+      forceRerender((n) => n + 1);
+      phoneEntry.setValue(0);
+      phoneExit.setValue(0);
+      phoneBounce.setValue(0);
+      tableShadow.setValue(0);
+      return new Promise<void>((resolve) => {
+        Animated.sequence([
+          Animated.delay(first ? 140 : 220),
+          Animated.timing(phoneEntry, {
+            toValue: 1,
+            duration: 640,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.parallel([
+            Animated.sequence([
+              Animated.timing(phoneBounce, { toValue: 1, duration: 160, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+              Animated.timing(phoneBounce, { toValue: 0.35, duration: 200, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+              Animated.timing(phoneBounce, { toValue: 0.7, duration: 140, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+              Animated.timing(phoneBounce, { toValue: 0, duration: 240, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+            ]),
+            Animated.timing(tableShadow, { toValue: 1, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          ]),
+        ]).start(() => resolve());
+      });
+    };
+
+    const exitPhone = (): Promise<void> => {
+      return new Promise<void>((resolve) => {
+        Animated.parallel([
+          Animated.timing(phoneExit, {
+            toValue: 1,
+            duration: 600,
+            easing: Easing.in(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(tableShadow, { toValue: 0, duration: 500, useNativeDriver: true }),
+        ]).start(() => resolve());
+      });
+    };
+
     const runLoop = async () => {
+      let first = true;
       while (!cancelled) {
+        await enterPhone(first);
+        first = false;
+        if (cancelled) return;
         streakCount.setValue(7);
         setStreakDisplay(7);
-        await new Promise<void>((resolve) => setTimeout(resolve, 900));
+        await new Promise<void>((resolve) => setTimeout(resolve, 1100));
         if (cancelled) return;
         // tap task
         Animated.parallel([
-          Animated.timing(stepValue, { toValue: STEP.TAP_TASK, duration: 250, useNativeDriver: false }),
+          Animated.timing(stepValue, { toValue: STEP.TAP_TASK, duration: 320, useNativeDriver: false }),
           Animated.sequence([
-            Animated.timing(tapPulse, { toValue: 1, duration: 320, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-            Animated.timing(tapPulse, { toValue: 0, duration: 280, useNativeDriver: true }),
+            Animated.timing(tapPulse, { toValue: 1, duration: 420, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+            Animated.timing(tapPulse, { toValue: 0, duration: 360, useNativeDriver: true }),
           ]),
         ]).start();
 
-        await new Promise<void>((resolve) => setTimeout(resolve, 850));
+        await new Promise<void>((resolve) => setTimeout(resolve, 1100));
         if (cancelled) return;
         // AI panel slides up
         Animated.parallel([
-          Animated.timing(stepValue, { toValue: STEP.AI_PANEL, duration: 250, useNativeDriver: false }),
-          Animated.spring(aiPanel, { toValue: 1, friction: 7, tension: 80, useNativeDriver: true }),
+          Animated.timing(stepValue, { toValue: STEP.AI_PANEL, duration: 320, useNativeDriver: false }),
+          Animated.spring(aiPanel, { toValue: 1, friction: 7, tension: 70, useNativeDriver: true }),
         ]).start();
 
-        await new Promise<void>((resolve) => setTimeout(resolve, 1600));
+        await new Promise<void>((resolve) => setTimeout(resolve, 2100));
         if (cancelled) return;
         // complete task
         splash.setValue(0);
         splash2.setValue(0);
+        goldStreak.setValue(0);
+        flameSplash.setValue(0);
+        flameSplash2.setValue(0);
+        flameDroplets.setValue(0);
         Animated.parallel([
-          Animated.timing(stepValue, { toValue: STEP.COMPLETE, duration: 250, useNativeDriver: false }),
-          Animated.timing(aiPanel, { toValue: 0, duration: 350, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
-          Animated.spring(checkPop, { toValue: 1, friction: 4, tension: 140, useNativeDriver: true }),
-          Animated.timing(splash, { toValue: 1, duration: 650, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          Animated.timing(stepValue, { toValue: STEP.COMPLETE, duration: 320, useNativeDriver: false }),
+          Animated.timing(aiPanel, { toValue: 0, duration: 420, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+          Animated.spring(checkPop, { toValue: 1, friction: 4, tension: 130, useNativeDriver: true }),
+          Animated.timing(splash, { toValue: 1, duration: 800, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          Animated.sequence([
+            Animated.delay(100),
+            Animated.timing(splash2, { toValue: 1, duration: 850, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          ]),
+          Animated.sequence([
+            Animated.delay(140),
+            Animated.timing(goldStreak, { toValue: 1, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          ]),
+        ]).start();
+
+        await new Promise<void>((resolve) => setTimeout(resolve, 360));
+        if (cancelled) return;
+        // streak goes up + points pop + flame splash effect
+        Animated.parallel([
+          Animated.spring(streakPop, { toValue: 1, friction: 4, tension: 150, useNativeDriver: true }),
+          Animated.spring(pointsPop, { toValue: 1, friction: 4, tension: 150, useNativeDriver: true }),
+          Animated.timing(streakCount, { toValue: 8, duration: 520, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
+          Animated.timing(flameSplash, { toValue: 1, duration: 800, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
           Animated.sequence([
             Animated.delay(80),
-            Animated.timing(splash2, { toValue: 1, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+            Animated.timing(flameSplash2, { toValue: 1, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
           ]),
+          Animated.timing(flameDroplets, { toValue: 1, duration: 950, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
         ]).start();
 
-        await new Promise<void>((resolve) => setTimeout(resolve, 280));
+        await new Promise<void>((resolve) => setTimeout(resolve, 1900));
         if (cancelled) return;
-        // streak goes up + points pop + flame becomes huge
-        Animated.parallel([
-          Animated.spring(streakPop, { toValue: 1, friction: 4, tension: 160, useNativeDriver: true }),
-          Animated.spring(pointsPop, { toValue: 1, friction: 4, tension: 160, useNativeDriver: true }),
-          Animated.timing(streakCount, { toValue: 8, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
-          Animated.sequence([
-            Animated.spring(flamePop, { toValue: 1, friction: 4, tension: 110, useNativeDriver: true }),
-            Animated.delay(900),
-            Animated.timing(flamePop, { toValue: 0, duration: 380, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
-          ]),
-        ]).start();
-
-        await new Promise<void>((resolve) => setTimeout(resolve, 1700));
-        if (cancelled) return;
-        // reset
+        // reset before exit
         Animated.parallel([
           Animated.timing(stepValue, { toValue: STEP.IDLE, duration: 350, useNativeDriver: false }),
           Animated.timing(checkPop, { toValue: 0, duration: 300, useNativeDriver: true }),
@@ -128,7 +174,16 @@ export default function TryFreeScreen() {
           Animated.timing(pointsPop, { toValue: 0, duration: 300, useNativeDriver: true }),
           Animated.timing(splash, { toValue: 0, duration: 200, useNativeDriver: true }),
           Animated.timing(splash2, { toValue: 0, duration: 200, useNativeDriver: true }),
+          Animated.timing(flameSplash, { toValue: 0, duration: 250, useNativeDriver: true }),
+          Animated.timing(flameSplash2, { toValue: 0, duration: 250, useNativeDriver: true }),
+          Animated.timing(flameDroplets, { toValue: 0, duration: 250, useNativeDriver: true }),
+          Animated.timing(goldStreak, { toValue: 0, duration: 250, useNativeDriver: true }),
         ]).start();
+        await new Promise<void>((resolve) => setTimeout(resolve, 350));
+        if (cancelled) return;
+        // phone falls out the bottom
+        await exitPhone();
+        if (cancelled) return;
       }
     };
     runLoop();
@@ -137,12 +192,21 @@ export default function TryFreeScreen() {
       cancelled = true;
       streakCount.removeListener(streakListener);
     };
-  }, [phoneFall, phoneBounce, tableShadow, stepValue, tapPulse, aiPanel, checkPop, sparkleOpacity, streakPop, streakCount, pointsPop, flamePop, splash, splash2]);
+  }, [phoneEntry, phoneExit, phoneBounce, tableShadow, stepValue, tapPulse, aiPanel, checkPop, sparkleOpacity, streakPop, streakCount, pointsPop, flameSplash, flameSplash2, flameDroplets, splash, splash2, goldStreak, entryDirection]);
 
-  const fallTranslateY = phoneFall.interpolate({ inputRange: [0, 1], outputRange: [-460, 0] });
+  const dir = entryDirection.current;
+  const entryStartX = dir === 'left' ? -380 : dir === 'right' ? 380 : 0;
+  const entryStartY = dir === 'top' ? -480 : 0;
+  const entryStartRotate = dir === 'left' ? '-22deg' : dir === 'right' ? '22deg' : '-26deg';
+  const enterTranslateX = phoneEntry.interpolate({ inputRange: [0, 1], outputRange: [entryStartX, 0] });
+  const enterTranslateY = phoneEntry.interpolate({ inputRange: [0, 1], outputRange: [entryStartY, 0] });
+  const exitTranslateY = phoneExit.interpolate({ inputRange: [0, 1], outputRange: [0, 720] });
+  const exitRotate = phoneExit.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "18deg"] });
+  const fallTranslateX = enterTranslateX;
+  const fallTranslateY = Animated.add(enterTranslateY, exitTranslateY);
   const bounceTranslateY = phoneBounce.interpolate({ inputRange: [0, 1], outputRange: [0, -24] });
-  const phoneRotate = phoneFall.interpolate({ inputRange: [0, 1], outputRange: ["-26deg", "-3deg"] });
-  const phoneScale = phoneFall.interpolate({ inputRange: [0, 0.7, 1], outputRange: [0.78, 0.92, 1] });
+  const phoneRotate = phoneEntry.interpolate({ inputRange: [0, 1], outputRange: [entryStartRotate, "-3deg"] });
+  const phoneScale = phoneEntry.interpolate({ inputRange: [0, 0.7, 1], outputRange: [0.78, 0.92, 1] });
   const shadowScale = tableShadow.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1] });
   const shadowOpacity = tableShadow.interpolate({ inputRange: [0, 1], outputRange: [0, 0.35] });
 
@@ -168,11 +232,22 @@ export default function TryFreeScreen() {
   const splash2Opacity = splash2.interpolate({ inputRange: [0, 0.25, 1], outputRange: [0, 0.6, 0] });
   const streakScale = streakPop.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.25, 1.1] });
   const streakGlow = streakPop.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
-  const flameScale = flamePop.interpolate({ inputRange: [0, 0.4, 0.7, 1], outputRange: [1, 4.4, 5.2, 4.8] });
-  const flameTranslateY = flamePop.interpolate({ inputRange: [0, 1], outputRange: [0, -18] });
-  const flameAura = flamePop.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0.9, 0.7] });
-  const flameAuraScale = flamePop.interpolate({ inputRange: [0, 1], outputRange: [0.6, 2.6] });
+  const flameSplashScale = flameSplash.interpolate({ inputRange: [0, 1], outputRange: [0.3, 4.2] });
+  const flameSplashOpacity = flameSplash.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 0.85, 0] });
+  const flameSplash2Scale = flameSplash2.interpolate({ inputRange: [0, 1], outputRange: [0.3, 5.4] });
+  const flameSplash2Opacity = flameSplash2.interpolate({ inputRange: [0, 0.25, 1], outputRange: [0, 0.6, 0] });
+  const dropletOpacity = flameDroplets.interpolate({ inputRange: [0, 0.15, 0.85, 1], outputRange: [0, 1, 1, 0] });
+  const droplet1X = flameDroplets.interpolate({ inputRange: [0, 1], outputRange: [0, -22] });
+  const droplet1Y = flameDroplets.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, -16, 6] });
+  const droplet2X = flameDroplets.interpolate({ inputRange: [0, 1], outputRange: [0, 24] });
+  const droplet2Y = flameDroplets.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, -20, 4] });
+  const droplet3X = flameDroplets.interpolate({ inputRange: [0, 1], outputRange: [0, -8] });
+  const droplet3Y = flameDroplets.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, -28, 0] });
+  const droplet4X = flameDroplets.interpolate({ inputRange: [0, 1], outputRange: [0, 14] });
+  const droplet4Y = flameDroplets.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, -10, 10] });
   const pointsScale = pointsPop.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.2, 1.08] });
+  const goldStreakTranslate = goldStreak.interpolate({ inputRange: [0, 1], outputRange: [-180, 180] });
+  const goldStreakOpacity = goldStreak.interpolate({ inputRange: [0, 0.15, 0.85, 1], outputRange: [0, 1, 1, 0] });
   const plusOneTranslate = streakPop.interpolate({ inputRange: [0, 1], outputRange: [0, -22] });
   const plusOneOpacity = streakPop.interpolate({ inputRange: [0, 0.2, 0.8, 1], outputRange: [0, 1, 1, 0] });
 
@@ -210,8 +285,10 @@ export default function TryFreeScreen() {
               styles.phone,
               {
                 transform: [
+                  { translateX: fallTranslateX },
                   { translateY: Animated.add(fallTranslateY, bounceTranslateY) },
                   { rotate: phoneRotate },
+                  { rotate: exitRotate },
                   { scale: phoneScale },
                 ],
               },
@@ -235,17 +312,15 @@ export default function TryFreeScreen() {
               <View style={styles.streakRow}>
                 <Animated.View style={[styles.streakChip, { transform: [{ scale: streakScale }] }]}>
                   <Animated.View style={[styles.streakGlow, { opacity: streakGlow }]} pointerEvents="none" />
-                  <Animated.View style={[styles.flameAura, { opacity: flameAura, transform: [{ scale: flameAuraScale }] }]} pointerEvents="none" />
-                  <Animated.Text
-                    style={[
-                      styles.streakEmoji,
-                      {
-                        transform: [{ scale: flameScale }, { translateY: flameTranslateY }],
-                      },
-                    ]}
-                  >
-                    🔥
-                  </Animated.Text>
+                  <View style={styles.flameWrap} pointerEvents="none">
+                    <Animated.View style={[styles.flameSplashRing, { opacity: flameSplashOpacity, transform: [{ scale: flameSplashScale }] }]} />
+                    <Animated.View style={[styles.flameSplashRing2, { opacity: flameSplash2Opacity, transform: [{ scale: flameSplash2Scale }] }]} />
+                    <Animated.Text style={[styles.flameDroplet, { opacity: dropletOpacity, transform: [{ translateX: droplet1X }, { translateY: droplet1Y }] }]}>✦</Animated.Text>
+                    <Animated.Text style={[styles.flameDroplet, { opacity: dropletOpacity, transform: [{ translateX: droplet2X }, { translateY: droplet2Y }] }]}>✦</Animated.Text>
+                    <Animated.Text style={[styles.flameDroplet, { opacity: dropletOpacity, transform: [{ translateX: droplet3X }, { translateY: droplet3Y }] }]}>✦</Animated.Text>
+                    <Animated.Text style={[styles.flameDroplet, { opacity: dropletOpacity, transform: [{ translateX: droplet4X }, { translateY: droplet4Y }] }]}>✦</Animated.Text>
+                  </View>
+                  <Text style={styles.streakEmoji}>🔥</Text>
                   <Text style={styles.streakText}>{streakDisplay} day streak</Text>
                   <Animated.Text
                     style={[
@@ -309,7 +384,16 @@ export default function TryFreeScreen() {
                     </Animated.View>
                   </Animated.View>
                   </View>
-                  <Text style={styles.taskTitle} numberOfLines={1}>Pitch 5 local shops</Text>
+                  <View style={styles.taskTitleWrap}>
+                    <Text style={styles.taskTitle} numberOfLines={1}>Pitch 5 local shops</Text>
+                    <Animated.View
+                      style={[
+                        styles.goldStreak,
+                        { opacity: goldStreakOpacity, transform: [{ translateX: goldStreakTranslate }, { rotate: "18deg" }] },
+                      ]}
+                      pointerEvents="none"
+                    />
+                  </View>
                 </View>
                 <Text style={styles.taskDesc} numberOfLines={2}>
                   Send personalized DMs offering a free audit.
@@ -516,13 +600,36 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   streakEmoji: { fontSize: 10 },
-  flameAura: {
+  flameWrap: {
     position: "absolute",
-    left: 0,
-    width: 16,
-    height: 16,
+    left: 4,
+    width: 12,
+    height: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  flameSplashRing: {
+    position: "absolute",
+    width: 14,
+    height: 14,
     borderRadius: 999,
-    backgroundColor: "rgba(251,146,60,0.55)",
+    borderWidth: 2,
+    borderColor: "#fb923c",
+    backgroundColor: "rgba(251,146,60,0.45)",
+  },
+  flameSplashRing2: {
+    position: "absolute",
+    width: 14,
+    height: 14,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: "rgba(234,88,12,0.55)",
+  },
+  flameDroplet: {
+    position: "absolute",
+    fontSize: 9,
+    color: "#ea580c",
+    fontWeight: "900",
   },
   streakText: { color: "#9a3412", fontSize: 9, fontWeight: "900" },
   pointsChip: {
@@ -565,7 +672,23 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   taskRadioDim: { width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: "#dddddd" },
-  taskTitle: { color: Colors.text, fontSize: 12, fontWeight: "800", flex: 1 },
+  taskTitle: { color: Colors.text, fontSize: 12, fontWeight: "800" },
+  taskTitleWrap: {
+    flex: 1,
+    overflow: "hidden",
+    justifyContent: "center",
+  },
+  goldStreak: {
+    position: "absolute",
+    top: -10,
+    bottom: -10,
+    width: 28,
+    backgroundColor: "rgba(255,215,120,0.85)",
+    shadowColor: "#facc15",
+    shadowOpacity: 0.9,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+  },
   taskTitleDim: { color: Colors.textDim, fontSize: 12, fontWeight: "700", flex: 1 },
   taskDesc: { color: Colors.textDim, fontSize: 10, marginTop: 6, lineHeight: 14, marginLeft: 26 },
   tapWrap: {
