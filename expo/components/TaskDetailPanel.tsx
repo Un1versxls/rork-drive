@@ -66,6 +66,7 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState<string>("");
   const [thinking, setThinking] = useState<boolean>(false);
+  const scrollRef = useRef<ScrollView | null>(null);
 
   const steps = useMemo<TaskStep[]>(() => (task ? generateSteps(task) : []), [task]);
   const meta = task ? CATEGORY_META[task.category] : null;
@@ -191,7 +192,18 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
               </Pressable>
             </View>
 
-            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <ScrollView
+              ref={scrollRef}
+              style={styles.scrollView}
+              contentContainerStyle={[styles.scroll, chatOpen && { paddingBottom: 220 }]}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              onContentSizeChange={() => {
+                if (chatOpen) {
+                  requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+                }
+              }}
+            >
               <Text style={styles.title}>{task.title}</Text>
               <Text style={styles.desc}>{task.description}</Text>
 
@@ -235,7 +247,15 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
                 })}
               </View>
 
-              <Pressable onPress={() => { setChatOpen((v) => !v); triggerHaptic("tap", hapticsEnabled); if (!chatOpen && messages.length === 0) askQuickStart(); }} style={styles.coachToggle}>
+              <Pressable onPress={() => {
+                const willOpen = !chatOpen;
+                setChatOpen(willOpen);
+                triggerHaptic("tap", hapticsEnabled);
+                if (willOpen && messages.length === 0) askQuickStart();
+                if (willOpen) {
+                  setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
+                }
+              }} style={styles.coachToggle}>
                 <View style={styles.coachIcon}>
                   <BrainCircuit color={Colors.accentDeep} size={16} />
                 </View>
