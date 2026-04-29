@@ -197,7 +197,7 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
             <ScrollView
               ref={scrollRef}
               style={styles.scrollView}
-              contentContainerStyle={[styles.scroll, chatOpen && { paddingBottom: 120 }]}
+              contentContainerStyle={[styles.scroll, chatOpen && { paddingBottom: 480 }]}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
@@ -311,8 +311,9 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
                       multiline
                       testID="coach-input"
                       onFocus={() => {
-                        const y = Math.max(0, inputRowYRef.current - 80);
+                        const y = Math.max(0, inputRowYRef.current - 40);
                         setTimeout(() => scrollRef.current?.scrollTo({ y, animated: true }), 100);
+                        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 260);
                       }}
                     />
                     <Pressable
