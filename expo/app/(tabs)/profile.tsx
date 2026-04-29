@@ -2,8 +2,10 @@ import React, { useEffect, useRef, useState } from "react";
 import { Alert, Animated, Easing, LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, UIManager, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, ChevronDown, ChevronRight, Cloud, CloudOff, Crown, Gift, LogIn, LogOut, Pencil, RefreshCw, Shield, Sparkles, Star, Vibrate } from "lucide-react-native";
+import { buildSyncFromAppState, upsertAppUser } from "@/lib/appUserTracking";
+import { supabase } from "@/lib/supabase";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -53,6 +55,48 @@ export default function ProfileScreen() {
     staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
+  const migrateMutation = useMutation({
+    mutationFn: async () => {
+      if (!supabase) throw new Error("Supabase not configured");
+      const { data } = await supabase.auth.getUser();
+      const uid = data.user?.id ?? null;
+      const email = data.user?.email ?? state.profile.email ?? null;
+      if (!uid && !email && !state.profile.appleUserId) {
+        throw new Error("Sign in required to sync");
+      }
+      const res = await upsertAppUser(buildSyncFromAppState(uid, email, state, { touchLastSeen: true }));
+      if (!res.ok) throw new Error(res.error ?? "Sync failed");
+      return res;
+    },
+    onSuccess: () => {
+      triggerHaptic("success", state.profile.hapticsEnabled);
+      pingQuery.refetch();
+      if (Platform.OS === "web") {
+        if (typeof window !== "undefined") window.alert("Synced! All your data has been migrated to the cloud.");
+      } else {
+        Alert.alert("Synced", "All your data has been migrated to the cloud.");
+      }
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "Sync failed";
+      triggerHaptic("warning", state.profile.hapticsEnabled);
+      if (Platform.OS === "web") {
+        if (typeof window !== "undefined") window.alert(`Sync failed: ${msg}`);
+      } else {
+        Alert.alert("Sync failed", msg);
+      }
+    },
+  });
+
+  const onPressStatus = () => {
+    triggerHaptic("light", state.profile.hapticsEnabled);
+    if (!supabaseReady) {
+      pingQuery.refetch();
+      return;
+    }
+    migrateMutation.mutate();
+  };
+
   const connected = !!pingQuery.data?.ok;
   const connStatus: "unknown" | "connected" | "offline" = !supabaseReady
     ? "offline"
@@ -102,16 +146,20 @@ export default function ProfileScreen() {
           <View style={styles.headerRow}>
             <Text style={styles.header}>Profile</Text>
             <Pressable
-              onPress={() => pingQuery.refetch()}
+              onPress={onPressStatus}
+              disabled={migrateMutation.isPending}
               hitSlop={8}
               style={[
                 styles.statusPill,
                 connStatus === "connected" ? styles.statusPillOn : null,
                 connStatus === "offline" ? styles.statusPillOff : null,
+                migrateMutation.isPending ? { opacity: 0.7 } : null,
               ]}
               testID="conn-status-pill"
             >
-              {connStatus === "connected" ? (
+              {migrateMutation.isPending ? (
+                <RefreshCw size={11} color={Colors.textDim} />
+              ) : connStatus === "connected" ? (
                 <Cloud size={11} color="#0a7f3f" />
               ) : connStatus === "offline" ? (
                 <CloudOff size={11} color="#a33" />
@@ -125,7 +173,9 @@ export default function ProfileScreen() {
                   connStatus === "offline" ? styles.statusTextOff : null,
                 ]}
               >
-                {connStatus === "connected"
+                {migrateMutation.isPending
+                  ? "Syncing…"
+                  : connStatus === "connected"
                   ? "Connected"
                   : connStatus === "offline"
                   ? supabaseReady ? "Offline" : "Not set up"
