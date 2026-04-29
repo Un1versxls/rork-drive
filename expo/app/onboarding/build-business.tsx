@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { ActivityIndicator, Animated, Easing, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Animated, Easing, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Clock, DollarSign, Sparkles, Target, X } from "lucide-react-native";
@@ -109,6 +109,11 @@ Return:
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+        <KeyboardAvoidingView
+          style={styles.kav}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={0}
+        >
         <View style={styles.header}>
           <Pressable onPress={onClose} hitSlop={14} style={styles.closeBtn} testID="bb-close">
             <X color={Colors.text} size={20} />
@@ -232,6 +237,7 @@ Return:
             </Pressable>
           </View>
         ) : null}
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
   );
@@ -279,6 +285,7 @@ function MetaPill({ icon, text }: { icon: React.ReactNode; text: string }) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#ffffff" },
   safe: { flex: 1, paddingHorizontal: 22 },
+  kav: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 6, paddingBottom: 12 },
   closeBtn: {
     width: 36,

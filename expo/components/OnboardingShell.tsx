@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronLeft } from "lucide-react-native";
 import { useRouter, usePathname, type Href } from "expo-router";
@@ -63,6 +63,11 @@ export function OnboardingShell({ step, total, title, subtitle, children, footer
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+        <KeyboardAvoidingView
+          style={styles.kav}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={0}
+        >
         <View style={styles.topRow}>
           {canGoBack ? (
             <Pressable
@@ -95,6 +100,7 @@ export function OnboardingShell({ step, total, title, subtitle, children, footer
         </Animated.View>
 
         <View style={styles.footer}>{footer}</View>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
   );
@@ -103,6 +109,7 @@ export function OnboardingShell({ step, total, title, subtitle, children, footer
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#ffffff" },
   safe: { flex: 1, paddingHorizontal: 22 },
+  kav: { flex: 1 },
   topRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingTop: 6, paddingBottom: 18 },
   backBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
   progressTrack: { flex: 1, height: 4, borderRadius: 2, backgroundColor: "#f0f0f0", overflow: "hidden" },
