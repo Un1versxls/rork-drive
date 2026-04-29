@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -69,6 +70,31 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
   const scrollRef = useRef<ScrollView | null>(null);
   const chatBoxYRef = useRef<number>(0);
   const inputRowYRef = useRef<number>(0);
+  const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
+
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvt, (e) => {
+      const h = e?.endCoordinates?.height ?? 0;
+      setKeyboardHeight(h);
+      setTimeout(() => {
+        const y = Math.max(0, inputRowYRef.current - 24);
+        scrollRef.current?.scrollTo({ y, animated: true });
+      }, 60);
+      setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, 220);
+    });
+    const hideSub = Keyboard.addListener(hideEvt, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const steps = useMemo<TaskStep[]>(() => (task ? generateSteps(task) : []), [task]);
   const meta = task ? CATEGORY_META[task.category] : null;
@@ -197,7 +223,10 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
             <ScrollView
               ref={scrollRef}
               style={styles.scrollView}
-              contentContainerStyle={[styles.scroll, chatOpen && { paddingBottom: 480 }]}
+              contentContainerStyle={[
+                styles.scroll,
+                chatOpen && { paddingBottom: 320 + (Platform.OS === "ios" ? keyboardHeight : 0) },
+              ]}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
