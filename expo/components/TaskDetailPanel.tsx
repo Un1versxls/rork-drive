@@ -253,7 +253,7 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
                 <View style={styles.whyBox}>
                   <Text style={styles.whyLabel}>WHY THIS MATTERS</Text>
                   <Text style={styles.whyText}>
-                    For {business.name}, this compounds toward: {business.firstMilestones[0] ?? business.tagline}.
+                    For {business.name}, this compounds toward: {business.firstMilestones?.[0] ?? business.tagline ?? "your next milestone"}.
                   </Text>
                 </View>
               ) : null}
