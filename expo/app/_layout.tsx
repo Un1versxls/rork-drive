@@ -10,6 +10,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppProvider } from "@/providers/AppProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { Colors } from "@/constants/colors";
+import { KeyboardToolbar } from "@/components/KeyboardToolbar";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -49,6 +50,7 @@ export default function RootLayout() {
               <View style={styles.root}>
                 <StatusBar style="dark" />
                 <RootLayoutNav />
+                <KeyboardToolbar />
               </View>
             </AppProvider>
           </AuthProvider>
