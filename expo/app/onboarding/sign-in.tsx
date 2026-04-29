@@ -41,14 +41,12 @@ export default function OnboardingSignInScreen() {
       }
       const row = await fetchAppUser({ userId, email: clean });
       if (row) {
-        const ready = hydrateFromAppUser(row);
-        if (ready) {
-          console.log("[sign-in] existing user — going to dashboard");
-          router.replace("/(tabs)/tasks");
-          return;
-        }
+        hydrateFromAppUser(row);
+        console.log("[sign-in] existing user — going to dashboard (skipping business generation)");
+        router.replace("/(tabs)/tasks");
+        return;
       }
-      console.log("[sign-in] success, advancing onboarding");
+      console.log("[sign-in] no app_users row found — advancing onboarding");
       router.replace("/onboarding/source");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Couldn't sign in. Check your details.";
