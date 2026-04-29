@@ -26,9 +26,12 @@ export default function TryFreeScreen() {
   const checkPop = useRef(new Animated.Value(0)).current;
   const sparkleOpacity = useRef(new Animated.Value(0)).current;
   const streakPop = useRef(new Animated.Value(0)).current;
+  const flamePop = useRef(new Animated.Value(0)).current;
   const streakCount = useRef(new Animated.Value(7)).current;
   const [streakDisplay, setStreakDisplay] = React.useState<number>(7);
   const pointsPop = useRef(new Animated.Value(0)).current;
+  const splash = useRef(new Animated.Value(0)).current;
+  const splash2 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.sequence([
@@ -88,22 +91,34 @@ export default function TryFreeScreen() {
         await new Promise<void>((resolve) => setTimeout(resolve, 1600));
         if (cancelled) return;
         // complete task
+        splash.setValue(0);
+        splash2.setValue(0);
         Animated.parallel([
           Animated.timing(stepValue, { toValue: STEP.COMPLETE, duration: 250, useNativeDriver: false }),
           Animated.timing(aiPanel, { toValue: 0, duration: 350, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
           Animated.spring(checkPop, { toValue: 1, friction: 4, tension: 140, useNativeDriver: true }),
+          Animated.timing(splash, { toValue: 1, duration: 650, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          Animated.sequence([
+            Animated.delay(80),
+            Animated.timing(splash2, { toValue: 1, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          ]),
         ]).start();
 
         await new Promise<void>((resolve) => setTimeout(resolve, 280));
         if (cancelled) return;
-        // streak goes up + points pop
+        // streak goes up + points pop + flame becomes huge
         Animated.parallel([
           Animated.spring(streakPop, { toValue: 1, friction: 4, tension: 160, useNativeDriver: true }),
           Animated.spring(pointsPop, { toValue: 1, friction: 4, tension: 160, useNativeDriver: true }),
           Animated.timing(streakCount, { toValue: 8, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
+          Animated.sequence([
+            Animated.spring(flamePop, { toValue: 1, friction: 4, tension: 110, useNativeDriver: true }),
+            Animated.delay(900),
+            Animated.timing(flamePop, { toValue: 0, duration: 380, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+          ]),
         ]).start();
 
-        await new Promise<void>((resolve) => setTimeout(resolve, 1100));
+        await new Promise<void>((resolve) => setTimeout(resolve, 1700));
         if (cancelled) return;
         // reset
         Animated.parallel([
@@ -111,6 +126,8 @@ export default function TryFreeScreen() {
           Animated.timing(checkPop, { toValue: 0, duration: 300, useNativeDriver: true }),
           Animated.timing(streakPop, { toValue: 0, duration: 300, useNativeDriver: true }),
           Animated.timing(pointsPop, { toValue: 0, duration: 300, useNativeDriver: true }),
+          Animated.timing(splash, { toValue: 0, duration: 200, useNativeDriver: true }),
+          Animated.timing(splash2, { toValue: 0, duration: 200, useNativeDriver: true }),
         ]).start();
       }
     };
@@ -120,7 +137,7 @@ export default function TryFreeScreen() {
       cancelled = true;
       streakCount.removeListener(streakListener);
     };
-  }, [phoneFall, phoneBounce, tableShadow, stepValue, tapPulse, aiPanel, checkPop, sparkleOpacity, streakPop, streakCount, pointsPop]);
+  }, [phoneFall, phoneBounce, tableShadow, stepValue, tapPulse, aiPanel, checkPop, sparkleOpacity, streakPop, streakCount, pointsPop, flamePop, splash, splash2]);
 
   const fallTranslateY = phoneFall.interpolate({ inputRange: [0, 1], outputRange: [-460, 0] });
   const bounceTranslateY = phoneBounce.interpolate({ inputRange: [0, 1], outputRange: [0, -24] });
@@ -145,8 +162,16 @@ export default function TryFreeScreen() {
   });
 
   const checkScale = checkPop.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+  const splashScale = splash.interpolate({ inputRange: [0, 1], outputRange: [0.2, 3.4] });
+  const splashOpacity = splash.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 0.85, 0] });
+  const splash2Scale = splash2.interpolate({ inputRange: [0, 1], outputRange: [0.2, 4.6] });
+  const splash2Opacity = splash2.interpolate({ inputRange: [0, 0.25, 1], outputRange: [0, 0.6, 0] });
   const streakScale = streakPop.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.25, 1.1] });
   const streakGlow = streakPop.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+  const flameScale = flamePop.interpolate({ inputRange: [0, 0.4, 0.7, 1], outputRange: [1, 4.4, 5.2, 4.8] });
+  const flameTranslateY = flamePop.interpolate({ inputRange: [0, 1], outputRange: [0, -18] });
+  const flameAura = flamePop.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0.9, 0.7] });
+  const flameAuraScale = flamePop.interpolate({ inputRange: [0, 1], outputRange: [0.6, 2.6] });
   const pointsScale = pointsPop.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.2, 1.08] });
   const plusOneTranslate = streakPop.interpolate({ inputRange: [0, 1], outputRange: [0, -22] });
   const plusOneOpacity = streakPop.interpolate({ inputRange: [0, 0.2, 0.8, 1], outputRange: [0, 1, 1, 0] });
@@ -210,7 +235,17 @@ export default function TryFreeScreen() {
               <View style={styles.streakRow}>
                 <Animated.View style={[styles.streakChip, { transform: [{ scale: streakScale }] }]}>
                   <Animated.View style={[styles.streakGlow, { opacity: streakGlow }]} pointerEvents="none" />
-                  <Text style={styles.streakEmoji}>🔥</Text>
+                  <Animated.View style={[styles.flameAura, { opacity: flameAura, transform: [{ scale: flameAuraScale }] }]} pointerEvents="none" />
+                  <Animated.Text
+                    style={[
+                      styles.streakEmoji,
+                      {
+                        transform: [{ scale: flameScale }, { translateY: flameTranslateY }],
+                      },
+                    ]}
+                  >
+                    🔥
+                  </Animated.Text>
                   <Text style={styles.streakText}>{streakDisplay} day streak</Text>
                   <Animated.Text
                     style={[
@@ -233,6 +268,27 @@ export default function TryFreeScreen() {
                 ]}
               >
                 <View style={styles.taskHead}>
+                  <View style={styles.radioWrap}>
+                  <Animated.View
+                    style={[
+                      styles.splashRing,
+                      {
+                        opacity: splashOpacity,
+                        transform: [{ scale: splashScale }],
+                      },
+                    ]}
+                    pointerEvents="none"
+                  />
+                  <Animated.View
+                    style={[
+                      styles.splashRing2,
+                      {
+                        opacity: splash2Opacity,
+                        transform: [{ scale: splash2Scale }],
+                      },
+                    ]}
+                    pointerEvents="none"
+                  />
                   <Animated.View
                     style={[
                       styles.taskRadio,
@@ -252,6 +308,7 @@ export default function TryFreeScreen() {
                       <Check size={11} color="#ffffff" strokeWidth={4} />
                     </Animated.View>
                   </Animated.View>
+                  </View>
                   <Text style={styles.taskTitle} numberOfLines={1}>Pitch 5 local shops</Text>
                 </View>
                 <Text style={styles.taskDesc} numberOfLines={2}>
@@ -459,6 +516,14 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   streakEmoji: { fontSize: 10 },
+  flameAura: {
+    position: "absolute",
+    left: 0,
+    width: 16,
+    height: 16,
+    borderRadius: 999,
+    backgroundColor: "rgba(251,146,60,0.55)",
+  },
   streakText: { color: "#9a3412", fontSize: 9, fontWeight: "900" },
   pointsChip: {
     paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999,
@@ -474,6 +539,26 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   taskHead: { flexDirection: "row", alignItems: "center", gap: 8 },
+  radioWrap: {
+    width: 18, height: 18, alignItems: "center", justifyContent: "center",
+  },
+  splashRing: {
+    position: "absolute",
+    width: 18,
+    height: 18,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderColor: "#16a34a",
+    backgroundColor: "rgba(34,197,94,0.35)",
+  },
+  splashRing2: {
+    position: "absolute",
+    width: 18,
+    height: 18,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: "rgba(34,197,94,0.6)",
+  },
   taskRadio: {
     width: 18, height: 18, borderRadius: 9,
     borderWidth: 1.5,
