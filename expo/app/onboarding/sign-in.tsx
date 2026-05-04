@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { OnboardingShell } from "@/components/OnboardingShell";
@@ -7,13 +7,14 @@ import { GradientButton } from "@/components/GradientButton";
 import { Colors } from "@/constants/colors";
 import { useAuth } from "@/providers/AuthProvider";
 import { useApp } from "@/providers/AppProvider";
-import { fetchAppUser } from "@/lib/appUserTracking";
+import { fetchAppUser, type AppUserRow } from "@/lib/appUserTracking";
 import { supabase } from "@/lib/supabase";
+import type { BusinessIdea } from "@/types";
 
 export default function OnboardingSignInScreen() {
   const router = useRouter();
   const { signIn, signInPending, ready } = useAuth();
-  const { setProfileField, hydrateFromAppUser } = useApp();
+  const { state, setProfileField, hydrateFromAppUser, setAnswers, setBusiness } = useApp();
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +42,19 @@ export default function OnboardingSignInScreen() {
       }
       const row = await fetchAppUser({ userId, email: clean });
       if (row) {
+        const conflict = detectConflict(state.profile, row);
+        if (conflict) {
+          showChooser({
+            localLabel: conflict.localLabel,
+            cloudLabel: conflict.cloudLabel,
+            onKeepNew: () => applyHydrationKeepingLocal(row),
+            onUseSaved: () => {
+              hydrateFromAppUser(row);
+              router.replace("/(tabs)/tasks");
+            },
+          });
+          return;
+        }
         hydrateFromAppUser(row);
         console.log("[sign-in] existing user — going to dashboard (skipping business generation)");
         router.replace("/(tabs)/tasks");
@@ -53,6 +67,34 @@ export default function OnboardingSignInScreen() {
       console.log("[sign-in] failed", msg);
       setError(msg);
     }
+  };
+
+  const applyHydrationKeepingLocal = (row: AppUserRow) => {
+    // Snapshot the local picks before hydrate overwrites them.
+    const localGoal = state.profile.goal;
+    const localSkillTopic = state.profile.skillTopic;
+    const localBusiness = state.profile.business;
+    const localTaskPool = state.profile.businessTaskPool;
+    const localDayMode = state.profile.dayTradingMode;
+    const localDayMarket = state.profile.dayTradingMarket;
+    const localDayCapital = state.profile.dayTradingCapital;
+
+    hydrateFromAppUser(row);
+
+    // Re-apply the freshly-picked path on top of cloud progress.
+    setTimeout(() => {
+      setAnswers({
+        ...(localGoal ? { goal: localGoal } : {}),
+        ...(localSkillTopic ? { skillTopic: localSkillTopic } : {}),
+      });
+      if (localBusiness) {
+        setBusiness(localBusiness as BusinessIdea, localTaskPool ?? []);
+      }
+      if (localDayMode) setProfileField("dayTradingMode", localDayMode);
+      if (localDayMarket) setProfileField("dayTradingMarket", localDayMarket);
+      if (localDayCapital) setProfileField("dayTradingCapital", localDayCapital);
+      router.replace("/(tabs)/tasks");
+    }, 50);
   };
 
   return (
@@ -106,6 +148,48 @@ export default function OnboardingSignInScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </View>
     </OnboardingShell>
+  );
+}
+
+interface Conflict { localLabel: string; cloudLabel: string }
+
+function goalLabel(goal: string | null | undefined, skillTopic: string | null | undefined, businessName: string | null | undefined, dayMode: string | null | undefined): string | null {
+  if (businessName) return businessName;
+  if (dayMode) return dayMode === "learn" ? "Learn day trading" : "Day trading hustle";
+  if (skillTopic) return `Learn ${skillTopic}`;
+  if (goal === "income") return "Earn extra income";
+  if (goal === "skill") return "Learn a skill";
+  if (goal === "business") return "Start a business";
+  if (goal) return String(goal);
+  return null;
+}
+
+function detectConflict(local: { goal: string | null; skillTopic: string | null; business: { id: string; name: string } | null; dayTradingMode: string | null }, row: AppUserRow): Conflict | null {
+  const localPicked = !!(local.goal || local.skillTopic || local.business || local.dayTradingMode);
+  if (!localPicked) return null;
+  const cloudPicked = !!(row.goal || row.skill_topic || row.business_id || row.day_trading_mode);
+  if (!cloudPicked) return null;
+
+  const sameGoal = (local.goal ?? null) === (row.goal ?? null);
+  const sameSkill = (local.skillTopic ?? null) === (row.skill_topic ?? null);
+  const sameBusiness = (local.business?.id ?? null) === (row.business_id ?? null);
+  const sameDay = (local.dayTradingMode ?? null) === (row.day_trading_mode ?? null);
+  if (sameGoal && sameSkill && sameBusiness && sameDay) return null;
+
+  const localLabel = goalLabel(local.goal, local.skillTopic, local.business?.name ?? null, local.dayTradingMode) ?? "your new pick";
+  const cloudLabel = goalLabel(row.goal ?? null, row.skill_topic ?? null, row.business_name ?? null, row.day_trading_mode ?? null) ?? "your saved path";
+  return { localLabel, cloudLabel };
+}
+
+function showChooser(opts: { localLabel: string; cloudLabel: string; onKeepNew: () => void; onUseSaved: () => void }) {
+  Alert.alert(
+    "Which path do you want?",
+    `You just picked "${opts.localLabel}", but your account is set to "${opts.cloudLabel}".`,
+    [
+      { text: `Keep ${opts.localLabel}`, onPress: opts.onKeepNew },
+      { text: `Use ${opts.cloudLabel}`, onPress: opts.onUseSaved, style: "default" },
+    ],
+    { cancelable: false },
   );
 }
 
