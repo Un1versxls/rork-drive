@@ -113,6 +113,7 @@ export default function PlanSummaryScreen() {
   const { state, setBusiness } = useApp();
   const profile = state.profile;
   const isSkill = profile.goal === "build_skills";
+  const isDayTrading = profile.goal === "day_trading";
 
   useEffect(() => {
     if (isSkill && !profile.business) {
@@ -131,9 +132,10 @@ export default function PlanSummaryScreen() {
 
   const eyebrow = useMemo(() => {
     if (isSkill) return "YOUR CRASH COURSE";
+    if (isDayTrading) return "YOUR TRADING PLAN";
     if (profile.goal === "grow_business") return "YOUR PLAN";
     return "YOUR BUSINESS";
-  }, [isSkill, profile.goal]);
+  }, [isSkill, isDayTrading, profile.goal]);
 
   return (
     <OnboardingShell
@@ -191,7 +193,7 @@ export default function PlanSummaryScreen() {
           <Text style={styles.empty}>Setting up your plan...</Text>
         )}
 
-        {!isSkill && profile.goal !== "grow_business" ? (
+        {!isSkill && !isDayTrading && profile.goal !== "grow_business" ? (
           <View style={styles.swapNote}>
             <Sparkles size={11} color={Colors.accentDeep} />
             <Text style={styles.swapNoteText}>

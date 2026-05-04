@@ -32,11 +32,24 @@ const PRODUCTIVE: TaskSeed[] = [
   { title: "Evening review", description: "Reflect: what worked, what to change tomorrow.", category: "mindset", difficulty: 2 },
 ];
 
+const DAY_TRADING: TaskSeed[] = [
+  { title: "Paper trade 30 minutes", description: "Practice your strategy on a simulator — no real money risk.", category: "skill", difficulty: 2 },
+  { title: "Journal yesterday's trade", description: "Note the setup, entry, exit, and what you'd do differently.", category: "mindset", difficulty: 1 },
+  { title: "Watch one market open", description: "Observe the first 30 minutes — the most volatile window of the day.", category: "focus", difficulty: 1 },
+  { title: "Study one chart pattern", description: "Pick a pattern (flag, double-top, breakout) and find 3 examples.", category: "skill", difficulty: 2 },
+  { title: "Review your risk rules", description: "Read your risk-management rules out loud before market open.", category: "mindset", difficulty: 1 },
+  { title: "Set a daily loss limit", description: "Decide the max you'll lose today — stop trading when you hit it.", category: "focus", difficulty: 1 },
+  { title: "Backtest one strategy", description: "Test your edge on 20 historical setups before risking capital.", category: "skill", difficulty: 3 },
+  { title: "Track your stats", description: "Log win rate, average win, average loss for this week.", category: "hustle", difficulty: 2 },
+  { title: "Read 10 mins of trading psychology", description: "Trading is 80% mental — work the muscle.", category: "skill", difficulty: 1 },
+];
+
 const POOL: Record<PrimaryGoal, TaskSeed[]> = {
   earn_income: EARN,
   build_skills: SKILLS,
   grow_business: BUSINESS,
   stay_productive: PRODUCTIVE,
+  day_trading: DAY_TRADING,
 };
 
 export function generateDailyTasks(
@@ -45,7 +58,7 @@ export function generateDailyTasks(
   dateKey: string,
   businessTaskPool?: TaskSeed[]
 ): Task[] {
-  const primary = POOL[goal];
+  const primary = POOL[goal] ?? PRODUCTIVE;
   const business = businessTaskPool ?? [];
   const all = [...business, ...primary, ...PRODUCTIVE];
   const picked: TaskSeed[] = [];

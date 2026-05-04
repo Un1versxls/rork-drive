@@ -1,23 +1,55 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Redirect } from "expo-router";
 
 import { useApp } from "@/providers/AppProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { SplashLoader } from "@/components/SplashLoader";
+import { fetchAppUser } from "@/lib/appUserTracking";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 export default function Index() {
-  const { hydrated, state } = useApp();
+  const { hydrated, state, hydrateFromAppUser } = useApp();
   const { booting, session } = useAuth();
   const [minShown, setMinShown] = useState<boolean>(false);
+  const [cloudChecked, setCloudChecked] = useState<boolean>(false);
+  const fetchedFor = useRef<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setMinShown(true), 2000);
     return () => clearTimeout(t);
   }, []);
 
-  if (!hydrated || !minShown || booting) {
+  // If we have a session but the local AppState is empty (fresh device after
+  // sign-in), pull the cloud record once before deciding where to send them.
+  // This prevents the "sign-in -> kicked back to sign-in" loop on TestFlight.
+  useEffect(() => {
+    const userId = session?.user?.id ?? null;
+    if (!hydrated || !session) {
+      setCloudChecked(true);
+      return;
+    }
+    if (state.onboarded) {
+      setCloudChecked(true);
+      return;
+    }
+    if (fetchedFor.current === userId) return;
+    fetchedFor.current = userId;
+    (async () => {
+      try {
+        const row = await fetchAppUser({ userId, email: session.user.email ?? null });
+        if (row) {
+          hydrateFromAppUser(row);
+        }
+      } catch (e) {
+        console.log("[index] cloud restore error", e);
+      } finally {
+        setCloudChecked(true);
+      }
+    })();
+  }, [hydrated, session, state.onboarded, hydrateFromAppUser]);
+
+  if (!hydrated || !minShown || booting || !cloudChecked) {
     return <SplashLoader />;
   }
 

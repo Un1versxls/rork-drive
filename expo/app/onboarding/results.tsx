@@ -11,6 +11,7 @@ import type { PrimaryGoal } from "@/types";
 
 function nextRouteForGoal(goal: PrimaryGoal | null): string {
   if (goal === "earn_income") return "/onboarding/industry";
+  if (goal === "day_trading") return "/onboarding/obstacle";
   return "/onboarding/obstacle";
 }
 

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { Banknote, Brain, TrendingUp, type LucideIcon } from "lucide-react-native";
+import { Banknote, Brain, CandlestickChart, TrendingUp, type LucideIcon } from "lucide-react-native";
 
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { OptionCard } from "@/components/OptionCard";
@@ -12,6 +12,7 @@ import type { PrimaryGoal } from "@/types";
 
 const OPTIONS: { id: PrimaryGoal; label: string; description: string; Icon: LucideIcon; premium?: boolean }[] = [
   { id: "earn_income", label: "Earn extra income", description: "Side hustles, freelance, pitching", Icon: Banknote },
+  { id: "day_trading", label: "Day trading", description: "Start a side hustle or learn the fundamentals", Icon: CandlestickChart },
   { id: "build_skills", label: "Learn a skill", description: "Master code, marketing, design and more", Icon: Brain },
   { id: "grow_business", label: "Run / grow my business", description: "Use DRIVE to get real work done on your existing business", Icon: TrendingUp, premium: true },
 ];
@@ -39,6 +40,8 @@ export default function GoalScreen() {
                 router.push("/onboarding/build-business");
               } else if (selected === "build_skills") {
                 router.push("/onboarding/skill-topic");
+              } else if (selected === "day_trading") {
+                router.push("/onboarding/day-trading");
               } else {
                 router.push("/onboarding/experience");
               }

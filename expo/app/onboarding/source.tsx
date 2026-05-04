@@ -11,6 +11,8 @@ import type { Source } from "@/types";
 
 function nextAfterSource(goal: string | null): string {
   if (goal === "earn_income") return "/onboarding/match";
+  // Day trading already has its plan built during the day-trading screen.
+  if (goal === "day_trading") return "/onboarding/plan-summary";
   return "/onboarding/plan-summary";
 }
 

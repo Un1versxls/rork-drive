@@ -31,6 +31,8 @@ export default function CompleteScreen() {
           <Text style={styles.subtitle}>
             {state.profile.goal === "build_skills"
               ? "Your crash course is locked in and your first tasks are ready."
+              : state.profile.goal === "day_trading"
+              ? "Your trading playbook is set and your first tasks are ready."
               : state.profile.goal === "earn_income" || state.profile.goal === "grow_business"
               ? "Your business is matched and your first tasks are ready."
               : "Your daily plan is ready to go."}
@@ -38,7 +40,7 @@ export default function CompleteScreen() {
 
           {state.profile.business ? (
             <View style={styles.card}>
-              <Text style={styles.cardLabel}>{state.profile.goal === "build_skills" ? "YOUR CRASH COURSE" : "YOUR BUSINESS"}</Text>
+              <Text style={styles.cardLabel}>{state.profile.goal === "build_skills" ? "YOUR CRASH COURSE" : state.profile.goal === "day_trading" ? "YOUR TRADING PLAN" : "YOUR BUSINESS"}</Text>
               <Text style={styles.cardName}>{state.profile.business.name}</Text>
               <Text style={styles.cardTag}>{state.profile.business.tagline}</Text>
             </View>

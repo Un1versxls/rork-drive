@@ -98,6 +98,9 @@ const DEFAULT_PROFILE: UserProfile = {
   customBuildCount: 0,
   businessSwitchMonth: null,
   businessSwitchCount: 0,
+  dayTradingMode: null,
+  dayTradingMarket: null,
+  dayTradingCapital: null,
 };
 
 const DEFAULT_STATE: AppState = {
@@ -205,12 +208,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
     mutationFn: saveState,
   });
 
-  const commit = useCallback((next: AppState) => {
-    setState(next);
-    saveMutation.mutate(next);
-    qc.setQueryData(["drive-state"], next);
-  }, [saveMutation, qc]);
-
   const syncToSupabase = useCallback((next: AppState) => {
     if (!supabase) return;
     supabase.auth.getUser().then(({ data }) => {
@@ -221,6 +218,15 @@ export const [AppProvider, useApp] = createContextHook(() => {
         .catch((e) => console.log("[AppProvider] sync error", e));
     }).catch((e) => console.log("[AppProvider] getUser error", e));
   }, []);
+
+  const commit = useCallback((next: AppState) => {
+    setState(next);
+    saveMutation.mutate(next);
+    qc.setQueryData(["drive-state"], next);
+    // Continuously mirror the full state to Supabase so signing in on
+    // a different device restores everything (tasks, streak, switches, etc.)
+    syncToSupabase(next);
+  }, [saveMutation, qc, syncToSupabase]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -512,6 +518,32 @@ export const [AppProvider, useApp] = createContextHook(() => {
   }, [state, commit]);
 
   const hydrateFromAppUser = useCallback((row: AppUserRow): boolean => {
+    // If we have a full state blob, restore it verbatim — same exact
+    // experience across devices.
+    if (row.state_blob && typeof row.state_blob === "object") {
+      const blob = row.state_blob as Partial<AppState>;
+      const merged: AppState = {
+        ...DEFAULT_STATE,
+        ...blob,
+        profile: {
+          ...DEFAULT_PROFILE,
+          ...(blob.profile ?? {}),
+          notificationPrefs: { ...DEFAULT_NOTIF_PREFS, ...(blob.profile?.notificationPrefs ?? {}) },
+          subscription: { ...DEFAULT_SUBSCRIPTION, ...(blob.profile?.subscription ?? {}) },
+          unlockedEffects: blob.profile?.unlockedEffects ?? ["none"],
+        },
+        tasks: Array.isArray(blob.tasks) ? blob.tasks : [],
+        history: blob.history ?? {},
+        unlockedBadges: Array.isArray(blob.unlockedBadges) ? blob.unlockedBadges : [],
+        unlockedAchievements: Array.isArray(blob.unlockedAchievements) ? blob.unlockedAchievements : [],
+      };
+      // Keep email/name in sync with what the row has if blob is missing them.
+      if (!merged.profile.email && row.email) merged.profile.email = row.email;
+      if (!merged.profile.name && row.name) merged.profile.name = row.name;
+      commit(merged);
+      return merged.onboarded && !!merged.profile.goal;
+    }
+
     const profile: UserProfile = {
       ...state.profile,
       name: row.name ?? state.profile.name,
@@ -544,6 +576,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
         startedAt: row.subscription_started_at ?? state.profile.subscription.startedAt,
         source: (row.subscription_source as Subscription["source"] | null) ?? state.profile.subscription.source,
       },
+      dayTradingMode: (row.day_trading_mode as UserProfile["dayTradingMode"]) ?? state.profile.dayTradingMode,
+      dayTradingMarket: (row.day_trading_market as UserProfile["dayTradingMarket"]) ?? state.profile.dayTradingMarket,
+      dayTradingCapital: (row.day_trading_capital as UserProfile["dayTradingCapital"]) ?? state.profile.dayTradingCapital,
     };
     const onboarded = row.onboarded === true || state.onboarded;
     const next: AppState = {

@@ -23,6 +23,12 @@ export interface AppUserUpsertInput {
     bestStreak?: number;
     lastActiveDate?: string | null;
   } | null;
+  stateBlob?: AppState | null;
+  dayTrading?: {
+    mode: string | null;
+    market: string | null;
+    capital: string | null;
+  } | null;
   touchLastSeen?: boolean;
 }
 
@@ -75,6 +81,16 @@ function buildPayload(input: AppUserUpsertInput): Record<string, unknown> {
     if (input.stats.lastActiveDate !== undefined) payload.last_active_date = input.stats.lastActiveDate;
   }
 
+  if (input.stateBlob !== undefined) {
+    payload.state_blob = input.stateBlob;
+  }
+
+  if (input.dayTrading) {
+    payload.day_trading_mode = input.dayTrading.mode;
+    payload.day_trading_market = input.dayTrading.market;
+    payload.day_trading_capital = input.dayTrading.capital;
+  }
+
   return payload;
 }
 
@@ -108,9 +124,13 @@ export interface AppUserRow {
   streak: number | null;
   best_streak: number | null;
   last_active_date: string | null;
+  state_blob: AppState | null;
+  day_trading_mode: string | null;
+  day_trading_market: string | null;
+  day_trading_capital: string | null;
 }
 
-const APP_USER_COLUMNS = "id, user_id, apple_user_id, email, name, subscription_plan, subscription_cycle, subscription_active, subscription_trial, subscription_source, subscription_started_at, goal, skill_topic, experience, time_commitment, priority, industry, budget, obstacle, source, decline_reason, business_id, business_name, business_tagline, onboarded, points, streak, best_streak, last_active_date";
+const APP_USER_COLUMNS = "id, user_id, apple_user_id, email, name, subscription_plan, subscription_cycle, subscription_active, subscription_trial, subscription_source, subscription_started_at, goal, skill_topic, experience, time_commitment, priority, industry, budget, obstacle, source, decline_reason, business_id, business_name, business_tagline, onboarded, points, streak, best_streak, last_active_date, state_blob, day_trading_mode, day_trading_market, day_trading_capital";
 
 export async function fetchAppUser(by: { userId?: string | null; email?: string | null }): Promise<AppUserRow | null> {
   if (!supabaseReady || !supabase) return null;
@@ -284,6 +304,12 @@ export function buildSyncFromAppState(
       streak: state.streak,
       bestStreak: state.bestStreak,
       lastActiveDate: state.lastActiveDate,
+    },
+    stateBlob: state,
+    dayTrading: {
+      mode: p.dayTradingMode,
+      market: p.dayTradingMarket,
+      capital: p.dayTradingCapital,
     },
     touchLastSeen: opts?.touchLastSeen ?? false,
   };

@@ -2,7 +2,12 @@ export type PrimaryGoal =
   | "earn_income"
   | "build_skills"
   | "grow_business"
-  | "stay_productive";
+  | "stay_productive"
+  | "day_trading";
+
+export type DayTradingMode = "hustle" | "learn";
+export type DayTradingMarket = "stocks" | "crypto" | "forex" | "options";
+export type DayTradingCapital = "under_500" | "500_2000" | "2000_10000" | "10000_plus";
 
 export type ExperienceLevel = "beginner" | "intermediate" | "advanced" | "expert";
 
@@ -150,6 +155,9 @@ export interface UserProfile {
   customBuildCount: number;
   businessSwitchMonth: string | null;
   businessSwitchCount: number;
+  dayTradingMode: DayTradingMode | null;
+  dayTradingMarket: DayTradingMarket | null;
+  dayTradingCapital: DayTradingCapital | null;
 }
 
 export interface AuthUser {
