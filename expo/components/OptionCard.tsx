@@ -14,9 +14,10 @@ interface Props {
   testID?: string;
   premium?: boolean;
   goldBorder?: boolean;
+  trending?: boolean;
 }
 
-export function OptionCard({ label, description, selected, onPress, Icon, testID, premium, goldBorder }: Props) {
+export function OptionCard({ label, description, selected, onPress, Icon, testID, premium, goldBorder, trending }: Props) {
   const handle = () => {
     triggerHaptic("select", true);
     onPress();
@@ -46,6 +47,11 @@ export function OptionCard({ label, description, selected, onPress, Icon, testID
               <View style={styles.premiumBadge}>
                 <Crown color="#7a5a00" size={10} strokeWidth={2.6} />
                 <Text style={styles.premiumText}>PREMIUM</Text>
+              </View>
+            ) : null}
+            {trending ? (
+              <View style={styles.trendingBadge}>
+                <Text style={styles.trendingText}>TRENDING</Text>
               </View>
             ) : null}
           </View>
@@ -115,4 +121,17 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   premiumText: { color: "#7a5a00", fontSize: 9, fontWeight: "800", letterSpacing: 0.6 },
+  trendingBadge: {
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: Colors.accentGold,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    shadowColor: Colors.accentGold,
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  trendingText: { color: Colors.accentGold, fontSize: 9, fontWeight: "800", letterSpacing: 0.6 },
 });
