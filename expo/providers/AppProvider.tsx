@@ -1,7 +1,7 @@
 import createContextHook from "@nkzw/create-context-hook";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { BADGES } from "@/constants/badges";
 import { ACHIEVEMENTS } from "@/constants/achievements";
@@ -187,6 +187,7 @@ function evaluateAchievements(state: AppState): { ids: string[]; effects: NameEf
 
 export const [AppProvider, useApp] = createContextHook(() => {
   const [state, setState] = useState<AppState>(DEFAULT_STATE);
+  const stateRef = useRef<AppState>(DEFAULT_STATE);
   const [hydrated, setHydrated] = useState<boolean>(false);
   const [pendingAchievements, setPendingAchievements] = useState<string[]>([]);
   const qc = useQueryClient();
@@ -199,6 +200,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   useEffect(() => {
     if (stateQuery.data && !hydrated) {
+      stateRef.current = stateQuery.data;
       setState(stateQuery.data);
       setHydrated(true);
     }
@@ -220,6 +222,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
   }, []);
 
   const commit = useCallback((next: AppState) => {
+    // Update ref synchronously so consecutive setter calls in the same
+    // tick compose against the latest state instead of clobbering each
+    // other. Without this, calling setAnswers + setProfileField +
+    // setBusiness back-to-back would only keep the final mutation
+    // (the rest, including `goal`, would silently be lost — which
+    // resulted in 0 generated tasks).
+    stateRef.current = next;
     setState(next);
     saveMutation.mutate(next);
     qc.setQueryData(["drive-state"], next);
@@ -267,30 +276,33 @@ export const [AppProvider, useApp] = createContextHook(() => {
   }, [hydrated, state, commit]);
 
   const setProfileField = useCallback(<K extends keyof UserProfile>(key: K, value: UserProfile[K]) => {
-    const next: AppState = { ...state, profile: { ...state.profile, [key]: value } };
+    const prev = stateRef.current;
+    const next: AppState = { ...prev, profile: { ...prev.profile, [key]: value } };
     commit(next);
-  }, [state, commit]);
+  }, [commit]);
 
   const setNotificationPrefs = useCallback((prefs: Partial<NotificationPrefs>) => {
+    const prev = stateRef.current;
     const next: AppState = {
-      ...state,
+      ...prev,
       profile: {
-        ...state.profile,
-        notificationPrefs: { ...state.profile.notificationPrefs, ...prefs },
+        ...prev.profile,
+        notificationPrefs: { ...prev.profile.notificationPrefs, ...prefs },
       },
     };
     commit(next);
-  }, [state, commit]);
+  }, [commit]);
 
   const equipEffect = useCallback((effect: NameEffect) => {
-    if (!state.profile.unlockedEffects.includes(effect)) return;
+    const prev = stateRef.current;
+    if (!prev.profile.unlockedEffects.includes(effect)) return;
     const next: AppState = {
-      ...state,
-      profile: { ...state.profile, equippedEffect: effect },
+      ...prev,
+      profile: { ...prev.profile, equippedEffect: effect },
     };
     commit(next);
-    triggerHaptic("celebrate", state.profile.hapticsEnabled);
-  }, [state, commit]);
+    triggerHaptic("celebrate", prev.profile.hapticsEnabled);
+  }, [commit]);
 
   const setAnswers = useCallback((a: {
     goal?: PrimaryGoal;
@@ -307,14 +319,15 @@ export const [AppProvider, useApp] = createContextHook(() => {
     industryDetail?: string;
     obstacleDetail?: string;
   }) => {
+    const prev = stateRef.current;
     let next: AppState = {
-      ...state,
+      ...prev,
       profile: {
-        ...state.profile,
+        ...prev.profile,
         ...a,
       },
     };
-    if (state.onboarded && a.goal && a.goal !== state.profile.goal) {
+    if (prev.onboarded && a.goal && a.goal !== prev.profile.goal) {
       const plan = getPlan(next.profile.subscription.plan);
       const key = todayKey();
       const tasks = generateDailyTasks(a.goal, plan.taskLimit, key, next.profile.businessTaskPool);
@@ -322,13 +335,14 @@ export const [AppProvider, useApp] = createContextHook(() => {
     }
     commit(next);
     syncToSupabase(next);
-  }, [state, commit, syncToSupabase]);
+  }, [commit, syncToSupabase]);
 
   const setOnboardingStep = useCallback((path: string) => {
-    if (state.profile.onboardingStep === path) return;
-    const next: AppState = { ...state, profile: { ...state.profile, onboardingStep: path } };
+    const prev = stateRef.current;
+    if (prev.profile.onboardingStep === path) return;
+    const next: AppState = { ...prev, profile: { ...prev.profile, onboardingStep: path } };
     commit(next);
-  }, [state, commit]);
+  }, [commit]);
 
   const startSubscription = useCallback((plan: PlanId, cycle: BillingCycle, opts?: { source?: Subscription["source"] }) => {
     const sub: Subscription = {
@@ -339,7 +353,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
       startedAt: new Date().toISOString(),
       source: opts?.source ?? "trial",
     };
-    let next: AppState = { ...state, profile: { ...state.profile, subscription: sub } };
+    const prev = stateRef.current;
+    let next: AppState = { ...prev, profile: { ...prev.profile, subscription: sub } };
     const ach = evaluateAchievements(next);
     next = {
       ...next,
@@ -349,9 +364,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
     commit(next);
     syncToSupabase(next);
     if (ach.newlyUnlocked.length > 0) {
-      setPendingAchievements((prev) => [...prev, ...ach.newlyUnlocked]);
+      setPendingAchievements((p) => [...p, ...ach.newlyUnlocked]);
     }
-  }, [state, commit, syncToSupabase]);
+  }, [commit, syncToSupabase]);
 
   const grantPremiumViaCode = useCallback(() => {
     const sub: Subscription = {
@@ -362,61 +377,67 @@ export const [AppProvider, useApp] = createContextHook(() => {
       startedAt: new Date().toISOString(),
       source: "code",
     };
-    const next: AppState = { ...state, profile: { ...state.profile, subscription: sub } };
+    const prev = stateRef.current;
+    const next: AppState = { ...prev, profile: { ...prev.profile, subscription: sub } };
     commit(next);
     syncToSupabase(next);
-  }, [state, commit, syncToSupabase]);
+  }, [commit, syncToSupabase]);
 
   const cancelSubscription = useCallback(() => {
-    const sub: Subscription = { ...state.profile.subscription, active: false, trial: false };
-    const next: AppState = { ...state, profile: { ...state.profile, subscription: sub } };
+    const prev = stateRef.current;
+    const sub: Subscription = { ...prev.profile.subscription, active: false, trial: false };
+    const next: AppState = { ...prev, profile: { ...prev.profile, subscription: sub } };
     commit(next);
     syncToSupabase(next);
-  }, [state, commit, syncToSupabase]);
+  }, [commit, syncToSupabase]);
 
   const setDeclineReason = useCallback((reason: DeclineReason | null) => {
-    commit({ ...state, profile: { ...state.profile, declineReason: reason } });
-  }, [state, commit]);
+    const prev = stateRef.current;
+    commit({ ...prev, profile: { ...prev.profile, declineReason: reason } });
+  }, [commit]);
 
   const markRated = useCallback(() => {
+    const prev = stateRef.current;
     commit({
-      ...state,
-      profile: { ...state.profile, hasRated: true, lastRatePromptAt: new Date().toISOString() },
+      ...prev,
+      profile: { ...prev.profile, hasRated: true, lastRatePromptAt: new Date().toISOString() },
     });
-  }, [state, commit]);
+  }, [commit]);
 
   const markRatePromptSeen = useCallback(() => {
+    const prev = stateRef.current;
     commit({
-      ...state,
-      profile: { ...state.profile, lastRatePromptAt: new Date().toISOString() },
+      ...prev,
+      profile: { ...prev.profile, lastRatePromptAt: new Date().toISOString() },
     });
-  }, [state, commit]);
+  }, [commit]);
 
   const BUSINESS_SWITCH_MONTHLY_LIMIT = 5;
 
   const setBusiness = useCallback((business: BusinessIdea, taskPool: TaskSeed[]): { ok: boolean; reason?: string } => {
-    const plan = getPlan(state.profile.subscription.plan);
+    const current = stateRef.current;
+    const plan = getPlan(current.profile.subscription.plan);
     const key = todayKey();
-    const goal = state.profile.goal;
+    const goal = current.profile.goal;
     const isCustom = business.id.startsWith("custom-");
     const monthKey = key.slice(0, 7);
-    const sameMonth = state.profile.customBuildMonth === monthKey;
-    const nextCount = isCustom ? (sameMonth ? state.profile.customBuildCount + 1 : 1) : state.profile.customBuildCount;
-    const nextMonth = isCustom ? monthKey : state.profile.customBuildMonth;
+    const sameMonth = current.profile.customBuildMonth === monthKey;
+    const nextCount = isCustom ? (sameMonth ? current.profile.customBuildCount + 1 : 1) : current.profile.customBuildCount;
+    const nextMonth = isCustom ? monthKey : current.profile.customBuildMonth;
 
-    const prev = state.profile.business;
-    const isSwitch = !!prev && prev.id !== business.id;
-    const sameSwitchMonth = state.profile.businessSwitchMonth === monthKey;
-    const switchesThisMonth = sameSwitchMonth ? state.profile.businessSwitchCount : 0;
+    const prevBiz = current.profile.business;
+    const isSwitch = !!prevBiz && prevBiz.id !== business.id;
+    const sameSwitchMonth = current.profile.businessSwitchMonth === monthKey;
+    const switchesThisMonth = sameSwitchMonth ? current.profile.businessSwitchCount : 0;
     if (isSwitch && switchesThisMonth >= BUSINESS_SWITCH_MONTHLY_LIMIT) {
       console.log("[AppProvider] business switch blocked: monthly limit reached");
       return { ok: false, reason: "limit" };
     }
     const nextSwitchCount = isSwitch ? switchesThisMonth + 1 : switchesThisMonth;
-    const nextSwitchMonth = isSwitch ? monthKey : state.profile.businessSwitchMonth;
+    const nextSwitchMonth = isSwitch ? monthKey : current.profile.businessSwitchMonth;
 
     const profile = {
-      ...state.profile,
+      ...current.profile,
       business,
       businessTaskPool: taskPool,
       customBuildMonth: nextMonth,
@@ -424,7 +445,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       businessSwitchMonth: nextSwitchMonth,
       businessSwitchCount: nextSwitchCount,
     };
-    let next: AppState = { ...state, profile };
+    let next: AppState = { ...current, profile };
     if (goal) {
       const tasks = generateDailyTasks(goal, plan.taskLimit, key, taskPool);
       next = { ...next, tasks, lastActiveDate: key };
@@ -432,48 +453,50 @@ export const [AppProvider, useApp] = createContextHook(() => {
     commit(next);
     syncToSupabase(next);
     return { ok: true };
-  }, [state, commit, syncToSupabase]);
+  }, [commit, syncToSupabase]);
 
   const completeOnboarding = useCallback(() => {
-    if (!state.profile.goal) return;
-    const plan = getPlan(state.profile.subscription.plan);
+    const prev = stateRef.current;
+    if (!prev.profile.goal) return;
+    const plan = getPlan(prev.profile.subscription.plan);
     const key = todayKey();
-    const tasks = generateDailyTasks(state.profile.goal, plan.taskLimit, key, state.profile.businessTaskPool);
+    const tasks = generateDailyTasks(prev.profile.goal, plan.taskLimit, key, prev.profile.businessTaskPool);
     const next: AppState = {
-      ...state,
+      ...prev,
       onboarded: true,
       tasks,
       lastActiveDate: key,
-      profile: { ...state.profile, onboardingStep: null },
+      profile: { ...prev.profile, onboardingStep: null },
     };
     commit(next);
     syncToSupabase(next);
-  }, [state, commit, syncToSupabase]);
+  }, [commit, syncToSupabase]);
 
   const completeTask = useCallback((id: string) => {
-    const task = state.tasks.find((t) => t.id === id);
+    const prev = stateRef.current;
+    const task = prev.tasks.find((t) => t.id === id);
     if (!task || task.status !== "pending") return;
-    const plan = getPlan(state.profile.subscription.plan);
+    const plan = getPlan(prev.profile.subscription.plan);
     const pts = task.basePoints * plan.multiplier;
-    const tasks = state.tasks.map((t) => (t.id === id ? { ...t, status: "completed" as const } : t));
+    const tasks = prev.tasks.map((t) => (t.id === id ? { ...t, status: "completed" as const } : t));
     const key = todayKey();
-    let streak = state.streak;
-    let bestStreak = state.bestStreak;
-    const todayCompletedBefore = state.tasks.filter((t) => t.status === "completed" && t.dateKey === key).length;
+    let streak = prev.streak;
+    let bestStreak = prev.bestStreak;
+    const todayCompletedBefore = prev.tasks.filter((t) => t.status === "completed" && t.dateKey === key).length;
     if (todayCompletedBefore === 0) {
-      if (state.lastActiveDate && daysBetween(state.lastActiveDate, key) === 1) {
-        streak = state.streak + 1;
-      } else if (state.lastActiveDate === key) {
-        streak = Math.max(1, state.streak);
+      if (prev.lastActiveDate && daysBetween(prev.lastActiveDate, key) === 1) {
+        streak = prev.streak + 1;
+      } else if (prev.lastActiveDate === key) {
+        streak = Math.max(1, prev.streak);
       } else {
         streak = 1;
       }
-      bestStreak = Math.max(state.bestStreak, streak);
+      bestStreak = Math.max(prev.bestStreak, streak);
     }
     let next: AppState = {
-      ...state,
+      ...prev,
       tasks,
-      points: state.points + pts,
+      points: prev.points + pts,
       streak,
       bestStreak,
       lastActiveDate: key,
@@ -486,38 +509,40 @@ export const [AppProvider, useApp] = createContextHook(() => {
       profile: { ...next.profile, unlockedEffects: ach.effects },
     };
     commit(next);
-    triggerHaptic("doubleTap", state.profile.hapticsEnabled);
+    triggerHaptic("doubleTap", prev.profile.hapticsEnabled);
     if (ach.newlyUnlocked.length > 0) {
-      setPendingAchievements((prev) => [...prev, ...ach.newlyUnlocked]);
+      setPendingAchievements((p) => [...p, ...ach.newlyUnlocked]);
       setTimeout(() => {
-        triggerHaptic("celebrate", state.profile.hapticsEnabled);
+        triggerHaptic("celebrate", prev.profile.hapticsEnabled);
       }, 350);
     }
-  }, [state, commit]);
+  }, [commit]);
 
   const skipTask = useCallback((id: string) => {
-    const tasks = state.tasks.map((t) => (t.id === id ? { ...t, status: "skipped" as const } : t));
-    const next: AppState = { ...state, tasks };
+    const prev = stateRef.current;
+    const tasks = prev.tasks.map((t) => (t.id === id ? { ...t, status: "skipped" as const } : t));
+    const next: AppState = { ...prev, tasks };
     commit(next);
-    triggerHaptic("warning", state.profile.hapticsEnabled);
-  }, [state, commit]);
+    triggerHaptic("warning", prev.profile.hapticsEnabled);
+  }, [commit]);
 
   const undoTask = useCallback((id: string) => {
-    const target = state.tasks.find((t) => t.id === id);
+    const prev = stateRef.current;
+    const target = prev.tasks.find((t) => t.id === id);
     if (!target) return;
-    const plan = getPlan(state.profile.subscription.plan);
+    const plan = getPlan(prev.profile.subscription.plan);
     const wasCompleted = target.status === "completed";
-    const tasks = state.tasks.map((t) => (t.id === id ? { ...t, status: "pending" as const } : t));
+    const tasks = prev.tasks.map((t) => (t.id === id ? { ...t, status: "pending" as const } : t));
     const next: AppState = {
-      ...state,
+      ...prev,
       tasks,
-      points: wasCompleted ? Math.max(0, state.points - target.basePoints * plan.multiplier) : state.points,
+      points: wasCompleted ? Math.max(0, prev.points - target.basePoints * plan.multiplier) : prev.points,
     };
     commit(next);
-    triggerHaptic("tap", state.profile.hapticsEnabled);
-  }, [state, commit]);
+    triggerHaptic("tap", prev.profile.hapticsEnabled);
+  }, [commit]);
 
-  const hydrateFromAppUser = useCallback((row: AppUserRow): boolean => {
+  const hydrateFromAppUserImpl = (row: AppUserRow, current: AppState): { next: AppState; routeReady: boolean } => {
     // If we have a full state blob, restore it verbatim — same exact
     // experience across devices.
     if (row.state_blob && typeof row.state_blob === "object") {
@@ -540,59 +565,63 @@ export const [AppProvider, useApp] = createContextHook(() => {
       // Keep email/name in sync with what the row has if blob is missing them.
       if (!merged.profile.email && row.email) merged.profile.email = row.email;
       if (!merged.profile.name && row.name) merged.profile.name = row.name;
-      commit(merged);
-      return merged.onboarded && !!merged.profile.goal;
+      return { next: merged, routeReady: merged.onboarded && !!merged.profile.goal };
     }
 
     const profile: UserProfile = {
-      ...state.profile,
-      name: row.name ?? state.profile.name,
-      email: row.email ?? state.profile.email,
-      goal: (row.goal as PrimaryGoal | null) ?? state.profile.goal,
-      skillTopic: (row.skill_topic as SkillTopic | null) ?? state.profile.skillTopic,
-      experience: (row.experience as ExperienceLevel | null) ?? state.profile.experience,
-      time: (row.time_commitment as TimeCommitment | null) ?? state.profile.time,
-      priority: (row.priority as Priority | null) ?? state.profile.priority,
-      industry: (row.industry as Industry | null) ?? state.profile.industry,
-      budget: (row.budget as Budget | null) ?? state.profile.budget,
-      obstacle: (row.obstacle as Obstacle | null) ?? state.profile.obstacle,
-      source: (row.source as Source | null) ?? state.profile.source,
-      declineReason: (row.decline_reason as DeclineReason | null) ?? state.profile.declineReason,
+      ...current.profile,
+      name: row.name ?? current.profile.name,
+      email: row.email ?? current.profile.email,
+      goal: (row.goal as PrimaryGoal | null) ?? current.profile.goal,
+      skillTopic: (row.skill_topic as SkillTopic | null) ?? current.profile.skillTopic,
+      experience: (row.experience as ExperienceLevel | null) ?? current.profile.experience,
+      time: (row.time_commitment as TimeCommitment | null) ?? current.profile.time,
+      priority: (row.priority as Priority | null) ?? current.profile.priority,
+      industry: (row.industry as Industry | null) ?? current.profile.industry,
+      budget: (row.budget as Budget | null) ?? current.profile.budget,
+      obstacle: (row.obstacle as Obstacle | null) ?? current.profile.obstacle,
+      source: (row.source as Source | null) ?? current.profile.source,
+      declineReason: (row.decline_reason as DeclineReason | null) ?? current.profile.declineReason,
       business: row.business_id && row.business_name ? {
         id: row.business_id,
         name: row.business_name,
         tagline: row.business_tagline ?? "",
-        description: state.profile.business?.description ?? "",
-        whyFit: state.profile.business?.whyFit ?? "",
-        startupCost: state.profile.business?.startupCost ?? "",
-        timeToIncome: state.profile.business?.timeToIncome ?? "",
-        firstMilestones: state.profile.business?.firstMilestones ?? [],
-      } as BusinessIdea : state.profile.business,
+        description: current.profile.business?.description ?? "",
+        whyFit: current.profile.business?.whyFit ?? "",
+        startupCost: current.profile.business?.startupCost ?? "",
+        timeToIncome: current.profile.business?.timeToIncome ?? "",
+        firstMilestones: current.profile.business?.firstMilestones ?? [],
+      } as BusinessIdea : current.profile.business,
       subscription: {
-        active: row.subscription_active ?? state.profile.subscription.active,
-        plan: (row.subscription_plan as PlanId | null) ?? state.profile.subscription.plan,
-        cycle: (row.subscription_cycle as BillingCycle | null) ?? state.profile.subscription.cycle,
-        trial: row.subscription_trial ?? state.profile.subscription.trial,
-        startedAt: row.subscription_started_at ?? state.profile.subscription.startedAt,
-        source: (row.subscription_source as Subscription["source"] | null) ?? state.profile.subscription.source,
+        active: row.subscription_active ?? current.profile.subscription.active,
+        plan: (row.subscription_plan as PlanId | null) ?? current.profile.subscription.plan,
+        cycle: (row.subscription_cycle as BillingCycle | null) ?? current.profile.subscription.cycle,
+        trial: row.subscription_trial ?? current.profile.subscription.trial,
+        startedAt: row.subscription_started_at ?? current.profile.subscription.startedAt,
+        source: (row.subscription_source as Subscription["source"] | null) ?? current.profile.subscription.source,
       },
-      dayTradingMode: (row.day_trading_mode as UserProfile["dayTradingMode"]) ?? state.profile.dayTradingMode,
-      dayTradingMarket: (row.day_trading_market as UserProfile["dayTradingMarket"]) ?? state.profile.dayTradingMarket,
-      dayTradingCapital: (row.day_trading_capital as UserProfile["dayTradingCapital"]) ?? state.profile.dayTradingCapital,
+      dayTradingMode: (row.day_trading_mode as UserProfile["dayTradingMode"]) ?? current.profile.dayTradingMode,
+      dayTradingMarket: (row.day_trading_market as UserProfile["dayTradingMarket"]) ?? current.profile.dayTradingMarket,
+      dayTradingCapital: (row.day_trading_capital as UserProfile["dayTradingCapital"]) ?? current.profile.dayTradingCapital,
     };
-    const onboarded = row.onboarded === true || state.onboarded;
+    const onboarded = row.onboarded === true || current.onboarded;
     const next: AppState = {
-      ...state,
+      ...current,
       onboarded,
-      points: row.points ?? state.points,
-      streak: row.streak ?? state.streak,
-      bestStreak: row.best_streak ?? state.bestStreak,
-      lastActiveDate: row.last_active_date ?? state.lastActiveDate,
+      points: row.points ?? current.points,
+      streak: row.streak ?? current.streak,
+      bestStreak: row.best_streak ?? current.bestStreak,
+      lastActiveDate: row.last_active_date ?? current.lastActiveDate,
       profile,
     };
+    return { next, routeReady: onboarded && !!profile.goal };
+  };
+
+  const hydrateFromAppUser = useCallback((row: AppUserRow): boolean => {
+    const { next, routeReady } = hydrateFromAppUserImpl(row, stateRef.current);
     commit(next);
-    return onboarded && !!profile.goal;
-  }, [state, commit]);
+    return routeReady;
+  }, [commit]);
 
   const resetOnboarding = useCallback(() => {
     const next: AppState = { ...DEFAULT_STATE };
