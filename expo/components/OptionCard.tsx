@@ -13,9 +13,10 @@ interface Props {
   Icon?: LucideIcon;
   testID?: string;
   premium?: boolean;
+  goldBorder?: boolean;
 }
 
-export function OptionCard({ label, description, selected, onPress, Icon, testID, premium }: Props) {
+export function OptionCard({ label, description, selected, onPress, Icon, testID, premium, goldBorder }: Props) {
   const handle = () => {
     triggerHaptic("select", true);
     onPress();
@@ -26,7 +27,9 @@ export function OptionCard({ label, description, selected, onPress, Icon, testID
       testID={testID}
       style={({ pressed }) => [
         styles.card,
+        goldBorder && styles.cardGold,
         selected && styles.cardSelected,
+        selected && goldBorder && styles.cardGoldSelected,
         pressed && styles.pressed,
       ]}
     >
@@ -69,6 +72,18 @@ const styles = StyleSheet.create({
   cardSelected: {
     borderColor: Colors.text,
     backgroundColor: "#ffffff",
+  },
+  cardGold: {
+    borderColor: Colors.accentGold,
+    borderWidth: 2,
+    shadowColor: Colors.accentGold,
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  cardGoldSelected: {
+    borderColor: Colors.accentGold,
+    borderWidth: 2.5,
   },
   pressed: { opacity: 0.9 },
   row: { flexDirection: "row", alignItems: "center", gap: 14 },

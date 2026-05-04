@@ -10,11 +10,11 @@ import { Colors } from "@/constants/colors";
 import { useApp } from "@/providers/AppProvider";
 import type { PrimaryGoal } from "@/types";
 
-const OPTIONS: { id: PrimaryGoal; label: string; description: string; Icon: LucideIcon; premium?: boolean }[] = [
+const OPTIONS: { id: PrimaryGoal; label: string; description: string; Icon: LucideIcon; premium?: boolean; goldBorder?: boolean }[] = [
   { id: "earn_income", label: "Earn extra income", description: "Side hustles, freelance, pitching", Icon: Banknote },
-  { id: "day_trading", label: "Day trading", description: "Start a side hustle or learn the fundamentals", Icon: CandlestickChart },
   { id: "build_skills", label: "Learn a skill", description: "Master code, marketing, design and more", Icon: Brain },
   { id: "grow_business", label: "Run / grow my business", description: "Use DRIVE to get real work done on your existing business", Icon: TrendingUp, premium: true },
+  { id: "day_trading", label: "Day trading", description: "Start a side hustle or learn the fundamentals", Icon: CandlestickChart, goldBorder: true },
 ];
 
 export default function GoalScreen() {
@@ -71,6 +71,7 @@ export default function GoalScreen() {
             selected={selected === o.id}
             onPress={() => setSelected(o.id)}
             premium={o.premium}
+            goldBorder={o.goldBorder}
             testID={`opt-${o.id}`}
           />
         ))}
