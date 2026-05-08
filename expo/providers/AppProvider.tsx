@@ -542,12 +542,34 @@ export const [AppProvider, useApp] = createContextHook(() => {
     triggerHaptic("tap", prev.profile.hapticsEnabled);
   }, [commit]);
 
+  const ensureTodayTasks = (s: AppState): AppState => {
+    if (!s.profile.goal) return s;
+    const key = todayKey();
+    const hasToday = s.tasks.some((t) => t.dateKey === key);
+    if (hasToday) return s;
+    const plan = getPlan(s.profile.subscription.plan);
+    const old = s.tasks.filter((t) => t.dateKey !== key);
+    const history = { ...s.history };
+    for (const t of old) {
+      if (!history[t.dateKey]) history[t.dateKey] = { completed: 0, skipped: 0 };
+      if (t.status === "completed") history[t.dateKey].completed++;
+      else if (t.status === "skipped") history[t.dateKey].skipped++;
+    }
+    const newTasks = generateDailyTasks(s.profile.goal, plan.taskLimit, key, s.profile.businessTaskPool);
+    let streak = s.streak;
+    if (s.lastActiveDate) {
+      const gap = daysBetween(s.lastActiveDate, key);
+      if (gap > 1) streak = 0;
+    }
+    return { ...s, tasks: newTasks, history, streak };
+  };
+
   const hydrateFromAppUserImpl = (row: AppUserRow, current: AppState): { next: AppState; routeReady: boolean } => {
     // If we have a full state blob, restore it verbatim — same exact
     // experience across devices.
     if (row.state_blob && typeof row.state_blob === "object") {
       const blob = row.state_blob as Partial<AppState>;
-      const merged: AppState = {
+      let merged: AppState = {
         ...DEFAULT_STATE,
         ...blob,
         profile: {
@@ -565,6 +587,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
       // Keep email/name in sync with what the row has if blob is missing them.
       if (!merged.profile.email && row.email) merged.profile.email = row.email;
       if (!merged.profile.name && row.name) merged.profile.name = row.name;
+      // Ensure today's tasks exist immediately so the dashboard never shows
+      // "0 tasks" right after sign-in. If the cloud blob has stale or empty
+      // tasks, regenerate for today's date inline.
+      merged = ensureTodayTasks(merged);
       return { next: merged, routeReady: merged.onboarded && !!merged.profile.goal };
     }
 
@@ -605,7 +631,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       dayTradingCapital: (row.day_trading_capital as UserProfile["dayTradingCapital"]) ?? current.profile.dayTradingCapital,
     };
     const onboarded = row.onboarded === true || current.onboarded;
-    const next: AppState = {
+    let next: AppState = {
       ...current,
       onboarded,
       points: row.points ?? current.points,
@@ -614,6 +640,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       lastActiveDate: row.last_active_date ?? current.lastActiveDate,
       profile,
     };
+    next = ensureTodayTasks(next);
     return { next, routeReady: onboarded && !!profile.goal };
   };
 

@@ -20,16 +20,12 @@ export default function Index() {
     return () => clearTimeout(t);
   }, []);
 
-  // If we have a session but the local AppState is empty (fresh device after
-  // sign-in), pull the cloud record once before deciding where to send them.
-  // This prevents the "sign-in -> kicked back to sign-in" loop on TestFlight.
+  // If we have a session, pull the cloud record on every app open so progress
+  // migrates across devices. Prevents the "sign-in -> kicked back to sign-in"
+  // loop and ensures tasks/streak/etc are always fresh from Supabase.
   useEffect(() => {
     const userId = session?.user?.id ?? null;
     if (!hydrated || !session) {
-      setCloudChecked(true);
-      return;
-    }
-    if (state.onboarded) {
       setCloudChecked(true);
       return;
     }
@@ -47,7 +43,7 @@ export default function Index() {
         setCloudChecked(true);
       }
     })();
-  }, [hydrated, session, state.onboarded, hydrateFromAppUser]);
+  }, [hydrated, session, hydrateFromAppUser]);
 
   if (!hydrated || !minShown || booting || !cloudChecked) {
     return <SplashLoader />;
