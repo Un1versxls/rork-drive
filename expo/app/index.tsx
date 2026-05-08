@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Redirect } from "expo-router";
 
 import { useApp } from "@/providers/AppProvider";
-import { useAuth } from "@/providers/AuthProvider";
+import { useAuth, LAST_ACTIVE_KEY } from "@/providers/AuthProvider";
 import { SplashLoader } from "@/components/SplashLoader";
 import { fetchAppUser } from "@/lib/appUserTracking";
 
@@ -13,7 +14,22 @@ export default function Index() {
   const { booting, session } = useAuth();
   const [minShown, setMinShown] = useState<boolean>(false);
   const [cloudChecked, setCloudChecked] = useState<boolean>(false);
+  const [lastActiveAt, setLastActiveAt] = useState<number | null>(null);
+  const [activeChecked, setActiveChecked] = useState<boolean>(false);
   const fetchedFor = useRef<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const v = await AsyncStorage.getItem(LAST_ACTIVE_KEY);
+        setLastActiveAt(v ? Number(v) : null);
+      } catch (e) {
+        console.log("[index] last active read failed", e);
+      } finally {
+        setActiveChecked(true);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => setMinShown(true), 2000);
@@ -45,16 +61,19 @@ export default function Index() {
     })();
   }, [hydrated, session, hydrateFromAppUser]);
 
-  if (!hydrated || !minShown || booting || !cloudChecked) {
+  if (!hydrated || !minShown || booting || !cloudChecked || !activeChecked) {
     return <SplashLoader />;
   }
 
+  // Stay signed in on the dashboard unless the user has been inactive for 30 days.
+  // Activity is bumped every time the app boots while a session is alive.
+  const now = Date.now();
+  const activeRecently = lastActiveAt !== null && now - lastActiveAt < THIRTY_DAYS_MS;
   const lastSignedInAtRaw = session?.user?.last_sign_in_at ?? null;
   const lastSignedInMs = lastSignedInAtRaw ? new Date(lastSignedInAtRaw).getTime() : 0;
-  const signedInRecently = !!session && lastSignedInMs > 0 && Date.now() - lastSignedInMs < THIRTY_DAYS_MS;
+  const signedInRecently = lastSignedInMs > 0 && now - lastSignedInMs < THIRTY_DAYS_MS;
 
-  // If the user has a valid Supabase session from the past 30 days, keep them on the dashboard.
-  if (signedInRecently && state.onboarded) {
+  if (!!session && state.onboarded && (activeRecently || signedInRecently || lastActiveAt === null)) {
     return <Redirect href="/(tabs)/tasks" />;
   }
 

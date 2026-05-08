@@ -6,6 +6,7 @@ export interface AppUserUpsertInput {
   appleUserId?: string | null;
   email?: string | null;
   name?: string | null;
+  authProvider?: "apple" | "email" | string | null;
   subscription?: {
     plan: PlanId;
     cycle: BillingCycle;
@@ -46,6 +47,7 @@ function buildPayload(input: AppUserUpsertInput): Record<string, unknown> {
     payload.email = input.email ? input.email.trim().toLowerCase() : null;
   }
   if (input.name !== undefined) payload.name = input.name || null;
+  if (input.authProvider) payload.auth_provider = input.authProvider;
 
   if (input.subscription) {
     payload.subscription_plan = input.subscription.plan;
@@ -107,6 +109,7 @@ export interface AppUserRow {
   apple_user_id: string | null;
   email: string | null;
   name: string | null;
+  auth_provider: string | null;
   subscription_plan: PlanId | null;
   subscription_cycle: BillingCycle | null;
   subscription_active: boolean | null;
@@ -137,7 +140,7 @@ export interface AppUserRow {
   day_trading_capital: string | null;
 }
 
-const APP_USER_COLUMNS = "id, user_id, apple_user_id, email, name, subscription_plan, subscription_cycle, subscription_active, subscription_trial, subscription_source, subscription_started_at, goal, skill_topic, experience, time_commitment, priority, industry, budget, obstacle, source, decline_reason, business_id, business_name, business_tagline, onboarded, points, streak, best_streak, last_active_date, state_blob, day_trading_mode, day_trading_market, day_trading_capital";
+const APP_USER_COLUMNS = "id, user_id, apple_user_id, email, name, auth_provider, subscription_plan, subscription_cycle, subscription_active, subscription_trial, subscription_source, subscription_started_at, goal, skill_topic, experience, time_commitment, priority, industry, budget, obstacle, source, decline_reason, business_id, business_name, business_tagline, onboarded, points, streak, best_streak, last_active_date, state_blob, day_trading_mode, day_trading_market, day_trading_capital";
 
 export async function fetchAppUser(by: { userId?: string | null; email?: string | null }): Promise<AppUserRow | null> {
   if (!supabaseReady || !supabase) return null;

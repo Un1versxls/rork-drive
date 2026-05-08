@@ -1,12 +1,25 @@
 import createContextHook from "@nkzw/create-context-hook";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import { Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as AppleAuthentication from "expo-apple-authentication";
 import type { Session } from "@supabase/supabase-js";
 
 import { supabase, supabaseReady } from "@/lib/supabase";
 import { findLocalCode } from "@/constants/local-codes";
 import { upsertAppUser } from "@/lib/appUserTracking";
 import type { AuthUser } from "@/types";
+
+export const LAST_ACTIVE_KEY = "drive.auth.lastActiveAt";
+
+async function touchLastActive(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(LAST_ACTIVE_KEY, String(Date.now()));
+  } catch (e) {
+    console.log("[auth] touchLastActive failed", e);
+  }
+}
 
 interface UserAccountRow {
   id: string;
@@ -45,6 +58,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       setSession(data.session);
       setBooting(false);
       if (data.session?.user) {
+        void touchLastActive();
         upsertAppUser({
           userId: data.session.user.id,
           email: data.session.user.email ?? null,
@@ -56,6 +70,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       setSession(s);
       qc.invalidateQueries({ queryKey: ["user-account"] });
       if (s?.user && (_event === "SIGNED_IN" || _event === "TOKEN_REFRESHED" || _event === "USER_UPDATED")) {
+        void touchLastActive();
         upsertAppUser({
           userId: s.user.id,
           email: s.user.email ?? null,
@@ -110,7 +125,71 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           console.log("[auth] save name failed", e);
         }
       }
+      if (data.user) {
+        upsertAppUser({
+          userId: data.user.id,
+          email: data.user.email ?? params.email,
+          name: cleanName ?? null,
+          authProvider: "email",
+          touchLastSeen: true,
+        }).catch((e) => console.log("[auth] app_users sync failed", e));
+      }
       return data;
+    },
+  });
+
+  const signInWithAppleMutation = useMutation({
+    mutationFn: async (): Promise<{ userId: string; email: string | null; name: string | null }> => {
+      if (!supabase) throw new Error("Supabase not configured");
+      if (Platform.OS !== "ios") throw new Error("Apple Sign In is only available on iOS");
+      const available = await AppleAuthentication.isAvailableAsync();
+      if (!available) throw new Error("Apple Sign In is not available on this device");
+
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (!credential.identityToken) {
+        throw new Error("Apple didn't return an identity token. Try again.");
+      }
+      const givenName = credential.fullName?.givenName ?? null;
+      const familyName = credential.fullName?.familyName ?? null;
+      const fullName = [givenName, familyName].filter(Boolean).join(" ").trim() || givenName;
+
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: "apple",
+        token: credential.identityToken,
+      });
+      if (error) throw error;
+      if (!data.user) throw new Error("Apple sign in didn't return a user.");
+
+      const userEmail = credential.email ?? data.user.email ?? null;
+
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (fullName) patch.name = fullName;
+      if (userEmail) patch.email = userEmail.toLowerCase();
+      try {
+        await supabase.from("user_accounts").update(patch).eq("id", data.user.id);
+      } catch (e) {
+        console.log("[auth] apple user_accounts update exception", e);
+      }
+
+      try {
+        await upsertAppUser({
+          userId: data.user.id,
+          appleUserId: credential.user ?? null,
+          email: userEmail,
+          name: fullName,
+          authProvider: "apple",
+          touchLastSeen: true,
+        });
+      } catch (e) {
+        console.log("[auth] apple app_users sync failed", e);
+      }
+
+      return { userId: data.user.id, email: userEmail, name: fullName };
     },
   });
 
@@ -218,9 +297,11 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     signUpPending: signUpMutation.isPending,
     signIn: signInMutation.mutateAsync,
     signInPending: signInMutation.isPending,
+    signInWithApple: signInWithAppleMutation.mutateAsync,
+    signInWithApplePending: signInWithAppleMutation.isPending,
     signOut: signOutMutation.mutateAsync,
     redeemCode: redeemCodeMutation.mutateAsync,
     redeemPending: redeemCodeMutation.isPending,
     refreshAccount: () => qc.invalidateQueries({ queryKey: ["user-account"] }),
-  }), [booting, session, user, signUpMutation.mutateAsync, signUpMutation.isPending, signInMutation.mutateAsync, signInMutation.isPending, signOutMutation.mutateAsync, redeemCodeMutation.mutateAsync, redeemCodeMutation.isPending, qc]);
+  }), [booting, session, user, signUpMutation.mutateAsync, signUpMutation.isPending, signInMutation.mutateAsync, signInMutation.isPending, signInWithAppleMutation.mutateAsync, signInWithAppleMutation.isPending, signOutMutation.mutateAsync, redeemCodeMutation.mutateAsync, redeemCodeMutation.isPending, qc]);
 });
