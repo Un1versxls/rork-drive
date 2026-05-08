@@ -158,6 +158,7 @@ export interface UserProfile {
   dayTradingMode: DayTradingMode | null;
   dayTradingMarket: DayTradingMarket | null;
   dayTradingCapital: DayTradingCapital | null;
+  pastBusinesses: BusinessIdea[];
 }
 
 export interface AuthUser {

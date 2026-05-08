@@ -101,6 +101,7 @@ const DEFAULT_PROFILE: UserProfile = {
   dayTradingMode: null,
   dayTradingMarket: null,
   dayTradingCapital: null,
+  pastBusinesses: [],
 };
 
 const DEFAULT_STATE: AppState = {
@@ -130,6 +131,7 @@ async function loadState(): Promise<AppState> {
         notificationPrefs: { ...DEFAULT_NOTIF_PREFS, ...(parsed.profile?.notificationPrefs ?? {}) },
         subscription: { ...DEFAULT_SUBSCRIPTION, ...(parsed.profile?.subscription ?? {}) },
         unlockedEffects: parsed.profile?.unlockedEffects ?? ["none"],
+        pastBusinesses: parsed.profile?.pastBusinesses ?? [],
       },
     };
   } catch (e) {
@@ -436,6 +438,12 @@ export const [AppProvider, useApp] = createContextHook(() => {
     const nextSwitchCount = isSwitch ? switchesThisMonth + 1 : switchesThisMonth;
     const nextSwitchMonth = isSwitch ? monthKey : current.profile.businessSwitchMonth;
 
+    const pastBusinesses = (() => {
+      if (!prevBiz || prevBiz.id === business.id) return current.profile.pastBusinesses;
+      const filtered = current.profile.pastBusinesses.filter((b) => b.id !== prevBiz.id);
+      return [prevBiz, ...filtered].slice(0, 20);
+    })();
+
     const profile = {
       ...current.profile,
       business,
@@ -444,6 +452,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       customBuildCount: nextCount,
       businessSwitchMonth: nextSwitchMonth,
       businessSwitchCount: nextSwitchCount,
+      pastBusinesses,
     };
     let next: AppState = { ...current, profile };
     if (goal) {
@@ -578,6 +587,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
           notificationPrefs: { ...DEFAULT_NOTIF_PREFS, ...(blob.profile?.notificationPrefs ?? {}) },
           subscription: { ...DEFAULT_SUBSCRIPTION, ...(blob.profile?.subscription ?? {}) },
           unlockedEffects: blob.profile?.unlockedEffects ?? ["none"],
+          pastBusinesses: blob.profile?.pastBusinesses ?? [],
         },
         tasks: Array.isArray(blob.tasks) ? blob.tasks : [],
         history: blob.history ?? {},

@@ -16,6 +16,7 @@ export interface AppUserUpsertInput {
   } | null;
   profile?: Partial<UserProfile> | null;
   business?: BusinessIdea | null;
+  pastBusinesses?: BusinessIdea[] | null;
   stats?: {
     onboarded?: boolean;
     points?: number;
@@ -37,6 +38,8 @@ function buildPayload(input: AppUserUpsertInput): Record<string, unknown> {
     updated_at: new Date().toISOString(),
   };
   if (input.touchLastSeen) payload.last_seen_at = new Date().toISOString();
+  // Always record when this client last pushed a state migration.
+  payload.last_migrated_at = new Date().toISOString();
   if (input.userId) payload.user_id = input.userId;
   if (input.appleUserId) payload.apple_user_id = input.appleUserId;
   if (input.email !== undefined) {
@@ -71,6 +74,10 @@ function buildPayload(input: AppUserUpsertInput): Record<string, unknown> {
     payload.business_id = input.business?.id ?? null;
     payload.business_name = input.business?.name ?? null;
     payload.business_tagline = input.business?.tagline ?? null;
+  }
+
+  if (input.pastBusinesses !== undefined) {
+    payload.past_businesses = input.pastBusinesses;
   }
 
   if (input.stats) {
@@ -298,6 +305,7 @@ export function buildSyncFromAppState(
       declineReason: p.declineReason,
     },
     business: p.business,
+    pastBusinesses: p.pastBusinesses ?? [],
     stats: {
       onboarded: state.onboarded,
       points: state.points,
