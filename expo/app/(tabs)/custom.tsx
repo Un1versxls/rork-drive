@@ -133,25 +133,25 @@ Return: name (2-5 words), tagline, description (2 sentences), whyFit (why it wor
           </View>
 
           <ResultCard
-            uri="https://images.unsplash.com/photo-1556745753-b2904692b3cd?w=800&q=80"
+            uri="https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=800&q=80"
             headline="$8,240 / mo"
-            sub="DTC coffee brand"
+            sub="Pet supplement startup"
             tilt="-6deg"
             stat1="+$1.2k week 1"
             stat2="90 days"
           />
           <ResultCard
-            uri="https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=800&q=80"
+            uri="https://images.unsplash.com/photo-1551434678-e076c223a692?w=800&q=80"
             headline="$4,100 / mo"
-            sub="AI coaching app"
+            sub="Productivity SaaS tool"
             tilt="5deg"
             stat1="300 users"
             stat2="6 weeks"
           />
           <ResultCard
-            uri="https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&q=80"
+            uri="https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800&q=80"
             headline="$12,500 / mo"
-            sub="B2B agency"
+            sub="Cold email lead-gen agency"
             tilt="-4deg"
             stat1="3 clients"
             stat2="4 months"
