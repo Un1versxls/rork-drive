@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { OnboardingShell } from "@/components/OnboardingShell";
@@ -44,14 +44,6 @@ export default function NameScreen() {
           testID="input-name"
         />
         <Text style={styles.hint}>You can change this later.</Text>
-        <Pressable
-          onPress={() => router.push("/redeem-code")}
-          hitSlop={10}
-          style={styles.codeBtn}
-          testID="name-code-btn"
-        >
-          <Text style={styles.codeText}>Have an access code? (skip account)</Text>
-        </Pressable>
       </View>
     </OnboardingShell>
   );
@@ -71,6 +63,4 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   hint: { color: Colors.textDim, fontSize: 13, marginTop: 12, paddingHorizontal: 4 },
-  codeBtn: { alignSelf: "center", marginTop: 28, paddingVertical: 6, paddingHorizontal: 10 },
-  codeText: { color: Colors.textMuted, fontSize: 11, fontWeight: "600", textDecorationLine: "underline" },
 });
