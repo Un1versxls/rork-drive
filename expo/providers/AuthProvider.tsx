@@ -162,7 +162,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         provider: "apple",
         token: credential.identityToken,
       });
-      if (error) throw error;
+      if (error) {
+        if (/audience/i.test(error.message ?? "")) {
+          throw new Error("Apple Sign In needs the production app to sync. Please test in TestFlight or a development build.");
+        }
+        throw error;
+      }
       if (!data.user) throw new Error("Apple sign in didn't return a user.");
 
       const userEmail = credential.email ?? data.user.email ?? null;

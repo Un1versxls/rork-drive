@@ -3,6 +3,7 @@ import { Alert, Platform, Pressable, StyleSheet, Text, View } from "react-native
 import { Mail } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as AppleAuthentication from "expo-apple-authentication";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { Colors } from "@/constants/colors";
@@ -87,14 +88,23 @@ export default function AppleSignInScreen() {
       }
 
       let supabaseUserId: string | null = null;
-      if (supabaseReady && supabase && credential.identityToken) {
+      const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+      if (isExpoGo) {
+        console.log("[apple] running in Expo Go — skipping Supabase Apple sign-in (audience mismatch). Use TestFlight/dev build to sync.");
+      }
+      if (!isExpoGo && supabaseReady && supabase && credential.identityToken) {
         try {
           const { data, error } = await supabase.auth.signInWithIdToken({
             provider: "apple",
             token: credential.identityToken,
           });
           if (error) {
-            console.log("[apple] supabase signInWithIdToken error", error.message);
+            const msg = error.message ?? "";
+            if (/audience/i.test(msg)) {
+              console.log("[apple] audience mismatch — likely running outside the production bundle. Continuing locally.");
+            } else {
+              console.log("[apple] supabase signInWithIdToken error", msg);
+            }
           } else if (data.user) {
             supabaseUserId = data.user.id;
             console.log("[apple] supabase session created", data.user.id);
