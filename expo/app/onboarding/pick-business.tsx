@@ -202,6 +202,10 @@ export default function PickBusinessScreen() {
       }
     >
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
+        <View style={styles.guideNote}>
+          <Sparkles size={14} color={Colors.accentDeep} />
+          <Text style={styles.guideNoteText}>We'll guide you through the process of creating one of these businesses, step by step.</Text>
+        </View>
         {proOpts.map((o) => (
           <BizCard key={o.idea.id} opt={o} selected={selected === o.idea.id} onPress={() => setSelected(o.idea.id)} />
         ))}
@@ -302,4 +306,17 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: "rgba(212,175,55,0.35)",
   },
   metaPillText: { color: Colors.accentDeep, fontSize: 11, fontWeight: "800" },
+  guideNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: "rgba(212,175,55,0.10)",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.30)",
+    marginBottom: 4,
+  },
+  guideNoteText: { flex: 1, color: Colors.text, fontSize: 12.5, fontWeight: "700", lineHeight: 17 },
 });
