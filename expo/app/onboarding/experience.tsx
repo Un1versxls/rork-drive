@@ -9,17 +9,27 @@ import { GradientButton } from "@/components/GradientButton";
 import { useApp } from "@/providers/AppProvider";
 import type { ExperienceLevel } from "@/types";
 
-const OPTIONS: { id: ExperienceLevel; label: string; description: string; Icon: LucideIcon }[] = [
-  { id: "beginner", label: "Beginner", description: "Just getting started — e.g. selling on Facebook Marketplace", Icon: Sprout },
-  { id: "intermediate", label: "Intermediate", description: "Some real reps in — e.g. dog walking or local tutoring", Icon: Rocket },
-  { id: "advanced", label: "Advanced", description: "Confident and consistent — e.g. running a freelance business", Icon: Flame },
-  { id: "expert", label: "Expert", description: "Helping others do this — e.g. running a SaaS or agency", Icon: Crown },
+type Option = { id: ExperienceLevel; label: string; description: string; Icon: LucideIcon };
+
+const AI_OPTIONS: Option[] = [
+  { id: "beginner", label: "Beginner", description: "I use ChatGPT sometimes but haven't built anything with AI", Icon: Sprout },
+  { id: "intermediate", label: "Intermediate", description: "I've tried tools like Zapier, Make, or built a custom GPT", Icon: Rocket },
+  { id: "advanced", label: "Advanced", description: "I've shipped an AI workflow or automation that actually works", Icon: Flame },
+  { id: "expert", label: "Expert", description: "I build AI products or run an AI agency for clients", Icon: Crown },
+];
+
+const INPERSON_OPTIONS: Option[] = [
+  { id: "beginner", label: "Beginner", description: "Never charged anyone — maybe mowed a neighbor's lawn once", Icon: Sprout },
+  { id: "intermediate", label: "Intermediate", description: "Done a few odd jobs for cash — detailing, hauling, tutoring", Icon: Rocket },
+  { id: "advanced", label: "Advanced", description: "Have regular clients for a service like cleaning or landscaping", Icon: Flame },
+  { id: "expert", label: "Expert", description: "Run a local service business with crew or repeat customers", Icon: Crown },
 ];
 
 export default function ExperienceScreen() {
   const router = useRouter();
   const { state, setAnswers } = useApp();
   const [selected, setSelected] = useState<ExperienceLevel | null>(state.profile.experience);
+  const OPTIONS: Option[] = state.profile.goal === "in-person" ? INPERSON_OPTIONS : AI_OPTIONS;
 
   return (
     <OnboardingShell
