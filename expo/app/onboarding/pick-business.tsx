@@ -14,7 +14,7 @@ interface Option {
   pool: TaskSeed[];
 }
 
-function aiOptions(): Option[] {
+function aiPool(): Option[] {
   return [
     {
       idea: {
@@ -79,10 +79,115 @@ function aiOptions(): Option[] {
         { title: "Add a $5 unlock", description: "Set up Stripe Payment Links for paid tier.", category: "hustle", difficulty: 2 },
       ],
     },
+    {
+      idea: {
+        id: "ai-day-trading",
+        name: "AI Day Trading Bot",
+        tagline: "Algorithmic trading with AI-driven signals",
+        description: "Run AI-driven trading strategies on stocks or crypto. Backtest, deploy, and let the bot work while you sleep.",
+        whyFit: "High-skill, high-ceiling. Compounds quickly when dialed in.",
+        startupCost: "$200 – $2,000",
+        timeToIncome: "6–12 weeks",
+        firstMilestones: ["Pick a broker w/ API", "Backtest one strategy", "Paper trade for 2 weeks", "Go live with small size"],
+        isPro: true, path: "ai", incomeRange: "$0 – $25k / mo",
+      },
+      pool: [
+        { title: "Pick a broker w/ API", description: "Alpaca, IBKR, or Coinbase.", category: "focus", difficulty: 2 },
+        { title: "Backtest one strategy", description: "Test on 1+ year of data.", category: "skill", difficulty: 3 },
+        { title: "Paper trade today", description: "Run it live with fake money.", category: "hustle", difficulty: 2 },
+        { title: "Log every trade", description: "Track P&L + reasoning.", category: "growth", difficulty: 1 },
+        { title: "Study one indicator", description: "Deep-dive RSI, EMA, or order flow.", category: "skill", difficulty: 2 },
+        { title: "Set risk rules", description: "Max loss per day, position size.", category: "focus", difficulty: 2 },
+      ],
+    },
+    {
+      idea: {
+        id: "ai-saas",
+        name: "AI Micro-SaaS",
+        tagline: "$29/mo AI products selling on autopilot",
+        description: "Build a small AI-powered SaaS solving one painful niche problem. Subscription pricing.",
+        whyFit: "Recurring revenue, scales without your time, sellable asset.",
+        startupCost: "$50 – $500",
+        timeToIncome: "4–10 weeks",
+        firstMilestones: ["Validate one painful problem", "Ship MVP in a no-code stack", "Get 10 paying users", "Hit $1k MRR"],
+        isPro: true, path: "ai", incomeRange: "$1k – $25k / mo",
+      },
+      pool: [
+        { title: "Interview 5 ideal users", description: "Find a painful, paid problem.", category: "focus", difficulty: 3 },
+        { title: "Mock the UI", description: "Sketch the core flow on paper or Figma.", category: "skill", difficulty: 2 },
+        { title: "Ship a v0", description: "No-code or Bolt/Lovable build.", category: "skill", difficulty: 3 },
+        { title: "Set up Stripe", description: "Subscription pricing live.", category: "hustle", difficulty: 2 },
+        { title: "Post in 3 communities", description: "Reddit, IH, niche Discords.", category: "hustle", difficulty: 2 },
+        { title: "Onboard first user", description: "Get their feedback fast.", category: "growth", difficulty: 2 },
+      ],
+    },
+    {
+      idea: {
+        id: "ai-content-agency",
+        name: "AI Content Agency",
+        tagline: "$2k–$5k/mo retainers writing & posting with AI",
+        description: "Ghostwrite Twitter / LinkedIn / blogs for founders using AI as your co-pilot.",
+        whyFit: "Service business with software-like margins. Easy to start solo.",
+        startupCost: "$0 – $100",
+        timeToIncome: "2–4 weeks",
+        firstMilestones: ["Pick a niche", "Build sample posts", "DM 30 founders", "Sign first retainer"],
+        isPro: true, path: "ai", incomeRange: "$2k – $20k / mo",
+      },
+      pool: [
+        { title: "Pick your niche", description: "SaaS founders, coaches, e-com…", category: "focus", difficulty: 2 },
+        { title: "Build 5 sample posts", description: "Show off your voice + style.", category: "skill", difficulty: 2 },
+        { title: "Send 10 cold DMs", description: "Personalized, value-first.", category: "hustle", difficulty: 2 },
+        { title: "Write your offer page", description: "One Notion / Carrd page.", category: "skill", difficulty: 2 },
+        { title: "Set up an AI workflow", description: "Draft → edit → schedule.", category: "skill", difficulty: 2 },
+        { title: "Follow up warm leads", description: "Re-DM anyone interested.", category: "hustle", difficulty: 1 },
+      ],
+    },
+    {
+      idea: {
+        id: "ai-newsletter",
+        name: "AI-Powered Newsletter",
+        tagline: "Build a paid newsletter using AI for research + drafts",
+        description: "Launch a niche newsletter where AI helps you research, summarize, and draft 5x faster.",
+        whyFit: "Owned audience, sponsor revenue, compounds for years.",
+        startupCost: "Free – $100",
+        timeToIncome: "6–10 weeks",
+        firstMilestones: ["Pick a niche + name", "Publish first 4 issues", "Reach 500 subs", "Land first sponsor"],
+        isPro: false, path: "ai", incomeRange: "$0 – $5k / mo",
+      },
+      pool: [
+        { title: "Pick niche + name", description: "Narrow, specific, fun.", category: "focus", difficulty: 2 },
+        { title: "Set up beehiiv", description: "Free tier is plenty to start.", category: "skill", difficulty: 1 },
+        { title: "Draft issue #1", description: "AI helps — you edit + ship.", category: "skill", difficulty: 2 },
+        { title: "Share with 10 friends", description: "Get the first subs from people you know.", category: "hustle", difficulty: 1 },
+        { title: "Cross-post on X", description: "One thread per issue.", category: "growth", difficulty: 2 },
+        { title: "Schedule next 2 issues", description: "Consistency beats everything.", category: "focus", difficulty: 1 },
+      ],
+    },
+    {
+      idea: {
+        id: "ai-prompt-templates",
+        name: "AI Prompt Pack Store",
+        tagline: "Sell $9–$49 prompt packs on Gumroad",
+        description: "Package proven prompts into bundles (marketing, sales, design) and sell on Gumroad / Etsy.",
+        whyFit: "Digital product = infinite margin, easy to start solo today.",
+        startupCost: "Free",
+        timeToIncome: "1–2 weeks",
+        firstMilestones: ["Pick a niche", "Build 25 prompts", "List on Gumroad", "Make first sale"],
+        isPro: false, path: "ai", incomeRange: "$0 – $2k / mo",
+      },
+      pool: [
+        { title: "Pick a niche", description: "Marketing, sales, design, etc.", category: "focus", difficulty: 1 },
+        { title: "Build 25 prompts", description: "Test + refine each one.", category: "skill", difficulty: 2 },
+        { title: "Design a cover", description: "Simple Canva mockup.", category: "skill", difficulty: 1 },
+        { title: "List on Gumroad", description: "Set price between $9–$29.", category: "hustle", difficulty: 1 },
+        { title: "Post launch tweet", description: "Show the result + link.", category: "hustle", difficulty: 1 },
+        { title: "Collect 3 reviews", description: "Ask early buyers for feedback.", category: "growth", difficulty: 1 },
+      ],
+    },
   ];
 }
 
-function inPersonOptions(): Option[] {
+function inPersonPool(): Option[] {
   return [
     {
       idea: {
@@ -147,7 +252,135 @@ function inPersonOptions(): Option[] {
         { title: "Plan next weekend", description: "Block your schedule for 4 cars.", category: "focus", difficulty: 1 },
       ],
     },
+    {
+      idea: {
+        id: "lawn-care-route",
+        name: "Weekend Lawn Care",
+        tagline: "$30–$80 mows on a tight neighborhood route",
+        description: "Solo mow-and-go service on weekends. Start with a borrowed mower and build a tight route in your zip code.",
+        whyFit: "Low barrier, instant cash, easy to scale to a crew later.",
+        startupCost: "Under $100",
+        timeToIncome: "This weekend",
+        firstMilestones: ["Print 50 flyers", "Mow 1 free lawn for photos", "Book 3 paying lawns", "Lock in 5 weekly clients"],
+        isPro: false, path: "in_person", incomeRange: "$200 – $1,200 / mo",
+      },
+      pool: [
+        { title: "Print 50 flyers", description: "Simple flyer with rate + phone.", category: "focus", difficulty: 1 },
+        { title: "Drop flyers on 25 doors", description: "Stick to one tight neighborhood.", category: "hustle", difficulty: 2 },
+        { title: "Mow 1 free lawn", description: "Free job for photos + review.", category: "hustle", difficulty: 2 },
+        { title: "Post in local FB group", description: "Offer first 3 mows at a discount.", category: "growth", difficulty: 1 },
+        { title: "Take before/after pics", description: "Build a tiny portfolio.", category: "growth", difficulty: 1 },
+        { title: "Lock in next week", description: "Text past clients for a recurring slot.", category: "hustle", difficulty: 1 },
+      ],
+    },
+    {
+      idea: {
+        id: "handyman-route",
+        name: "Handyman Hustle",
+        tagline: "$50–$200 small jobs neighbors actually need",
+        description: "Mount TVs, assemble furniture, fix leaky faucets — small jobs at premium pricing in your neighborhood.",
+        whyFit: "Constant demand, repeat clients, almost no startup cost if you own basic tools.",
+        startupCost: "$0 – $200",
+        timeToIncome: "This week",
+        firstMilestones: ["List your services", "Post on Nextdoor + Thumbtack", "Book first 3 jobs", "Collect 5 reviews"],
+        isPro: false, path: "in_person", incomeRange: "$400 – $2,500 / mo",
+      },
+      pool: [
+        { title: "List your services", description: "Pick 5 jobs you're confident doing.", category: "focus", difficulty: 1 },
+        { title: "Set up Thumbtack profile", description: "Photos + clear pricing.", category: "skill", difficulty: 2 },
+        { title: "Post on Nextdoor", description: "Friendly intro post in your area.", category: "hustle", difficulty: 1 },
+        { title: "Quote 3 leads", description: "Reply fast — speed wins jobs.", category: "hustle", difficulty: 2 },
+        { title: "Ask for a review", description: "Text past helpers/family for one.", category: "growth", difficulty: 1 },
+        { title: "Build a tool checklist", description: "Know what's in your kit.", category: "focus", difficulty: 1 },
+      ],
+    },
+    {
+      idea: {
+        id: "vending-route",
+        name: "Vending Machine Route",
+        tagline: "Passive $1k–$5k/mo from a small route of machines",
+        description: "Place vending machines in offices, gyms, and laundromats. Restock weekly and collect cash.",
+        whyFit: "Semi-passive once placed. Each machine is a tiny business.",
+        startupCost: "$1,500 – $4,000",
+        timeToIncome: "3–6 weeks",
+        firstMilestones: ["Find 1 location", "Buy first machine", "Stock + sign 6-mo agreement", "Add machine #2"],
+        isPro: true, path: "in_person", incomeRange: "$1k – $8k / mo",
+      },
+      pool: [
+        { title: "Map 20 locations", description: "List gyms, offices, laundromats nearby.", category: "focus", difficulty: 2 },
+        { title: "Cold call 5 locations", description: "Pitch a no-cost machine.", category: "hustle", difficulty: 3 },
+        { title: "Spec your first machine", description: "Pick combo vs snack vs drink.", category: "skill", difficulty: 2 },
+        { title: "Write a placement agreement", description: "Simple 1-page contract.", category: "skill", difficulty: 2 },
+        { title: "Source product wholesale", description: "Open Sam's Club / Costco account.", category: "hustle", difficulty: 2 },
+        { title: "Schedule restock day", description: "Pick a weekly route day.", category: "focus", difficulty: 1 },
+      ],
+    },
+    {
+      idea: {
+        id: "junk-removal-pro",
+        name: "Junk Removal Pro",
+        tagline: "$200–$800 hauls with a truck + a friend",
+        description: "Same-day junk removal service. Premium pricing for fast, friendly hauling.",
+        whyFit: "High ticket, repeat referrals, scales with crew + trucks.",
+        startupCost: "$500 – $3,000",
+        timeToIncome: "1–2 weeks",
+        firstMilestones: ["Get a truck or trailer", "Set up Google profile", "Quote 10 jobs", "Book first 3 hauls"],
+        isPro: true, path: "in_person", incomeRange: "$4k – $20k / mo",
+      },
+      pool: [
+        { title: "Set up Google profile", description: "Local SEO = inbound leads.", category: "growth", difficulty: 2 },
+        { title: "Build a simple booking page", description: "Square or Jobber form.", category: "skill", difficulty: 2 },
+        { title: "Post 3 before/afters", description: "Reels = social proof.", category: "growth", difficulty: 2 },
+        { title: "Door-knock 20 homes", description: "Drop flyers in target zip.", category: "hustle", difficulty: 3 },
+        { title: "Find a dump dropoff", description: "Know your cost per load.", category: "focus", difficulty: 1 },
+        { title: "Pitch 5 realtors", description: "They're a referral goldmine.", category: "hustle", difficulty: 2 },
+      ],
+    },
+    {
+      idea: {
+        id: "food-pop-up",
+        name: "Weekend Food Pop-Up",
+        tagline: "$500–$2k Saturday pop-ups serving one signature item",
+        description: "Run a Saturday pop-up serving one signature dish at markets, parks, or community events.",
+        whyFit: "High margin, fun, builds brand for a future food truck or storefront.",
+        startupCost: "$400 – $1,500",
+        timeToIncome: "2–4 weeks",
+        firstMilestones: ["Lock in your one dish", "Get permits", "Find a Saturday spot", "Sell out your first event"],
+        isPro: true, path: "in_person", incomeRange: "$2k – $10k / mo",
+      },
+      pool: [
+        { title: "Lock in your one dish", description: "Pick a signature menu item.", category: "focus", difficulty: 2 },
+        { title: "Research permits", description: "Cottage food / temp food permit.", category: "skill", difficulty: 2 },
+        { title: "DM 5 event organizers", description: "Markets, festivals, popups.", category: "hustle", difficulty: 2 },
+        { title: "Design your signage", description: "Canva menu + price board.", category: "skill", difficulty: 2 },
+        { title: "Cost out one serving", description: "Know your unit economics.", category: "focus", difficulty: 2 },
+        { title: "Run a friends + family test", description: "Cook 10 servings for feedback.", category: "hustle", difficulty: 2 },
+      ],
+    },
   ];
+}
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function aiOptions(): Option[] {
+  const pool = aiPool();
+  const pros = shuffle(pool.filter((o) => o.idea.isPro)).slice(0, 2);
+  const frees = shuffle(pool.filter((o) => !o.idea.isPro)).slice(0, 1);
+  return [...pros, ...frees];
+}
+
+function inPersonOptions(): Option[] {
+  const pool = inPersonPool();
+  const pros = shuffle(pool.filter((o) => o.idea.isPro)).slice(0, 2);
+  const frees = shuffle(pool.filter((o) => !o.idea.isPro)).slice(0, 1);
+  return [...pros, ...frees];
 }
 
 export default function PickBusinessScreen() {
