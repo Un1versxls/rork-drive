@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Check, Clock, Flame, RotateCcw, X } from "lucide-react-native";
+import { Check, Flame, RotateCcw, X } from "lucide-react-native";
 
 import { CelebrationOverlay } from "@/components/CelebrationOverlay";
 import { FirstTimeTour } from "@/components/FirstTimeTour";
@@ -24,35 +24,6 @@ function greeting(): string {
   if (h < 17) return "Good afternoon,";
   if (h < 22) return "Good evening,";
   return "Late night,";
-}
-
-function formatDate(): string {
-  return new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
-}
-
-function msUntilMidnight(): number {
-  const now = new Date();
-  const next = new Date(now);
-  next.setHours(24, 0, 0, 0);
-  return next.getTime() - now.getTime();
-}
-
-function formatCountdown(ms: number): string {
-  const total = Math.max(0, Math.floor(ms / 1000));
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(h)}:${pad(m)}:${pad(s)}`;
-}
-
-function useCountdown(): string {
-  const [ms, setMs] = useState<number>(msUntilMidnight());
-  useEffect(() => {
-    const id = setInterval(() => setMs(msUntilMidnight()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  return formatCountdown(ms);
 }
 
 export default function TasksScreen() {
@@ -84,7 +55,6 @@ export default function TasksScreen() {
   );
 
   const progress = today.total > 0 ? today.completed / today.total : 0;
-  const countdown = useCountdown();
   const pending = useMemo(() => today.list.filter((t) => t.status === "pending"), [today.list]);
   const done = useMemo(() => today.list.filter((t) => t.status !== "pending"), [today.list]);
   const tier = getStreakTier(state.streak);
@@ -106,7 +76,6 @@ export default function TasksScreen() {
                 size={26}
                 style={styles.name}
               />
-              <Text style={styles.date}>{formatDate()}</Text>
             </View>
             <View style={styles.streakBlock}>
               <StreakEffect streak={state.streak} size={54} compact showNumber />
@@ -115,11 +84,6 @@ export default function TasksScreen() {
                 <Text style={[styles.streakText, { color: tier.primary }]}>{tier.label}</Text>
               </View>
             </View>
-          </View>
-
-          <View style={styles.refreshPill}>
-            <Clock size={11} color={Colors.textDim} />
-            <Text style={styles.refreshText}>New tasks in {countdown}</Text>
           </View>
 
           <View style={styles.heroCard}>
@@ -136,11 +100,7 @@ export default function TasksScreen() {
           </View>
 
           {state.profile.business ? (
-            <View style={styles.bizCard}>
-              <Text style={styles.bizLabel}>{state.profile.goal === "build_skills" ? "YOUR CRASH COURSE" : state.profile.goal === "day_trading" ? "YOUR TRADING PLAN" : "YOUR BUSINESS"}</Text>
-              <Text style={styles.bizName}>{state.profile.business.name}</Text>
-              <Text style={styles.bizTag}>{state.profile.business.tagline}</Text>
-            </View>
+            <Text style={styles.bizInline} numberOfLines={1}>{state.profile.business.name}</Text>
           ) : null}
 
           <Text style={styles.sectionTitle}>Today&apos;s tasks</Text>
@@ -297,7 +257,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "flex-start", marginBottom: 18 },
   greet: { color: Colors.textDim, fontSize: 13, fontWeight: "600" },
   name: { color: Colors.text, fontSize: 26, fontWeight: "900", letterSpacing: -0.5, marginTop: 2 },
-  date: { color: Colors.textMuted, fontSize: 12, fontWeight: "600", marginTop: 2 },
+  bizInline: { color: Colors.textDim, fontSize: 12, fontWeight: "700", letterSpacing: 0.2, marginBottom: 16 },
   streakBlock: { alignItems: "center", gap: 4 },
   streakPill: {
     flexDirection: "row", alignItems: "center", gap: 4,

@@ -3,7 +3,7 @@ import { Alert, Animated, Easing, LayoutAnimation, Platform, Pressable, ScrollVi
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Check, ChevronDown, ChevronRight, Cloud, CloudOff, Crown, Gift, LogIn, LogOut, Pencil, RefreshCw, Shield, Sparkles, Star, Vibrate } from "lucide-react-native";
+import { Award, Check, ChevronDown, ChevronRight, Cloud, CloudOff, Crown, Gift, LogIn, LogOut, Pencil, RefreshCw, Shield, Sparkles, Star, Vibrate } from "lucide-react-native";
 import { buildSyncFromAppState, upsertAppUser } from "@/lib/appUserTracking";
 import { supabase } from "@/lib/supabase";
 
@@ -205,10 +205,7 @@ export default function ProfileScreen() {
             )}
             <Text style={styles.userSub}>Level {level} · {totalCompleted} tasks done</Text>
             {user ? (
-              <>
-                <Text style={styles.userEmail}>{user.email}</Text>
-                <Text style={styles.userId}>ID: {user.id.slice(0, 8)}…</Text>
-              </>
+              <Text style={styles.userEmail}>{user.email}</Text>
             ) : (
               <Pressable onPress={() => router.push("/auth")} style={styles.signInRow}>
                 <LogIn color={Colors.text} size={14} />
@@ -352,6 +349,7 @@ export default function ProfileScreen() {
           ) : null}
 
           <Text style={styles.sectionTitle}>More</Text>
+          <MenuRow Icon={Award} label="Badges" onPress={() => router.push("/badges")} />
           <MenuRow Icon={Gift} label="Redeem a code" onPress={() => router.push("/redeem")} />
           <MenuRow Icon={Star} label="Rate the app" onPress={() => {
             if (Platform.OS === "web") return;
