@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, Platform, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { Check, ChevronLeft, Crown, Lock, Sparkles } from "lucide-react-native";
+import { Check, ChevronLeft, Lock } from "lucide-react-native";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { PurchasesOffering, PurchasesPackage } from "react-native-purchases";
 
@@ -36,8 +36,6 @@ export default function PaywallScreen() {
   const [cycle, setCycle] = useState<BillingCycle>(params.initialCycle === "monthly" ? "monthly" : "yearly");
 
   const plan = PLANS.find((p) => p.id === planId) ?? PLANS[0];
-  const business = state.profile.business;
-  const isSkill = state.profile.goal === "build_skills";
 
   useEffect(() => {
     configurePurchases();
@@ -198,29 +196,13 @@ export default function PaywallScreen() {
               <Text style={styles.proBannerText}>This business requires Pro to unlock.</Text>
             </View>
           ) : null}
-          {!fromUpgrade && business ? (
-            <View style={styles.planCard}>
-              <View style={styles.planCardEyebrow}>
-                <Sparkles size={11} color={Colors.accentGold} />
-                <Text style={styles.planCardEyebrowText}>
-                  {isSkill ? "YOUR CRASH COURSE" : "YOUR PLAN"}
-                </Text>
-              </View>
-              <Text style={styles.planCardName}>{business.name}</Text>
-              <Text style={styles.planCardTag}>{business.tagline}</Text>
-            </View>
-          ) : null}
-
-          <Text style={styles.eyebrow}>{retry ? "ONE MORE LOOK" : "START YOUR FREE TRIAL"}</Text>
           <Text style={styles.title}>
-            {planId === "premium"
-              ? "Unlock Premium."
-              : "Your first 3 days\nare on us."}
+            {planId === "premium" ? "Unlock Premium." : "3 days free."}
           </Text>
           <Text style={styles.subtitle}>
             {planId === "premium"
-              ? "Full access to big-money ideas. Cancel anytime."
-              : "3 days free. Cancel anytime. No charge until the trial ends."}
+              ? "Full access. Cancel anytime."
+              : "Cancel anytime before the trial ends."}
           </Text>
 
           <View style={styles.planSwitcher}>
@@ -260,15 +242,7 @@ export default function PaywallScreen() {
           </View>
 
           <View style={styles.perks}>
-            {planId === "premium" ? (
-              <View style={styles.premiumBanner}>
-                <Crown size={14} color="#ffffff" />
-                <Text style={styles.premiumBannerText}>
-                  For people actually trying to make real money.
-                </Text>
-              </View>
-            ) : null}
-            {plan.perks.map((p) => (
+            {plan.perks.slice(0, 3).map((p) => (
               <View key={p} style={styles.perkRow}>
                 <View style={styles.perkCheck}>
                   <Check size={12} color="#ffffff" strokeWidth={3} />
@@ -276,14 +250,6 @@ export default function PaywallScreen() {
                 <Text style={styles.perkText}>{p}</Text>
               </View>
             ))}
-            {planId === "base" ? (
-              <Pressable onPress={() => setPlanId("premium")} style={styles.teaser}>
-                <Sparkles size={14} color={Colors.accentGold} />
-                <Text style={styles.teaserText}>
-                  Want big-money ideas ($1.5k–$10k) + custom business builder? Tap to see Premium.
-                </Text>
-              </Pressable>
-            ) : null}
           </View>
         </ScrollView>
 
