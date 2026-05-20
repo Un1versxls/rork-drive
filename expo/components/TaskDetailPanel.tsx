@@ -67,8 +67,7 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
   const [input, setInput] = useState<string>("");
   const [thinking, setThinking] = useState<boolean>(false);
   const scrollRef = useRef<ScrollView | null>(null);
-  const chatBoxYRef = useRef<number>(0);
-  const inputRowYRef = useRef<number>(0);
+  const msgsScrollRef = useRef<ScrollView | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
 
   useEffect(() => {
@@ -79,12 +78,8 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
       const h = e?.endCoordinates?.height ?? 0;
       setKeyboardHeight(h);
       setTimeout(() => {
-        const y = Math.max(0, inputRowYRef.current - 24);
-        scrollRef.current?.scrollTo({ y, animated: true });
-      }, 60);
-      setTimeout(() => {
-        scrollRef.current?.scrollToEnd({ animated: true });
-      }, 220);
+        msgsScrollRef.current?.scrollToEnd({ animated: true });
+      }, 120);
     });
     const hideSub = Keyboard.addListener(hideEvt, () => {
       setKeyboardHeight(0);
@@ -215,13 +210,11 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
               </Pressable>
             </View>
 
+            {chatOpen ? null : (
             <ScrollView
               ref={scrollRef}
               style={styles.scrollView}
-              contentContainerStyle={[
-                styles.scroll,
-                chatOpen && { paddingBottom: 480 },
-              ]}
+              contentContainerStyle={styles.scroll}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
@@ -269,19 +262,9 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
               </View>
 
               <Pressable onPress={() => {
-                const willOpen = !chatOpen;
-                setChatOpen(willOpen);
+                setChatOpen(true);
                 triggerHaptic("tap", hapticsEnabled);
-                if (willOpen && messages.length === 0) askQuickStart();
-                if (willOpen) {
-                  const scrollToInput = () => {
-                    const y = Math.max(0, chatBoxYRef.current - 24);
-                    scrollRef.current?.scrollTo({ y, animated: true });
-                  };
-                  setTimeout(scrollToInput, 160);
-                  setTimeout(scrollToInput, 380);
-                  setTimeout(scrollToInput, 700);
-                }
+                if (messages.length === 0) askQuickStart();
               }} style={styles.coachToggle}>
                 <View style={styles.coachIcon}>
                   <BrainCircuit color={Colors.accentDeep} size={16} />
@@ -290,93 +273,85 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
                   <Text style={styles.coachTitle}>Ask the Coach</Text>
                   <Text style={styles.coachSub}>A thinking partner that only asks questions</Text>
                 </View>
-                <ChevronDown
-                  color={Colors.textDim}
-                  size={18}
-                  style={{ transform: [{ rotate: chatOpen ? "180deg" : "0deg" }] }}
-                />
+                <ChevronDown color={Colors.textDim} size={18} />
               </Pressable>
-
-              {chatOpen ? (
-                <View
-                  style={styles.chatBox}
-                  onLayout={(e) => {
-                    chatBoxYRef.current = e.nativeEvent.layout.y;
-                  }}
-                >
-                  <View style={styles.chatBanner}>
-                    <MessageCircle color={Colors.accentDeep} size={12} />
-                    <Text style={styles.chatBannerText}>The coach only asks questions — it won&apos;t do the work for you.</Text>
-                  </View>
-                  <View style={styles.chatMsgs}>
-                    {messages.map((m) => (
-                      <View key={m.id} style={[styles.msg, m.role === "user" ? styles.msgUser : styles.msgCoach]}>
-                        <Text style={[styles.msgText, m.role === "user" && styles.msgTextUser]}>{m.text}</Text>
-                      </View>
-                    ))}
-                    {thinking ? (
-                      <View style={[styles.msg, styles.msgCoach]}>
-                        <Text style={styles.msgText}>…</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  <View
-                    style={styles.inputRow}
-                    onLayout={(e) => {
-                      inputRowYRef.current = chatBoxYRef.current + e.nativeEvent.layout.y;
-                    }}
-                  >
-                    <TextInput
-                      value={input}
-                      onChangeText={setInput}
-                      placeholder="Share what you're stuck on…"
-                      placeholderTextColor={Colors.textMuted}
-                      style={styles.input}
-                      multiline
-                      testID="coach-input"
-                      onFocus={() => {
-                        const y = Math.max(0, inputRowYRef.current - 40);
-                        setTimeout(() => scrollRef.current?.scrollTo({ y, animated: true }), 100);
-                        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 260);
-                      }}
-                    />
-                    <Pressable
-                      onPress={sendToCoach}
-                      disabled={!input.trim() || thinking}
-                      style={({ pressed }) => [
-                        styles.sendBtn,
-                        (!input.trim() || thinking) && { opacity: 0.4 },
-                        pressed && { transform: [{ scale: 0.96 }] },
-                      ]}
-                      testID="coach-send"
-                    >
-                      <Send color="#faf9f6" size={16} />
-                    </Pressable>
-                  </View>
-                </View>
-              ) : null}
 
               <View style={{ height: 24 }} />
             </ScrollView>
+            )}
 
-            <View style={styles.footerRow}>
-              <Pressable
-                onPress={() => { onSkip(); handleClose(); }}
-                style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.7 }]}
-                testID="panel-skip"
-              >
-                <Text style={styles.skipText}>Skip</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => { onComplete(); handleClose(); }}
-                style={({ pressed }) => [styles.completeBtn, pressed && { transform: [{ scale: 0.98 }] }]}
-                testID="panel-complete"
-              >
-                <LinearGradient colors={["#1a1a1a", "#2a2a2a"]} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
-                <Check color="#faf9f6" size={18} strokeWidth={3} />
-                <Text style={styles.completeText}>Mark complete</Text>
-              </Pressable>
-            </View>
+            {chatOpen ? (
+              <View style={styles.chatFull}>
+                <View style={styles.chatBanner}>
+                  <MessageCircle color={Colors.accentDeep} size={12} />
+                  <Text style={styles.chatBannerText}>The coach only asks questions — it won&apos;t do the work for you.</Text>
+                  <Pressable onPress={() => { setChatOpen(false); Keyboard.dismiss(); triggerHaptic("tap", hapticsEnabled); }} hitSlop={10} testID="chat-close">
+                    <X color={Colors.accentDeep} size={14} />
+                  </Pressable>
+                </View>
+                <ScrollView
+                  ref={msgsScrollRef}
+                  style={{ flex: 1 }}
+                  contentContainerStyle={styles.chatScroll}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  onContentSizeChange={() => msgsScrollRef.current?.scrollToEnd({ animated: true })}
+                >
+                  {messages.map((m) => (
+                    <View key={m.id} style={[styles.msg, m.role === "user" ? styles.msgUser : styles.msgCoach]}>
+                      <Text style={[styles.msgText, m.role === "user" && styles.msgTextUser]}>{m.text}</Text>
+                    </View>
+                  ))}
+                  {thinking ? (
+                    <View style={[styles.msg, styles.msgCoach]}>
+                      <Text style={styles.msgText}>…</Text>
+                    </View>
+                  ) : null}
+                </ScrollView>
+                <View style={styles.inputRow}>
+                  <TextInput
+                    value={input}
+                    onChangeText={setInput}
+                    placeholder="Share what you're stuck on…"
+                    placeholderTextColor={Colors.textMuted}
+                    style={styles.input}
+                    multiline
+                    testID="coach-input"
+                  />
+                  <Pressable
+                    onPress={sendToCoach}
+                    disabled={!input.trim() || thinking}
+                    style={({ pressed }) => [
+                      styles.sendBtn,
+                      (!input.trim() || thinking) && { opacity: 0.4 },
+                      pressed && { transform: [{ scale: 0.96 }] },
+                    ]}
+                    testID="coach-send"
+                  >
+                    <Send color="#faf9f6" size={16} />
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.footerRow}>
+                <Pressable
+                  onPress={() => { onSkip(); handleClose(); }}
+                  style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.7 }]}
+                  testID="panel-skip"
+                >
+                  <Text style={styles.skipText}>Skip</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => { onComplete(); handleClose(); }}
+                  style={({ pressed }) => [styles.completeBtn, pressed && { transform: [{ scale: 0.98 }] }]}
+                  testID="panel-complete"
+                >
+                  <LinearGradient colors={["#1a1a1a", "#2a2a2a"]} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+                  <Check color="#faf9f6" size={18} strokeWidth={3} />
+                  <Text style={styles.completeText}>Mark complete</Text>
+                </Pressable>
+              </View>
+            )}
           </SafeAreaView>
         </Animated.View>
       </View>
@@ -391,7 +366,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    top: "8%",
     maxHeight: "92%",
+    minHeight: "60%",
     backgroundColor: Colors.bg,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
@@ -443,6 +420,8 @@ const styles = StyleSheet.create({
   coachTitle: { color: Colors.text, fontWeight: "800", fontSize: 14 },
   coachSub: { color: Colors.textDim, fontSize: 11, marginTop: 2 },
   chatBox: { marginTop: 10, padding: 12, paddingBottom: 20, marginBottom: 12, borderRadius: 16, backgroundColor: Colors.bgAlt, borderWidth: 1, borderColor: Colors.border },
+  chatFull: { flex: 1, paddingBottom: 10 },
+  chatScroll: { paddingVertical: 12, gap: 8 },
   chatBanner: { flexDirection: "row", alignItems: "center", gap: 6, padding: 8, borderRadius: 10, backgroundColor: Colors.accentDim, marginBottom: 10 },
   chatBannerText: { color: Colors.accentDeep, fontSize: 11, fontWeight: "700", flex: 1 },
   chatMsgs: { gap: 8 },
