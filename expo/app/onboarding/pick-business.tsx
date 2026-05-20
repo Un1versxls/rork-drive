@@ -174,14 +174,14 @@ export default function PickBusinessScreen() {
         setProfileField("pendingFreeAltPool", free.pool);
       }
       setBusiness(opt.idea, opt.pool);
-      router.push({ pathname: "/onboarding/paywall", params: { initialPlan: "premium", initialCycle: "monthly", requirePro: "1" } });
+      router.push({ pathname: "/onboarding/feature-preview", params: { initialPlan: "premium", initialCycle: "monthly", requirePro: "1" } });
     } else {
       setProfileField("pendingProPick", null);
       setProfileField("pendingProPickPool", []);
       setProfileField("pendingFreeAlt", null);
       setProfileField("pendingFreeAltPool", []);
       setBusiness(opt.idea, opt.pool);
-      router.push({ pathname: "/onboarding/paywall", params: { initialPlan: "base", initialCycle: "monthly" } });
+      router.push({ pathname: "/onboarding/feature-preview", params: { initialPlan: "base", initialCycle: "monthly" } });
     }
   };
 
