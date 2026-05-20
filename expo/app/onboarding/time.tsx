@@ -24,7 +24,7 @@ export default function TimeScreen() {
   return (
     <OnboardingShell
       step={3}
-      total={11}
+      total={5}
       title="How much time daily?"
       subtitle="Small is fine — consistency wins."
       footer={
@@ -34,7 +34,7 @@ export default function TimeScreen() {
           onPress={() => {
             if (!selected) return;
             setAnswers({ time: selected });
-            router.push("/onboarding/priority");
+            router.push("/onboarding/budget");
           }}
         />
       }

@@ -204,6 +204,7 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
       </Animated.View>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
         style={StyleSheet.absoluteFill}
         pointerEvents="box-none"
       >
@@ -447,7 +448,7 @@ const styles = StyleSheet.create({
   coachIcon: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: Colors.accentDim },
   coachTitle: { color: Colors.text, fontWeight: "800", fontSize: 14 },
   coachSub: { color: Colors.textDim, fontSize: 11, marginTop: 2 },
-  chatBox: { marginTop: 10, padding: 12, paddingBottom: 16, marginBottom: 8, borderRadius: 16, backgroundColor: Colors.bgAlt, borderWidth: 1, borderColor: Colors.border },
+  chatBox: { marginTop: 10, padding: 12, paddingBottom: 20, marginBottom: 12, borderRadius: 16, backgroundColor: Colors.bgAlt, borderWidth: 1, borderColor: Colors.border },
   chatBanner: { flexDirection: "row", alignItems: "center", gap: 6, padding: 8, borderRadius: 10, backgroundColor: Colors.accentDim, marginBottom: 10 },
   chatBannerText: { color: Colors.accentDeep, fontSize: 11, fontWeight: "700", flex: 1 },
   chatMsgs: { gap: 8 },
@@ -456,8 +457,8 @@ const styles = StyleSheet.create({
   msgUser: { backgroundColor: Colors.accentDeep, alignSelf: "flex-end" },
   msgText: { color: Colors.text, fontSize: 13, lineHeight: 18 },
   msgTextUser: { color: "#faf9f6", fontWeight: "600" },
-  inputRow: { flexDirection: "row", alignItems: "flex-end", gap: 8, marginTop: 10 },
-  input: { flex: 1, minHeight: 40, maxHeight: 120, color: Colors.text, backgroundColor: Colors.cardBg, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
+  inputRow: { flexDirection: "row", alignItems: "flex-end", gap: 8, marginTop: 12, paddingBottom: Platform.OS === "ios" ? 8 : 4 },
+  input: { flex: 1, minHeight: 44, maxHeight: 120, color: Colors.text, backgroundColor: Colors.cardBg, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14 },
   sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.accentDeep, alignItems: "center", justifyContent: "center" },
   footerRow: { flexDirection: "row", gap: 10, paddingTop: 10, paddingBottom: 6 },
   skipBtn: { paddingHorizontal: 18, paddingVertical: 14, borderRadius: 999, backgroundColor: Colors.bgAlt, borderWidth: 1, borderColor: Colors.border, alignItems: "center", justifyContent: "center" },

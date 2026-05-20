@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, Platform, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { Check, ChevronLeft, Crown, Sparkles } from "lucide-react-native";
+import { Check, ChevronLeft, Crown, Lock, Sparkles } from "lucide-react-native";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { PurchasesOffering, PurchasesPackage } from "react-native-purchases";
 
@@ -27,9 +27,10 @@ export default function PaywallScreen() {
   const router = useRouter();
   const { state, startSubscription } = useApp();
   const { user } = useAuth();
-  const params = useLocalSearchParams<{ retry?: string; fromUpgrade?: string; initialPlan?: string; initialCycle?: string }>();
+  const params = useLocalSearchParams<{ retry?: string; fromUpgrade?: string; initialPlan?: string; initialCycle?: string; requirePro?: string }>();
   const retry = params.retry === "1";
   const fromUpgrade = params.fromUpgrade === "1";
+  const requirePro = params.requirePro === "1";
 
   const [planId, setPlanId] = useState<PlanId>(params.initialPlan === "premium" ? "premium" : "base");
   const [cycle, setCycle] = useState<BillingCycle>(params.initialCycle === "monthly" ? "monthly" : "yearly");
@@ -99,6 +100,13 @@ export default function PaywallScreen() {
     },
     onSuccess: (res) => {
       if (res.ok) {
+        // If they picked a Pro business but bought Base, swap them to the
+        // free alternative we stashed earlier and route via a friendly screen.
+        if (requirePro && planId === "base" && state.profile.pendingFreeAlt) {
+          startSubscription(planId, cycle);
+          router.replace("/onboarding/downgrade-confirm");
+          return;
+        }
         startSubscription(planId, cycle);
         if (state.profile.email) {
           submitSurveyResponse(state.profile, state.profile.email, user?.id ?? null).catch(() => {});
@@ -133,6 +141,11 @@ export default function PaywallScreen() {
 
   const onStart = () => {
     if (Platform.OS === "web") {
+      if (requirePro && planId === "base" && state.profile.pendingFreeAlt) {
+        startSubscription(planId, cycle);
+        router.replace("/onboarding/downgrade-confirm");
+        return;
+      }
       startSubscription(planId, cycle);
       upsertAppUser({
         appleUserId: state.profile.appleUserId ?? null,
@@ -179,6 +192,12 @@ export default function PaywallScreen() {
         )}
 
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          {requirePro ? (
+            <View style={styles.proBanner}>
+              <Lock size={12} color="#1a1208" />
+              <Text style={styles.proBannerText}>This business requires Pro to unlock.</Text>
+            </View>
+          ) : null}
           {!fromUpgrade && business ? (
             <View style={styles.planCard}>
               <View style={styles.planCardEyebrow}>
@@ -420,4 +439,13 @@ const styles = StyleSheet.create({
   legal: { color: Colors.textMuted, fontSize: 10, textAlign: "center", lineHeight: 14 },
   codeBtn: { alignSelf: "center", paddingVertical: 6, paddingHorizontal: 10, marginTop: 2 },
   codeBtnText: { color: Colors.textMuted, fontSize: 11, fontWeight: "600", textDecorationLine: "underline" },
+  proBanner: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: Colors.accentGold,
+    paddingHorizontal: 12, paddingVertical: 10,
+    borderRadius: 12,
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  proBannerText: { color: "#1a1208", fontSize: 12, fontWeight: "900", letterSpacing: 0.3, flex: 1 },
 });

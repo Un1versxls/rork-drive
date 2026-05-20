@@ -24,7 +24,7 @@ export default function ExperienceScreen() {
   return (
     <OnboardingShell
       step={2}
-      total={11}
+      total={5}
       title="Your experience level?"
       subtitle="Be honest — it helps us match difficulty."
       footer={

@@ -3,7 +3,11 @@ export type PrimaryGoal =
   | "build_skills"
   | "grow_business"
   | "stay_productive"
-  | "day_trading";
+  | "day_trading"
+  | "ai_business"
+  | "in_person_hustle";
+
+export type PathChoice = "ai" | "in_person";
 
 export type DayTradingMode = "hustle" | "learn";
 export type DayTradingMarket = "stocks" | "crypto" | "forex" | "options";
@@ -94,6 +98,9 @@ export interface BusinessIdea {
   startupCost: string;
   timeToIncome: string;
   firstMilestones: string[];
+  isPro?: boolean;
+  path?: PathChoice;
+  incomeRange?: string;
 }
 
 export type NameEffect =
@@ -159,6 +166,12 @@ export interface UserProfile {
   dayTradingMarket: DayTradingMarket | null;
   dayTradingCapital: DayTradingCapital | null;
   pastBusinesses: BusinessIdea[];
+  pathChoice: PathChoice | null;
+  firstTourSeen: boolean;
+  pendingProPick: BusinessIdea | null;
+  pendingProPickPool: TaskSeed[];
+  pendingFreeAlt: BusinessIdea | null;
+  pendingFreeAltPool: TaskSeed[];
 }
 
 export interface AuthUser {

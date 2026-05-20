@@ -12,7 +12,11 @@ export type NameEffectId =
   | "void_black"
   | "rainbow_wave"
   | "electric"
-  | "mythic_rune";
+  | "mythic_rune"
+  | "silver_shimmer"
+  | "blue_glow"
+  | "gold_pulse"
+  | "fire_flame";
 
 export interface Achievement {
   id: string;
@@ -26,6 +30,56 @@ export interface Achievement {
 }
 
 export const ACHIEVEMENTS: Achievement[] = [
+  {
+    id: "streak_silver",
+    title: "Silver Spark",
+    description: "Reach a 3-day streak",
+    icon: "Sparkles",
+    metric: "streak",
+    threshold: 3,
+    effect: "silver_shimmer",
+    effectLabel: "Silver Shimmer",
+  },
+  {
+    id: "streak_blue",
+    title: "Blue Flame",
+    description: "Reach a 7-day streak",
+    icon: "Flame",
+    metric: "streak",
+    threshold: 7,
+    effect: "blue_glow",
+    effectLabel: "Blue Glow",
+  },
+  {
+    id: "streak_gold_pulse",
+    title: "Gold Pulse",
+    description: "Reach a 10-day streak",
+    icon: "Flame",
+    metric: "streak",
+    threshold: 10,
+    effect: "gold_pulse",
+    effectLabel: "Pulsing Gold",
+  },
+  {
+    id: "streak_rainbow",
+    title: "Rainbow Run",
+    description: "Reach a 30-day streak",
+    icon: "Rainbow",
+    metric: "streak",
+    threshold: 30,
+    effect: "rainbow_wave",
+    effectLabel: "Rainbow Wave",
+  },
+  {
+    id: "streak_fire",
+    title: "Eternal Fire",
+    description: "Reach a 100-day streak",
+    icon: "Flame",
+    metric: "streak",
+    threshold: 100,
+    effect: "fire_flame",
+    effectLabel: "Eternal Fire",
+  },
   {
     id: "first_move",
     title: "First Move",
@@ -183,4 +237,8 @@ export const NAME_EFFECT_LABELS: Record<NameEffectId, string> = {
   rainbow_wave: "Rainbow Wave",
   electric: "Live Wire",
   mythic_rune: "Mythic Rune",
+  silver_shimmer: "Silver Shimmer",
+  blue_glow: "Blue Glow",
+  gold_pulse: "Pulsing Gold",
+  fire_flame: "Eternal Fire",
 };

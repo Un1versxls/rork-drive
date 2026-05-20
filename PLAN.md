@@ -1,48 +1,69 @@
-# Fix cross-device sync, sign-in loop, email signup error, and add day trading path
+# Simpler onboarding, branded badges, paywall polish & first-time tour
 
-## Problems being fixed
+## Features
 
-- After signing in on a new phone (TestFlight), the app keeps bouncing back to sign-in instead of opening the dashboard.
-- Creating an account with email shows "edge function returned a non-2xx status code".
-- Progress, name, tasks, streak, business, switches and timers don't follow the user across devices.
-- No flow yet for people who want to start (or learn) day trading as their hustle.
+**New onboarding (simpler, branchy)**
 
-## What will change
+- Replace the multi-goal screen with just **2 choices**: "Start an AI Business" or "Start an In-Person Side Hustle".
+- Each path asks 3 quick questions tailored to it (time available, experience, budget/interest), then finishes.
+- Remove Day Trading, "learn a skill", and other generic goals from the entry point.
 
-### 1. Make email sign-up actually work
-- Replace the brittle 6-digit email-code step with a normal email + password account creation.
-- The user types their email and a password, taps "Create account", and they're signed in immediately — no edge function involved.
-- "Resend code" / OTP screens are removed from the sign-up path so the "non-2xx" error can't appear.
+**Business pick screen (post-onboarding)**
 
-### 2. Stay signed in & land on the dashboard correctly
-- When a returning user signs in on any device, the app pulls down their full saved profile from the cloud first, then opens straight to the dashboard.
-- Fixes the infinite "sign in → kicked back to sign in" loop by trusting the cloud record instead of the empty local state on a fresh phone.
-- Sessions remain remembered for 30 days as before.
+- App generates **3 businesses**: 2 Pro-only + 1 free, with a clear gold "PRO" badge on the locked ones.
+- AI path Pro examples: YouTube Automation, AI Day Trading, AI SaaS, AI Automation Agency. Free: simpler AI side project.
+- In-person path Pro examples: Mobile Detailing Empire, Pressure Washing Franchise, Vending Route. Free: car washing / lawn care.
 
-### 3. Full cross-device memory
-Everything below is now saved to the cloud the moment it changes, and re-loaded on a new device so the experience is identical:
-- Name, email, current goal, business, business task pool
-- Today's tasks and their completed/skipped status
-- Streak, best streak, total points, last active date, daily history
-- Time until new tasks (date keys are restored so the next-day refresh lines up)
-- Business-switch counter (the gold ×5 badge), custom-build counter and the month they reset on
-- Unlocked badges, achievements, equipped name effect
+**Paywall flow**
 
-### 4. New "Day Trading" path
-- On the goal screen, "Earn extra income" and "Learn a skill" each get a new sub-option for **Day Trading**.
-- Choosing it routes into a tailored onboarding mini-flow that asks about starting capital, market preference (stocks, crypto, forex), and whether they want a "start a side hustle" plan or a "learn the fundamentals" plan.
-- A dedicated day-trading task pool is added — example tasks: paper-trade for 30 minutes, journal one trade, watch one market open, study one chart pattern, review risk-management rules, set up a broker account, define a daily loss limit, etc.
-- The plan summary and dashboard reflect "Day Trading" as the chosen path with its own tagline and milestones.
+- Picking the **free business** opens the full paywall (phone animation, feature pages, plan picker) pre-selected on **Base — 1 month**.
+- Picking a **Pro business** opens the same paywall pre-selected on **Pro — 1 month** with a banner up top: "This business requires Pro to unlock."
+- If a user with a Pro pick downgrades to Base at checkout, a friendly screen says "Looks like this is the business for you" and swaps them to the free alternative they could have chosen earlier.
 
-### 5. Small reliability fixes spotted along the way
-- Sign-in screen gracefully recovers if the cloud record is missing (falls back to onboarding instead of crashing).
-- Cloud sync now runs on every state change after sign-in, not just on selected events.
-- Safer task-list access so opening a task right after sign-in can't throw an "undefined value" error.
+**Reward / badge system**
 
-## Screens added or changed
+- Streak milestones unlock collectible badges that change the look of your name on the dashboard:
+  - 3-day: silver shimmer
+  - 7-day: blue glow
+  - 10-day: pulsing gold light
+  - 30-day: rainbow gradient
+  - 100-day: animated fire
+- New "Badges" section where users can view unlocked badges and **equip one** to style their name.
+- Badge gets a small animated icon next to the streak counter too.
 
-- **Goal screen** — new "Day Trading" option appears under both Earn income and Learn a skill.
-- **Day Trading intro** — short explainer + capital + market + side-hustle-vs-learn choice.
-- **Sign-up screen** — single-step email + password, no verification code.
-- **Sign-in screen** — pulls full progress from cloud before opening the dashboard.
-- **Dashboard** — unchanged visually, but now shows the exact same data on every device.
+**First-time feature tour**
+
+- On first app open after onboarding, a non-closable in-app tour highlights 5 things in sequence with animation:
+  1. Your daily tasks
+  2. Streak & rewards
+  3. Equipping badges to style your name
+  4. Switching businesses
+  5. Pro unlocks custom businesses (small UI panel teaser)
+- Only ever shown once per account.
+
+**Bug fixes & polish**
+
+- Fix chatbot button: add proper safe-area padding so it opens correctly on iPhone (notch + home indicator clearance).
+- Sweep the codebase for any current errors/warnings.
+- Tighten copy and reduce visual noise across onboarding, paywall, and sign-up so each screen feels minimal and snappy.
+- Smoother transitions between onboarding steps and into the paywall.
+
+## Design
+
+- Onboarding: big, friendly two-card pick (AI vs In-person) with subtle motion, then minimal one-question-per-screen flow.
+- Business cards: clean dark cards, gold border + "PRO" chip for locked ones, single bright accent for the free pick.
+- Paywall banner (when Pro required): slim gold strip at the top of the paywall with a lock icon.
+- Badges: small circular crests with metallic finishes; equipping one applies an animated effect to the dashboard name (glow, pulse, shimmer, gradient, flame).
+- Tour: spotlight-style overlay with soft dimming, animated arrows, and a "Next" button only (no close).
+
+## Screens
+
+- **Onboarding intro** — 2 path cards: AI Business / In-Person Hustle.
+- **Branching questions** — 3 short screens per path.
+- **Business pick** — 2 Pro + 1 Free, clear lock styling.
+- **Paywall** — phone animation, feature pages, plan picker pre-selected based on pick + optional "Pro required" banner.
+- **Downgrade confirm screen** — shown when a Pro picker selects Base, switches them to the free business.
+- **Dashboard** — name styled by equipped badge, animated badge near streak.
+- **Badges screen** — grid of all badges with locked/unlocked state and an "Equip" button.
+- **First-time tour overlay** — 5-step guided animation over the dashboard. 
+

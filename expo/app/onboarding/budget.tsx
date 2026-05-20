@@ -23,8 +23,8 @@ export default function BudgetScreen() {
 
   return (
     <OnboardingShell
-      step={6}
-      total={11}
+      step={4}
+      total={5}
       title="Your starting budget?"
       subtitle="We'll match ideas you can actually afford."
       footer={
@@ -34,7 +34,7 @@ export default function BudgetScreen() {
           onPress={() => {
             if (!selected) return;
             setAnswers({ budget: selected });
-            router.push("/onboarding/obstacle");
+            router.push("/onboarding/name");
           }}
         />
       }

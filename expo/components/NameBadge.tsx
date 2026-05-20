@@ -268,6 +268,91 @@ export function NameBadge({ name, effect, size = 22, style }: Props) {
     );
   }
 
+  if (effect === "silver_shimmer") {
+    const translateX = anim.interpolate({ inputRange: [0, 1], outputRange: [-60, 60] });
+    return (
+      <View style={styles.wrap}>
+        <Text style={baseText}>{name}</Text>
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: 0.85, transform: [{ translateX }] }]} pointerEvents="none">
+          <LinearGradient
+            colors={["rgba(200,200,210,0)", "rgba(220,220,230,0.65)", "rgba(255,255,255,0.95)", "rgba(220,220,230,0.65)", "rgba(200,200,210,0)"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
+        <Text style={[baseText, styles.overlay, { color: "transparent" }]}>{name}</Text>
+      </View>
+    );
+  }
+
+  if (effect === "blue_glow") {
+    const opacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] });
+    return (
+      <View style={styles.wrap}>
+        <Animated.Text
+          style={[
+            baseText,
+            {
+              color: "#2bd6ff",
+              opacity,
+              textShadowColor: "rgba(43,156,255,0.95)",
+              textShadowRadius: 18,
+            } as TextStyle,
+          ]}
+        >
+          {name}
+        </Animated.Text>
+      </View>
+    );
+  }
+
+  if (effect === "gold_pulse") {
+    const opacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] });
+    const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] });
+    return (
+      <View style={styles.wrap}>
+        <Animated.Text
+          style={[
+            baseText,
+            {
+              color: "#d4af37",
+              opacity,
+              textShadowColor: "rgba(255,215,107,0.95)",
+              textShadowRadius: 22,
+              transform: [{ scale }],
+            } as TextStyle,
+          ]}
+        >
+          {name}
+        </Animated.Text>
+      </View>
+    );
+  }
+
+  if (effect === "fire_flame") {
+    const opacity = anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.7, 1, 0.8] });
+    const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -1.5] });
+    return (
+      <View style={styles.wrap}>
+        <Animated.Text
+          style={[
+            baseText,
+            {
+              color: "#ff4d1a",
+              opacity,
+              textShadowColor: "rgba(255,154,31,0.95)",
+              textShadowRadius: 20,
+              transform: [{ translateY }],
+            } as TextStyle,
+          ]}
+        >
+          {name}
+        </Animated.Text>
+      </View>
+    );
+  }
+
   return <Text style={baseText}>{name}</Text>;
 }
 

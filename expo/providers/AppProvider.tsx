@@ -102,6 +102,12 @@ const DEFAULT_PROFILE: UserProfile = {
   dayTradingMarket: null,
   dayTradingCapital: null,
   pastBusinesses: [],
+  pathChoice: null,
+  firstTourSeen: false,
+  pendingProPick: null,
+  pendingProPickPool: [],
+  pendingFreeAlt: null,
+  pendingFreeAltPool: [],
 };
 
 const DEFAULT_STATE: AppState = {
@@ -132,6 +138,12 @@ async function loadState(): Promise<AppState> {
         subscription: { ...DEFAULT_SUBSCRIPTION, ...(parsed.profile?.subscription ?? {}) },
         unlockedEffects: parsed.profile?.unlockedEffects ?? ["none"],
         pastBusinesses: parsed.profile?.pastBusinesses ?? [],
+        pathChoice: parsed.profile?.pathChoice ?? null,
+        firstTourSeen: parsed.profile?.firstTourSeen ?? false,
+        pendingProPick: parsed.profile?.pendingProPick ?? null,
+        pendingProPickPool: parsed.profile?.pendingProPickPool ?? [],
+        pendingFreeAlt: parsed.profile?.pendingFreeAlt ?? null,
+        pendingFreeAltPool: parsed.profile?.pendingFreeAltPool ?? [],
       },
     };
   } catch (e) {
@@ -588,6 +600,12 @@ export const [AppProvider, useApp] = createContextHook(() => {
           subscription: { ...DEFAULT_SUBSCRIPTION, ...(blob.profile?.subscription ?? {}) },
           unlockedEffects: blob.profile?.unlockedEffects ?? ["none"],
           pastBusinesses: blob.profile?.pastBusinesses ?? [],
+          pathChoice: blob.profile?.pathChoice ?? null,
+          firstTourSeen: blob.profile?.firstTourSeen ?? false,
+          pendingProPick: blob.profile?.pendingProPick ?? null,
+          pendingProPickPool: blob.profile?.pendingProPickPool ?? [],
+          pendingFreeAlt: blob.profile?.pendingFreeAlt ?? null,
+          pendingFreeAltPool: blob.profile?.pendingFreeAltPool ?? [],
         },
         tasks: Array.isArray(blob.tasks) ? blob.tasks : [],
         history: blob.history ?? {},

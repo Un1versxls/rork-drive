@@ -4,7 +4,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Check, Clock, Flame, RotateCcw, X } from "lucide-react-native";
 
 import { CelebrationOverlay } from "@/components/CelebrationOverlay";
+import { FirstTimeTour } from "@/components/FirstTimeTour";
 import { HalfwayToast } from "@/components/HalfwayToast";
+import { NameBadge } from "@/components/NameBadge";
 import { RatePrompt } from "@/components/RatePrompt";
 import { StreakEffect } from "@/components/StreakEffect";
 import { TaskDetailPanel } from "@/components/TaskDetailPanel";
@@ -54,7 +56,7 @@ function useCountdown(): string {
 }
 
 export default function TasksScreen() {
-  const { state, today, currentPlan, completeTask, skipTask, undoTask } = useApp();
+  const { state, today, currentPlan, completeTask, skipTask, undoTask, setProfileField } = useApp();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [celebrate, setCelebrate] = useState<boolean>(false);
   const [celebrateSeenKey, setCelebrateSeenKey] = useState<string | null>(null);
@@ -98,7 +100,12 @@ export default function TasksScreen() {
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
               <Text style={styles.greet}>{greeting()}</Text>
-              <Text style={styles.name}>{state.profile.name || "Driver"}</Text>
+              <NameBadge
+                name={state.profile.name || "Driver"}
+                effect={state.profile.equippedEffect}
+                size={26}
+                style={styles.name}
+              />
               <Text style={styles.date}>{formatDate()}</Text>
             </View>
             <View style={styles.streakBlock}>
@@ -195,6 +202,12 @@ export default function TasksScreen() {
       />
 
       <RatePrompt />
+
+      <FirstTimeTour
+        visible={!state.profile.firstTourSeen && state.onboarded}
+        hapticsEnabled={state.profile.hapticsEnabled}
+        onComplete={() => setProfileField("firstTourSeen", true)}
+      />
     </View>
   );
 }
