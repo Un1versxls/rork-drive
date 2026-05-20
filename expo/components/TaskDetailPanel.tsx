@@ -3,7 +3,6 @@ import {
   Animated,
   Easing,
   Keyboard,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -202,13 +201,8 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
       <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, { opacity: fade }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
       </Animated.View>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="box-none"
-      >
-        <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        <Animated.View style={[styles.sheet, { bottom: keyboardHeight, transform: [{ translateY }] }]}>
           <SafeAreaView edges={["bottom"]} style={{ flex: 1 }}>
             <View style={styles.grabber} />
             <View style={styles.sheetHeader}>
@@ -226,7 +220,7 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
               style={styles.scrollView}
               contentContainerStyle={[
                 styles.scroll,
-                chatOpen && { paddingBottom: 800 + (Platform.OS === "ios" ? keyboardHeight : Platform.OS === "android" ? 320 : 400) },
+                chatOpen && { paddingBottom: 480 },
               ]}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
@@ -385,7 +379,7 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
             </View>
           </SafeAreaView>
         </Animated.View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
