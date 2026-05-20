@@ -19,9 +19,9 @@ const AI_OPTIONS: Option[] = [
 ];
 
 const INPERSON_OPTIONS: Option[] = [
-  { id: "beginner", label: "Beginner", description: "Never charged anyone — maybe mowed a neighbor's lawn once", Icon: Sprout },
-  { id: "intermediate", label: "Intermediate", description: "Done a few odd jobs for cash — detailing, hauling, tutoring", Icon: Rocket },
-  { id: "advanced", label: "Advanced", description: "Have regular clients for a service like cleaning or landscaping", Icon: Flame },
+  { id: "beginner", label: "Beginner", description: "I walk dogs or do odd chores for neighbors sometimes", Icon: Sprout },
+  { id: "intermediate", label: "Intermediate", description: "Done a few side gigs for cash — detailing, hauling, yard work", Icon: Rocket },
+  { id: "advanced", label: "Advanced", description: "Have a couple of regular clients (cleaning, landscaping, etc.)", Icon: Flame },
   { id: "expert", label: "Expert", description: "Run a local service business with crew or repeat customers", Icon: Crown },
 ];
 
