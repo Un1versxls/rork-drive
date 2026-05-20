@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { Lock } from "lucide-react-native";
 
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { GradientButton } from "@/components/GradientButton";
@@ -17,8 +18,16 @@ import { upsertAppUser, buildSyncFromAppState } from "@/lib/appUserTracking";
  */
 export default function EmailScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ initialPlan?: string; initialCycle?: string; requirePro?: string }>();
   const { state, setProfileField } = useApp();
   const { signUp, ready } = useAuth();
+  const businessName = state.profile.business?.name ?? null;
+  const requirePro = params.requirePro === "1";
+  const forwardParams = {
+    initialPlan: params.initialPlan ?? "base",
+    initialCycle: params.initialCycle ?? "monthly",
+    ...(requirePro ? { requirePro: "1" } : {}),
+  } as const;
   const [email, setEmail] = useState<string>(state.profile.email ?? "");
   const [password, setPassword] = useState<string>("");
   const [busy, setBusy] = useState<boolean>(false);
@@ -47,15 +56,7 @@ export default function EmailScreen() {
       upsertAppUser(buildSyncFromAppState(null, clean, state, { touchLastSeen: true }))
         .catch((e) => console.log("[signup] initial sync", e));
 
-      if (state.profile.goal === "grow_business") {
-        if (state.profile.business) {
-          router.replace("/onboarding/plan-summary");
-        } else {
-          router.replace("/onboarding/paywall");
-        }
-      } else {
-        router.replace("/onboarding/source");
-      }
+      router.replace({ pathname: "/onboarding/source", params: forwardParams });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Couldn't create your account.";
       console.log("[signup] error", msg);
@@ -72,14 +73,14 @@ export default function EmailScreen() {
 
   return (
     <OnboardingShell
-      step={9}
-      total={12}
-      title="Create your account"
-      subtitle="Sync your progress to any device with one tap to sign back in."
+      step={6}
+      total={7}
+      title={businessName ? `Claim ${businessName}` : "Save your progress"}
+      subtitle={businessName ? "Create your account so we can save your business and sync across devices." : "Sync your progress across devices in one tap."}
       footer={
         <View style={styles.footerWrap}>
           <GradientButton
-            title={busy ? "Creating\u2026" : "Create account"}
+            title={busy ? "Creating\u2026" : businessName ? `Claim ${businessName}` : "Create account"}
             disabled={!valid || busy}
             onPress={onCreate}
           />
@@ -90,6 +91,15 @@ export default function EmailScreen() {
       }
     >
       <View style={styles.wrap}>
+        {businessName ? (
+          <View style={[styles.claimCard, requirePro && styles.claimCardPro]}>
+            {requirePro ? <Lock size={14} color={Colors.accentDeep} /> : null}
+            <View style={{ flex: 1 }}>
+              <Text style={styles.claimEyebrow}>{requirePro ? "PRO PICK" : "YOUR PICK"}</Text>
+              <Text style={styles.claimName}>{businessName}</Text>
+            </View>
+          </View>
+        ) : null}
         <Text style={styles.label}>Email</Text>
         <TextInput
           value={email}
@@ -145,4 +155,17 @@ const styles = StyleSheet.create({
   footerWrap: { gap: 8 },
   altBtn: { alignSelf: "center", paddingVertical: 8, paddingHorizontal: 12 },
   altText: { color: Colors.textMuted, fontSize: 13, fontWeight: "700", textDecorationLine: "underline" },
+  claimCard: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    padding: 12, borderRadius: 14,
+    backgroundColor: "#fafafa",
+    borderWidth: 1.5, borderColor: "#eeeeee",
+    marginBottom: 18,
+  },
+  claimCardPro: {
+    backgroundColor: "rgba(212,175,55,0.10)",
+    borderColor: "rgba(212,175,55,0.45)",
+  },
+  claimEyebrow: { color: Colors.accentDeep, fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
+  claimName: { color: Colors.text, fontSize: 16, fontWeight: "900", letterSpacing: -0.2, marginTop: 2 },
 });

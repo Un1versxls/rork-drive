@@ -166,7 +166,6 @@ export default function PickBusinessScreen() {
     if (!opt) return;
     const free = freeOpt;
     if (opt.idea.isPro) {
-      // Stash for downgrade fallback, then go to paywall with Pro pre-selected.
       setProfileField("pendingProPick", opt.idea);
       setProfileField("pendingProPickPool", opt.pool);
       if (free) {
@@ -174,14 +173,14 @@ export default function PickBusinessScreen() {
         setProfileField("pendingFreeAltPool", free.pool);
       }
       setBusiness(opt.idea, opt.pool);
-      router.push({ pathname: "/onboarding/feature-preview", params: { initialPlan: "premium", initialCycle: "monthly", requirePro: "1" } });
+      router.push({ pathname: "/onboarding/email", params: { initialPlan: "premium", initialCycle: "monthly", requirePro: "1" } });
     } else {
       setProfileField("pendingProPick", null);
       setProfileField("pendingProPickPool", []);
       setProfileField("pendingFreeAlt", null);
       setProfileField("pendingFreeAltPool", []);
       setBusiness(opt.idea, opt.pool);
-      router.push({ pathname: "/onboarding/feature-preview", params: { initialPlan: "base", initialCycle: "monthly" } });
+      router.push({ pathname: "/onboarding/email", params: { initialPlan: "base", initialCycle: "monthly" } });
     }
   };
 

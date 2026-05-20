@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ScrollView, StyleSheet } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Music2, Instagram, Users, Star, Sparkles, type LucideIcon } from "lucide-react-native";
 
 import { OnboardingShell } from "@/components/OnboardingShell";
@@ -8,13 +8,6 @@ import { OptionCard } from "@/components/OptionCard";
 import { GradientButton } from "@/components/GradientButton";
 import { useApp } from "@/providers/AppProvider";
 import type { Source } from "@/types";
-
-function nextAfterSource(goal: string | null): string {
-  if (goal === "earn_income") return "/onboarding/match";
-  // Day trading already has its plan built during the day-trading screen.
-  if (goal === "day_trading") return "/onboarding/plan-summary";
-  return "/onboarding/plan-summary";
-}
 
 const OPTIONS: { id: Source; label: string; Icon: LucideIcon }[] = [
   { id: "tiktok", label: "TikTok", Icon: Music2 },
@@ -26,15 +19,22 @@ const OPTIONS: { id: Source; label: string; Icon: LucideIcon }[] = [
 
 export default function SourceScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ initialPlan?: string; initialCycle?: string; requirePro?: string }>();
   const { state, setAnswers } = useApp();
   const [selected, setSelected] = useState<Source | null>(state.profile.source);
 
+  const forwardParams = {
+    initialPlan: params.initialPlan ?? "base",
+    initialCycle: params.initialCycle ?? "monthly",
+    ...(params.requirePro === "1" ? { requirePro: "1" } : {}),
+  } as const;
+
   return (
     <OnboardingShell
-      step={10}
-      total={12}
+      step={7}
+      total={7}
       title="Where did you hear about us?"
-      subtitle="Just curious — pick one."
+      subtitle="Last question — pick one."
       footer={
         <GradientButton
           title="Continue"
@@ -42,7 +42,7 @@ export default function SourceScreen() {
           onPress={() => {
             if (!selected) return;
             setAnswers({ source: selected });
-            router.push(nextAfterSource(state.profile.goal));
+            router.replace({ pathname: "/onboarding/feature-preview", params: forwardParams });
           }}
         />
       }
