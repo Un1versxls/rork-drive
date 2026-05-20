@@ -84,7 +84,7 @@ export default function EmailScreen() {
             disabled={!valid || busy}
             onPress={onCreate}
           />
-          <Pressable onPress={() => router.replace("/onboarding/sign-in")} hitSlop={10} style={styles.altBtn}>
+          <Pressable onPress={() => router.push({ pathname: "/onboarding/sign-in", params: forwardParams })} hitSlop={10} style={styles.altBtn}>
             <Text style={styles.altText}>Have an account? Sign in</Text>
           </Pressable>
         </View>

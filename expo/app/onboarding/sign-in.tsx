@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Alert, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { GradientButton } from "@/components/GradientButton";
@@ -13,6 +13,13 @@ import type { BusinessIdea } from "@/types";
 
 export default function OnboardingSignInScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ initialPlan?: string; initialCycle?: string; requirePro?: string }>();
+  const requirePro = params.requirePro === "1";
+  const forwardParams = {
+    initialPlan: params.initialPlan ?? "base",
+    initialCycle: params.initialCycle ?? "monthly",
+    ...(requirePro ? { requirePro: "1" } : {}),
+  } as const;
   const { signIn, signInPending, ready } = useAuth();
   const { state, setProfileField, hydrateFromAppUser, setAnswers, setBusiness } = useApp();
   const [email, setEmail] = useState<string>("");
@@ -61,7 +68,7 @@ export default function OnboardingSignInScreen() {
         return;
       }
       console.log("[sign-in] no app_users row found — advancing onboarding");
-      router.replace("/onboarding/source");
+      router.replace({ pathname: "/onboarding/source", params: forwardParams });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Couldn't sign in. Check your details.";
       console.log("[sign-in] failed", msg);
@@ -110,7 +117,7 @@ export default function OnboardingSignInScreen() {
             disabled={!valid || signInPending}
             onPress={onSubmit}
           />
-          <Pressable onPress={() => router.replace("/onboarding/apple-signin")} hitSlop={10} style={styles.altBtn}>
+          <Pressable onPress={() => router.back()} hitSlop={10} style={styles.altBtn}>
             <Text style={styles.altText}>No account? Create one</Text>
           </Pressable>
         </View>
