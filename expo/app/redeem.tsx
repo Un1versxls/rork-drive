@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
@@ -37,7 +37,8 @@ export default function RedeemScreen() {
 
   return (
     <SafeAreaView style={styles.root} edges={["bottom"]}>
-      <View style={styles.content}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Redeem a code</Text>
         <Text style={styles.sub}>Got a creator code or promo? Drop it below.</Text>
 
@@ -55,7 +56,8 @@ export default function RedeemScreen() {
         <Pressable onPress={() => router.back()} style={styles.cancel}>
           <Text style={styles.cancelText}>Cancel</Text>
         </Pressable>
-      </View>
+      </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

@@ -28,6 +28,7 @@ interface Props {
 
 export function FirstTimeTour({ visible, onComplete, hapticsEnabled }: Props) {
   const [idx, setIdx] = useState<number>(0);
+  const [dismissed, setDismissed] = useState<boolean>(false);
   const fade = useRef(new Animated.Value(0)).current;
   const rise = useRef(new Animated.Value(20)).current;
   const pulse = useRef(new Animated.Value(0)).current;
@@ -35,6 +36,7 @@ export function FirstTimeTour({ visible, onComplete, hapticsEnabled }: Props) {
   useEffect(() => {
     if (!visible) return;
     setIdx(0);
+    setDismissed(false);
   }, [visible]);
 
   useEffect(() => {
@@ -60,7 +62,7 @@ export function FirstTimeTour({ visible, onComplete, hapticsEnabled }: Props) {
     return () => loop.stop();
   }, [visible, pulse]);
 
-  if (!visible) return null;
+  if (!visible || dismissed) return null;
 
   const step = STEPS[idx];
   const Icon = step.Icon;
@@ -70,7 +72,14 @@ export function FirstTimeTour({ visible, onComplete, hapticsEnabled }: Props) {
 
   const next = () => {
     if (isLast) {
-      onComplete();
+      // Dismiss the modal synchronously so the underlying screen is
+      // immediately interactive, then persist the seen flag. Without
+      // this the Modal's fade-out can swallow taps for ~300ms.
+      setDismissed(true);
+      triggerHaptic("select", hapticsEnabled);
+      // Defer onComplete one tick so state has time to commit before
+      // the parent re-renders.
+      setTimeout(() => onComplete(), 0);
       return;
     }
     triggerHaptic("select", hapticsEnabled);

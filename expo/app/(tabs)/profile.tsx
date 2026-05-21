@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, Animated, Easing, LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, UIManager, View } from "react-native";
+import { Alert, Animated, Easing, KeyboardAvoidingView, LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, UIManager, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -142,7 +142,8 @@ export default function ProfileScreen() {
   return (
     <View style={styles.root}>
       <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={0}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.headerRow}>
             <Text style={styles.header}>Profile</Text>
             <Pressable
@@ -386,6 +387,7 @@ export default function ProfileScreen() {
             </Pressable>
           ) : null}
         </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
   );

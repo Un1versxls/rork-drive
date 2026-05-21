@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ActivityIndicator, Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Crown, Lock, Sparkles, TrendingUp } from "lucide-react-native";
 import { useRouter } from "expo-router";
@@ -165,7 +165,8 @@ Return: name (2-5 words), tagline, description (2 sentences), whyFit (why it wor
 
   return (
     <SafeAreaView style={styles.root} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={0}>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <Text style={styles.h1}>Build your own</Text>
         <Text style={styles.sub}>Tell us what you want to build. We&apos;ll handle the daily tasks.</Text>
 
@@ -222,6 +223,7 @@ Return: name (2-5 words), tagline, description (2 sentences), whyFit (why it wor
             : `This replaces your current business (${businessSwitchesRemaining}/${businessSwitchLimit} switches left this month). Your streak is kept.`}
         </Text>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

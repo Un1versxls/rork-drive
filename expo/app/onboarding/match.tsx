@@ -98,6 +98,7 @@ export default function MatchScreen() {
       didNavigate = true;
       router.replace(path);
     };
+    const currentBizId = profileRef.current.business?.id ?? null;
     // Hard timeout: never let user be stuck more than 25s
     const hardTimeout = setTimeout(() => {
       if (didNavigate || cancelled) return;
@@ -106,7 +107,10 @@ export default function MatchScreen() {
       try {
         syncIdeasToLibrary(fb.ideas, fb.pools, { goal: profileRef.current.goal, experience: profileRef.current.experience }).catch(() => {});
       } catch {}
-      setBusiness(fb.ideas[0], fb.pools[0]);
+      const pick = fb.ideas.find((i) => i.id !== currentBizId) ?? fb.ideas[0];
+      const pickPool = fb.pools[fb.ideas.indexOf(pick)] ?? fb.pools[0];
+      const finalIdea = pick.id === currentBizId ? { ...pick, id: `${pick.id}-${Date.now()}` } : pick;
+      setBusiness(finalIdea, pickPool);
       setStepIdx(STEPS.length - 1);
       navigate("/onboarding/plan-summary");
     }, 25000);
@@ -161,8 +165,17 @@ Return:
         // Sync to the central library
         syncIdeasToLibrary([idea], [pool], { goal: p.goal, experience: p.experience }).catch(() => {});
 
-        setBusiness(idea, pool);
+        // Guarantee the new pick is treated as a real switch: if the
+        // AI returned the same business id the user already has, force
+        // a unique id so setBusiness commits the change and decrements
+        // the monthly switch counter.
+        const finalIdea: BusinessIdea = currentBizId && idea.id === currentBizId
+          ? { ...idea, id: `${idea.id}-${Date.now()}` }
+          : idea;
+
+        setBusiness(finalIdea, pool);
         setStepIdx(STEPS.length - 1);
+        clearTimeout(hardTimeout);
 
         setTimeout(() => {
           navigate("/onboarding/plan-summary");
@@ -173,9 +186,14 @@ Return:
 
         try {
           const library = await fetchActiveLibrary();
-          if (library.length >= 1) {
-            const picked = entryToIdea(library[0]);
-            setBusiness(picked.idea, picked.pool);
+          const candidate = library.find((e) => e.id !== currentBizId) ?? library[0];
+          if (candidate) {
+            const picked = entryToIdea(candidate);
+            const finalIdea: BusinessIdea = currentBizId && picked.idea.id === currentBizId
+              ? { ...picked.idea, id: `${picked.idea.id}-${Date.now()}` }
+              : picked.idea;
+            setBusiness(finalIdea, picked.pool);
+            clearTimeout(hardTimeout);
             navigate("/onboarding/plan-summary");
             return;
           }
@@ -185,7 +203,13 @@ Return:
 
         const fallback = fallbackIdeas();
         syncIdeasToLibrary(fallback.ideas, fallback.pools, { goal: p.goal, experience: p.experience }).catch(() => {});
-        setBusiness(fallback.ideas[0], fallback.pools[0]);
+        const pick = fallback.ideas.find((i) => i.id !== currentBizId) ?? fallback.ideas[0];
+        const pickPool = fallback.pools[fallback.ideas.indexOf(pick)] ?? fallback.pools[0];
+        const finalIdea: BusinessIdea = currentBizId && pick.id === currentBizId
+          ? { ...pick, id: `${pick.id}-${Date.now()}` }
+          : pick;
+        setBusiness(finalIdea, pickPool);
+        clearTimeout(hardTimeout);
         navigate("/onboarding/plan-summary");
       }
     };
