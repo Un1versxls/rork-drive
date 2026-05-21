@@ -82,6 +82,8 @@ export default function OnboardingSignInScreen() {
         lower.includes("offline")
       ) {
         setError("Can\u2019t reach the server right now. Check your internet connection and try again.");
+      } else if (lower.includes("rate limit") || lower.includes("too many")) {
+        setError("Too many attempts. Wait a minute and try again.");
       } else {
         setError(msg);
       }

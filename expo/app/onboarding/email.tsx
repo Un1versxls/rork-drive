@@ -73,6 +73,8 @@ export default function EmailScreen() {
         lower.includes("offline")
       ) {
         setError("Can\u2019t reach the server right now. Check your internet connection and try again.");
+      } else if (lower.includes("rate limit") || lower.includes("email rate") || lower.includes("too many")) {
+        setError("Too many sign-ups from this server in the last hour. Wait a few minutes and try again \u2014 or, in Supabase \u2192 Auth \u2192 Providers \u2192 Email, turn off \u201CConfirm email\u201D so signups don\u2019t send a confirmation message.");
       } else {
         setError(msg);
       }
