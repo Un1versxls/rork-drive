@@ -72,7 +72,19 @@ export default function OnboardingSignInScreen() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Couldn't sign in. Check your details.";
       console.log("[sign-in] failed", msg);
-      setError(msg);
+      const lower = msg.toLowerCase();
+      if (
+        lower.includes("network") ||
+        lower.includes("failed to fetch") ||
+        lower.includes("fetch failed") ||
+        lower.includes("timeout") ||
+        lower.includes("timed out") ||
+        lower.includes("offline")
+      ) {
+        setError("Can\u2019t reach the server right now. Check your internet connection and try again.");
+      } else {
+        setError(msg);
+      }
     }
   };
 

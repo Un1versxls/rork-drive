@@ -60,9 +60,19 @@ export default function EmailScreen() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Couldn't create your account.";
       console.log("[signup] error", msg);
+      const lower = msg.toLowerCase();
       // Friendly fallback for the common "User already registered" case.
-      if (msg.toLowerCase().includes("already") || msg.toLowerCase().includes("registered")) {
+      if (lower.includes("already") || lower.includes("registered")) {
         setError("An account with that email already exists. Tap \u201CSign in\u201D to restore it.");
+      } else if (
+        lower.includes("network") ||
+        lower.includes("failed to fetch") ||
+        lower.includes("fetch failed") ||
+        lower.includes("timeout") ||
+        lower.includes("timed out") ||
+        lower.includes("offline")
+      ) {
+        setError("Can\u2019t reach the server right now. Check your internet connection and try again.");
       } else {
         setError(msg);
       }
