@@ -1,31 +1,26 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 
-const envUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL ?? "").trim();
-const envAnon = (process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "").trim();
+const SUPABASE_URL = "https://ndoihidkznqdlacpiura.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kb2loaWRrem5xZGxhY3BpdXJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDkyOTMsImV4cCI6MjA5MjIyNTI5M30.Oc7pgUEkB2Tw0mc3A7a0ih1UpiNHLpufmuNqaqnf_bE";
 
-const url = envUrl;
-const anon = envAnon;
+const url = SUPABASE_URL;
+const anon = SUPABASE_ANON_KEY;
 
-export const supabaseReady: boolean = Boolean(url && anon);
+export const supabaseReady: boolean = true;
 
-if (supabaseReady) {
-  console.log("[supabase] initialized", url.replace(/^https?:\/\//, "").split(".")[0]);
-} else {
-  console.log("[supabase] missing env vars — client disabled");
-}
+console.log("[supabase] initialized", url.replace(/^https?:\/\//, "").split(".")[0]);
 
-export const supabase = supabaseReady
-  ? createClient(url, anon, {
-      auth: {
-        storage: AsyncStorage,
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: false,
-        flowType: "pkce",
-      },
-    })
-  : null;
+export const supabase = createClient(url, anon, {
+  auth: {
+    storage: AsyncStorage,
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+    flowType: "pkce",
+  },
+});
 
 export interface SupabasePing {
   ok: boolean;
@@ -35,9 +30,6 @@ export interface SupabasePing {
 
 export async function pingSupabase(): Promise<SupabasePing> {
   const started = Date.now();
-  if (!supabaseReady || !url || !anon) {
-    return { ok: false, latencyMs: 0, error: "Supabase keys missing" };
-  }
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 6000);
