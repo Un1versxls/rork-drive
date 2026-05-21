@@ -98,6 +98,8 @@ const DEFAULT_PROFILE: UserProfile = {
   customBuildCount: 0,
   businessSwitchMonth: null,
   businessSwitchCount: 0,
+  businessSwitchBonus: 0,
+  premiumSwitchBonusGranted: false,
   dayTradingMode: null,
   dayTradingMarket: null,
   dayTradingCapital: null,
@@ -138,6 +140,8 @@ async function loadState(): Promise<AppState> {
         subscription: { ...DEFAULT_SUBSCRIPTION, ...(parsed.profile?.subscription ?? {}) },
         unlockedEffects: parsed.profile?.unlockedEffects ?? ["none"],
         pastBusinesses: parsed.profile?.pastBusinesses ?? [],
+        businessSwitchBonus: parsed.profile?.businessSwitchBonus ?? 0,
+        premiumSwitchBonusGranted: parsed.profile?.premiumSwitchBonusGranted ?? false,
         pathChoice: parsed.profile?.pathChoice ?? null,
         firstTourSeen: parsed.profile?.firstTourSeen ?? false,
         pendingProPick: parsed.profile?.pendingProPick ?? null,
@@ -368,7 +372,20 @@ export const [AppProvider, useApp] = createContextHook(() => {
       source: opts?.source ?? "trial",
     };
     const prev = stateRef.current;
-    let next: AppState = { ...prev, profile: { ...prev.profile, subscription: sub } };
+    // If buying Premium with 0 remaining switches this month, grant +2 bonus (one-time).
+    const monthKey = todayKey().slice(0, 7);
+    const sameMonth = prev.profile.businessSwitchMonth === monthKey;
+    const usedThisMonth = sameMonth ? prev.profile.businessSwitchCount : 0;
+    const currentBonus = prev.profile.businessSwitchBonus ?? 0;
+    const currentLimit = BUSINESS_SWITCH_BASE_LIMIT + Math.max(0, currentBonus);
+    const remaining = Math.max(0, currentLimit - usedThisMonth);
+    const shouldGrant = plan === "premium" && remaining === 0 && !(prev.profile.premiumSwitchBonusGranted ?? false);
+    const nextBonus = shouldGrant ? currentBonus + 2 : currentBonus;
+    const nextGranted = shouldGrant ? true : (prev.profile.premiumSwitchBonusGranted ?? false);
+    if (shouldGrant) {
+      console.log("[AppProvider] premium purchased with 0 switches left -> +2 bonus");
+    }
+    let next: AppState = { ...prev, profile: { ...prev.profile, subscription: sub, businessSwitchBonus: nextBonus, premiumSwitchBonusGranted: nextGranted } };
     const ach = evaluateAchievements(next);
     next = {
       ...next,
@@ -392,7 +409,16 @@ export const [AppProvider, useApp] = createContextHook(() => {
       source: "code",
     };
     const prev = stateRef.current;
-    const next: AppState = { ...prev, profile: { ...prev.profile, subscription: sub } };
+    const monthKey = todayKey().slice(0, 7);
+    const sameMonth = prev.profile.businessSwitchMonth === monthKey;
+    const usedThisMonth = sameMonth ? prev.profile.businessSwitchCount : 0;
+    const currentBonus = prev.profile.businessSwitchBonus ?? 0;
+    const currentLimit = BUSINESS_SWITCH_BASE_LIMIT + Math.max(0, currentBonus);
+    const remaining = Math.max(0, currentLimit - usedThisMonth);
+    const shouldGrant = remaining === 0 && !(prev.profile.premiumSwitchBonusGranted ?? false);
+    const nextBonus = shouldGrant ? currentBonus + 2 : currentBonus;
+    const nextGranted = shouldGrant ? true : (prev.profile.premiumSwitchBonusGranted ?? false);
+    const next: AppState = { ...prev, profile: { ...prev.profile, subscription: sub, businessSwitchBonus: nextBonus, premiumSwitchBonusGranted: nextGranted } };
     commit(next);
     syncToSupabase(next);
   }, [commit, syncToSupabase]);
@@ -426,7 +452,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     });
   }, [commit]);
 
-  const BUSINESS_SWITCH_MONTHLY_LIMIT = 5;
+  const BUSINESS_SWITCH_BASE_LIMIT = 3;
 
   const setBusiness = useCallback((business: BusinessIdea, taskPool: TaskSeed[]): { ok: boolean; reason?: string } => {
     const current = stateRef.current;
@@ -443,7 +469,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
     const isSwitch = !!prevBiz && prevBiz.id !== business.id;
     const sameSwitchMonth = current.profile.businessSwitchMonth === monthKey;
     const switchesThisMonth = sameSwitchMonth ? current.profile.businessSwitchCount : 0;
-    if (isSwitch && switchesThisMonth >= BUSINESS_SWITCH_MONTHLY_LIMIT) {
+    const bonusAvailable = Math.max(0, current.profile.businessSwitchBonus ?? 0);
+    const effectiveLimit = BUSINESS_SWITCH_BASE_LIMIT + bonusAvailable;
+    if (isSwitch && switchesThisMonth >= effectiveLimit) {
       console.log("[AppProvider] business switch blocked: monthly limit reached");
       return { ok: false, reason: "limit" };
     }
@@ -600,6 +628,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
           subscription: { ...DEFAULT_SUBSCRIPTION, ...(blob.profile?.subscription ?? {}) },
           unlockedEffects: blob.profile?.unlockedEffects ?? ["none"],
           pastBusinesses: blob.profile?.pastBusinesses ?? [],
+          businessSwitchBonus: blob.profile?.businessSwitchBonus ?? 0,
+          premiumSwitchBonusGranted: blob.profile?.premiumSwitchBonusGranted ?? false,
           pathChoice: blob.profile?.pathChoice ?? null,
           firstTourSeen: blob.profile?.firstTourSeen ?? false,
           pendingProPick: blob.profile?.pendingProPick ?? null,
@@ -615,6 +645,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
       // Keep email/name in sync with what the row has if blob is missing them.
       if (!merged.profile.email && row.email) merged.profile.email = row.email;
       if (!merged.profile.name && row.name) merged.profile.name = row.name;
+      // Server-side bonus column is source of truth (admin can edit it directly).
+      if (typeof row.business_switch_bonus === "number") {
+        merged = { ...merged, profile: { ...merged.profile, businessSwitchBonus: Math.max(merged.profile.businessSwitchBonus ?? 0, row.business_switch_bonus) } };
+      }
+      if (typeof row.premium_switch_bonus_granted === "boolean") {
+        merged = { ...merged, profile: { ...merged.profile, premiumSwitchBonusGranted: row.premium_switch_bonus_granted || (merged.profile.premiumSwitchBonusGranted ?? false) } };
+      }
       // Ensure today's tasks exist immediately so the dashboard never shows
       // "0 tasks" right after sign-in. If the cloud blob has stale or empty
       // tasks, regenerate for today's date inline.
@@ -657,6 +694,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
       dayTradingMode: (row.day_trading_mode as UserProfile["dayTradingMode"]) ?? current.profile.dayTradingMode,
       dayTradingMarket: (row.day_trading_market as UserProfile["dayTradingMarket"]) ?? current.profile.dayTradingMarket,
       dayTradingCapital: (row.day_trading_capital as UserProfile["dayTradingCapital"]) ?? current.profile.dayTradingCapital,
+      businessSwitchBonus: typeof row.business_switch_bonus === "number"
+        ? Math.max(current.profile.businessSwitchBonus ?? 0, row.business_switch_bonus)
+        : current.profile.businessSwitchBonus ?? 0,
+      premiumSwitchBonusGranted: row.premium_switch_bonus_granted ?? current.profile.premiumSwitchBonusGranted ?? false,
     };
     const onboarded = row.onboarded === true || current.onboarded;
     let next: AppState = {
@@ -741,8 +782,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
     const monthKey = todayKey().slice(0, 7);
     return state.profile.businessSwitchMonth === monthKey ? state.profile.businessSwitchCount : 0;
   }, [state.profile.businessSwitchMonth, state.profile.businessSwitchCount]);
-  const businessSwitchesRemaining = Math.max(0, BUSINESS_SWITCH_MONTHLY_LIMIT - businessSwitchesThisMonth);
-  const businessSwitchLimit = BUSINESS_SWITCH_MONTHLY_LIMIT;
+  const businessSwitchBonus = state.profile.businessSwitchBonus ?? 0;
+  const businessSwitchLimit = BUSINESS_SWITCH_BASE_LIMIT + Math.max(0, businessSwitchBonus);
+  const businessSwitchesRemaining = Math.max(0, businessSwitchLimit - businessSwitchesThisMonth);
 
   return useMemo(() => ({
     hydrated,

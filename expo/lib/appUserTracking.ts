@@ -18,6 +18,8 @@ export interface AppUserUpsertInput {
   profile?: Partial<UserProfile> | null;
   business?: BusinessIdea | null;
   pastBusinesses?: BusinessIdea[] | null;
+  businessSwitchBonus?: number | null;
+  premiumSwitchBonusGranted?: boolean | null;
   stats?: {
     onboarded?: boolean;
     points?: number;
@@ -82,6 +84,13 @@ function buildPayload(input: AppUserUpsertInput): Record<string, unknown> {
     payload.past_businesses = input.pastBusinesses;
   }
 
+  if (input.businessSwitchBonus !== undefined && input.businessSwitchBonus !== null) {
+    payload.business_switch_bonus = input.businessSwitchBonus;
+  }
+  if (input.premiumSwitchBonusGranted !== undefined && input.premiumSwitchBonusGranted !== null) {
+    payload.premium_switch_bonus_granted = input.premiumSwitchBonusGranted;
+  }
+
   if (input.stats) {
     if (input.stats.onboarded !== undefined) payload.onboarded = input.stats.onboarded;
     if (input.stats.points !== undefined) payload.points = input.stats.points;
@@ -138,9 +147,11 @@ export interface AppUserRow {
   day_trading_mode: string | null;
   day_trading_market: string | null;
   day_trading_capital: string | null;
+  business_switch_bonus: number | null;
+  premium_switch_bonus_granted: boolean | null;
 }
 
-const APP_USER_COLUMNS = "id, user_id, apple_user_id, email, name, auth_provider, subscription_plan, subscription_cycle, subscription_active, subscription_trial, subscription_source, subscription_started_at, goal, skill_topic, experience, time_commitment, priority, industry, budget, obstacle, source, decline_reason, business_id, business_name, business_tagline, onboarded, points, streak, best_streak, last_active_date, state_blob, day_trading_mode, day_trading_market, day_trading_capital";
+const APP_USER_COLUMNS = "id, user_id, apple_user_id, email, name, auth_provider, subscription_plan, subscription_cycle, subscription_active, subscription_trial, subscription_source, subscription_started_at, goal, skill_topic, experience, time_commitment, priority, industry, budget, obstacle, source, decline_reason, business_id, business_name, business_tagline, onboarded, points, streak, best_streak, last_active_date, state_blob, day_trading_mode, day_trading_market, day_trading_capital, business_switch_bonus, premium_switch_bonus_granted";
 
 export async function fetchAppUser(by: { userId?: string | null; email?: string | null }): Promise<AppUserRow | null> {
   if (!supabaseReady || !supabase) return null;
@@ -309,6 +320,8 @@ export function buildSyncFromAppState(
     },
     business: p.business,
     pastBusinesses: p.pastBusinesses ?? [],
+    businessSwitchBonus: p.businessSwitchBonus ?? 0,
+    premiumSwitchBonusGranted: p.premiumSwitchBonusGranted ?? false,
     stats: {
       onboarded: state.onboarded,
       points: state.points,

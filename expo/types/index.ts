@@ -162,6 +162,8 @@ export interface UserProfile {
   customBuildCount: number;
   businessSwitchMonth: string | null;
   businessSwitchCount: number;
+  businessSwitchBonus: number;
+  premiumSwitchBonusGranted: boolean;
   dayTradingMode: DayTradingMode | null;
   dayTradingMarket: DayTradingMarket | null;
   dayTradingCapital: DayTradingCapital | null;
