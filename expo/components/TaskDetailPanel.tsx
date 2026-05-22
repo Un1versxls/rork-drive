@@ -48,14 +48,15 @@ interface ChatMsg {
   text: string;
 }
 
-const COACH_SYSTEM = `You are DRIVE Coach, a Socratic thinking partner.
-STRICT RULES:
-- You ONLY ask questions. Never give instructions, advice, answers, or do work.
-- Never write content, copy, code, outlines, or drafts.
-- If the user asks you to do something, respond by asking a question that helps them think it through themselves.
-- Keep every response to 1-2 short, warm questions (max ~30 words total).
-- Use simple, encouraging language. No lists, no headings.
-- Every reply must end with a question mark.`;
+const COACH_SYSTEM = `You are DRIVE Coach. You ONLY answer the user's questions ABOUT their current task — what it means, why it matters, how a step might look, examples to understand it, or how it fits their business.
+
+STRICT RULES — never break these:
+- You NEVER do the work for the user. Never write content, copy, code, captions, outlines, scripts, drafts, names, taglines, lists of ideas, hooks, emails, or any deliverable they could paste/use directly.
+- You NEVER give them ready-made answers, recommendations, or commands like "do X then Y". You explain and clarify only.
+- If the user asks you to do anything (write, generate, make, draft, create, suggest, give me, list, come up with, etc.), refuse politely in ONE short sentence and ask a single clarifying question about the task instead. Example: "I can't do that part for you — that's the work that grows you. What about this step is feeling hard?"
+- If the user asks something not about the current task or their business journey, politely steer them back: "Let's stay on this task — what part of it would you like to understand better?"
+- Stay warm, plain, and short (1-3 sentences max). No lists, no headings, no markdown.
+- You may explain concepts, give context, define terms, and ask follow-up questions about the task.`;
 
 export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClose, onComplete, onSkip }: Props) {
   const translateY = useRef(new Animated.Value(600)).current;
@@ -141,20 +142,17 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
         role: m.role === "coach" ? ("assistant" as const) : ("user" as const),
         content: m.text,
       }));
-      const contextNote = `Context for coach (do not repeat): task "${task.title}" — ${task.description}. Business: ${business?.name ?? "none"}.`;
+      const contextNote = `Context (do not repeat back): current task is "${task.title}" — ${task.description}. Business: ${business?.name ?? "none"}. Only help the user understand THIS task. Never produce the deliverable.`;
       const reply = await generateText({
         messages: [
           { role: "user", content: COACH_SYSTEM },
-          { role: "assistant", content: "Understood. I will only ask questions." },
+          { role: "assistant", content: "Understood. I'll only help them understand the task — I won't do any work for them." },
           { role: "user", content: contextNote },
           { role: "assistant", content: "Got it." },
           ...history,
         ],
       });
-      let text = (reply ?? "").trim();
-      if (!text.endsWith("?")) {
-        text = text.replace(/[.!…]*$/, "") + "?";
-      }
+      const text = (reply ?? "").trim() || "What part of this task would you like me to explain?";
       const coachMsg: ChatMsg = { id: `c-${Date.now()}`, role: "coach", text };
       setMessages((prev) => [...prev, coachMsg]);
       triggerHaptic("select", hapticsEnabled);
@@ -271,7 +269,7 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.coachTitle}>Ask the Coach</Text>
-                  <Text style={styles.coachSub}>A thinking partner that only asks questions</Text>
+                  <Text style={styles.coachSub}>Answers questions about this task — never does the work</Text>
                 </View>
                 <ChevronDown color={Colors.textDim} size={18} />
               </Pressable>
@@ -284,7 +282,7 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
               <View style={styles.chatFull}>
                 <View style={styles.chatBanner}>
                   <MessageCircle color={Colors.accentDeep} size={12} />
-                  <Text style={styles.chatBannerText}>The coach only asks questions — it won&apos;t do the work for you.</Text>
+                  <Text style={styles.chatBannerText}>The coach only answers questions about this task — it won&apos;t do the work for you.</Text>
                   <Pressable onPress={() => { setChatOpen(false); Keyboard.dismiss(); triggerHaptic("tap", hapticsEnabled); }} hitSlop={10} testID="chat-close">
                     <X color={Colors.accentDeep} size={14} />
                   </Pressable>

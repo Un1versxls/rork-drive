@@ -3,6 +3,7 @@ import { Animated, Easing, Platform, Pressable, ScrollView, StyleSheet, Text, Vi
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Check, Flame, RotateCcw, X } from "lucide-react-native";
 
+import { BadgeToast } from "@/components/BadgeToast";
 import { CelebrationOverlay } from "@/components/CelebrationOverlay";
 import { FirstTimeTour } from "@/components/FirstTimeTour";
 import { HalfwayToast } from "@/components/HalfwayToast";
@@ -27,7 +28,7 @@ function greeting(): string {
 }
 
 export default function TasksScreen() {
-  const { state, today, currentPlan, completeTask, skipTask, undoTask, setProfileField } = useApp();
+  const { state, today, currentPlan, completeTask, skipTask, undoTask, setProfileField, pendingBadges, dismissPendingBadge } = useApp();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [celebrate, setCelebrate] = useState<boolean>(false);
   const [celebrateSeenKey, setCelebrateSeenKey] = useState<string | null>(null);
@@ -159,6 +160,12 @@ export default function TasksScreen() {
         streak={state.streak}
         hapticsEnabled={state.profile.hapticsEnabled}
         onClose={() => setCelebrate(false)}
+      />
+
+      <BadgeToast
+        badgeId={pendingBadges[0] ?? null}
+        hapticsEnabled={state.profile.hapticsEnabled}
+        onHide={() => { if (pendingBadges[0]) dismissPendingBadge(pendingBadges[0]); }}
       />
 
       <RatePrompt />

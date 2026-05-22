@@ -26,8 +26,19 @@ function RootLayoutNav() {
         animation: "fade",
       }}
     >
-      <Stack.Screen name="onboarding" options={{ headerShown: false, animation: "fade" }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="onboarding" options={{ headerShown: false, animation: "fade", gestureEnabled: false }} />
+      <Stack.Screen
+        name="(tabs)"
+        options={{
+          headerShown: false,
+          // Block the iOS edge swipe from popping the tab stack back to
+          // onboarding/index. Horizontal navigation inside the dashboard
+          // is handled by the bottom tab bar (and the in-screen swipe
+          // animation in tasks.tsx).
+          gestureEnabled: false,
+          fullScreenGestureEnabled: false,
+        }}
+      />
       <Stack.Screen name="auth" options={{ presentation: "modal", animation: "slide_from_bottom" }} />
       <Stack.Screen name="admin" options={{ headerShown: true, title: "Admin" }} />
       <Stack.Screen name="redeem" options={{ presentation: "modal", headerShown: true, title: "Redeem code" }} />

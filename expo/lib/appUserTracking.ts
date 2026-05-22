@@ -112,6 +112,10 @@ function buildPayload(input: AppUserUpsertInput): Record<string, unknown> {
   return payload;
 }
 
+// Public helper so callers can run a single payload upsert through the
+// schema-retry path if they ever need it.
+export { runWithColumnRetry as _runWithColumnRetry };
+
 export interface AppUserRow {
   id: string;
   user_id: string | null;
@@ -188,6 +192,67 @@ export async function fetchAppUser(by: { userId?: string | null; email?: string 
   }
 }
 
+// Columns that were added in later migrations. If a given project hasn't
+// applied them yet, Supabase returns PGRST204 / "column ... does not exist".
+// We retry without these columns so the rest of the sync still goes through.
+const OPTIONAL_COLUMNS = [
+  "business_switch_bonus",
+  "premium_switch_bonus_granted",
+  "past_businesses",
+  "state_blob",
+  "last_migrated_at",
+];
+
+function stripMissingColumn(payload: Record<string, unknown>, errMsg: string): Record<string, unknown> | null {
+  const lower = errMsg.toLowerCase();
+  for (const col of OPTIONAL_COLUMNS) {
+    if (lower.includes(col)) {
+      if (col in payload) {
+        const copy = { ...payload };
+        delete copy[col];
+        return copy;
+      }
+    }
+  }
+  // Generic catch: any "column \"xxx\" does not exist" or PGRST204 schema error.
+  const m = errMsg.match(/column "?([a-z0-9_]+)"?/i) || errMsg.match(/'([a-z0-9_]+)' column/i);
+  if (m && m[1] && m[1] in payload) {
+    const copy = { ...payload };
+    delete copy[m[1]];
+    return copy;
+  }
+  return null;
+}
+
+async function runWithColumnRetry<T>(
+  payload: Record<string, unknown>,
+  attempt: (p: Record<string, unknown>) => Promise<{ data?: T | null; error: { message: string; code?: string } | null }>,
+): Promise<{ ok: boolean; error?: string }> {
+  let current = payload;
+  for (let i = 0; i < 5; i++) {
+    const { error } = await attempt(current);
+    if (!error) return { ok: true };
+    const msg = error.message ?? "";
+    const looksLikeColumn =
+      error.code === "PGRST204" ||
+      /column .* does not exist/i.test(msg) ||
+      /could not find the .* column/i.test(msg) ||
+      /schema cache/i.test(msg);
+    if (!looksLikeColumn) {
+      console.log("[app_users] non-column error", msg, error.code);
+      return { ok: false, error: msg };
+    }
+    const stripped = stripMissingColumn(current, msg);
+    if (!stripped) {
+      console.log("[app_users] column error but nothing to strip", msg);
+      return { ok: false, error: msg };
+    }
+    console.log("[app_users] retrying without unknown column ->", Object.keys(current).filter((k) => !(k in stripped)));
+    current = stripped;
+  }
+  return { ok: false, error: "Too many schema mismatches" };
+}
+
 export async function upsertAppUser(input: AppUserUpsertInput): Promise<{ ok: boolean; error?: string }> {
   if (!supabaseReady || !supabase) {
     console.log("[app_users] supabase not ready, skipping upsert");
@@ -206,12 +271,12 @@ export async function upsertAppUser(input: AppUserUpsertInput): Promise<{ ok: bo
         .maybeSingle();
       if (selErr) console.log("[app_users] select user_id error", selErr.message);
       if (existing?.id) {
-        const { error } = await supabase.from("app_users").update(payload).eq("id", existing.id);
-        if (error) {
-          console.log("[app_users] update by user_id error", error.message);
-          return { ok: false, error: error.message };
-        }
-        return { ok: true };
+        return runWithColumnRetry(payload, async (p) => {
+          const sb = supabase;
+          if (!sb) return { error: { message: "Supabase missing" } };
+          const { error } = await sb.from("app_users").update(p).eq("id", existing.id);
+          return { error: error ? { message: error.message, code: (error as { code?: string }).code } : null };
+        });
       }
       if (input.email) {
         const lowered = input.email.trim().toLowerCase();
@@ -221,32 +286,30 @@ export async function upsertAppUser(input: AppUserUpsertInput): Promise<{ ok: bo
           .eq("email", lowered)
           .maybeSingle();
         if (byEmail?.id) {
-          const { error } = await supabase.from("app_users").update(payload).eq("id", byEmail.id);
-          if (error) {
-            console.log("[app_users] update merged error", error.message);
-            return { ok: false, error: error.message };
-          }
-          return { ok: true };
+          return runWithColumnRetry(payload, async (p) => {
+            const sb = supabase;
+            if (!sb) return { error: { message: "Supabase missing" } };
+            const { error } = await sb.from("app_users").update(p).eq("id", byEmail.id);
+            return { error: error ? { message: error.message, code: (error as { code?: string }).code } : null };
+          });
         }
       }
-      const { error: insErr } = await supabase.from("app_users").insert(payload);
-      if (insErr) {
-        console.log("[app_users] insert by user_id error", insErr.message);
-        return { ok: false, error: insErr.message };
-      }
-      return { ok: true };
+      return runWithColumnRetry(payload, async (p) => {
+        const sb = supabase;
+        if (!sb) return { error: { message: "Supabase missing" } };
+        const { error } = await sb.from("app_users").insert(p);
+        return { error: error ? { message: error.message, code: (error as { code?: string }).code } : null };
+      });
     }
 
     if (input.appleUserId) {
       console.log("[app_users] upsert by apple_user_id");
-      const { error } = await supabase
-        .from("app_users")
-        .upsert(payload, { onConflict: "apple_user_id" });
-      if (error) {
-        console.log("[app_users] upsert error", error.message, error.code);
-        return { ok: false, error: error.message };
-      }
-      return { ok: true };
+      return runWithColumnRetry(payload, async (p) => {
+        const sb = supabase;
+        if (!sb) return { error: { message: "Supabase missing" } };
+        const { error } = await sb.from("app_users").upsert(p, { onConflict: "apple_user_id" });
+        return { error: error ? { message: error.message, code: (error as { code?: string }).code } : null };
+      });
     }
 
     if (input.email) {
@@ -259,22 +322,19 @@ export async function upsertAppUser(input: AppUserUpsertInput): Promise<{ ok: bo
         .maybeSingle();
       if (selErr) console.log("[app_users] select error", selErr.message);
       if (existing?.id) {
-        const { error: updErr } = await supabase
-          .from("app_users")
-          .update(payload)
-          .eq("id", existing.id);
-        if (updErr) {
-          console.log("[app_users] update error", updErr.message);
-          return { ok: false, error: updErr.message };
-        }
-        return { ok: true };
+        return runWithColumnRetry(payload, async (p) => {
+          const sb = supabase;
+          if (!sb) return { error: { message: "Supabase missing" } };
+          const { error } = await sb.from("app_users").update(p).eq("id", existing.id);
+          return { error: error ? { message: error.message, code: (error as { code?: string }).code } : null };
+        });
       }
-      const { error: insErr } = await supabase.from("app_users").insert(payload);
-      if (insErr) {
-        console.log("[app_users] insert error", insErr.message);
-        return { ok: false, error: insErr.message };
-      }
-      return { ok: true };
+      return runWithColumnRetry(payload, async (p) => {
+        const sb = supabase;
+        if (!sb) return { error: { message: "Supabase missing" } };
+        const { error } = await sb.from("app_users").insert(p);
+        return { error: error ? { message: error.message, code: (error as { code?: string }).code } : null };
+      });
     }
 
     console.log("[app_users] no user_id, apple id, or email — skipping");

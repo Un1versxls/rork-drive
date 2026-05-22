@@ -110,6 +110,10 @@ const DEFAULT_PROFILE: UserProfile = {
   pendingProPickPool: [],
   pendingFreeAlt: null,
   pendingFreeAltPool: [],
+  motivationHintSeen: false,
+  earlyBirdAchieved: false,
+  fullDayAchieved: false,
+  redeemedCodeOnce: false,
 };
 
 const DEFAULT_STATE: AppState = {
@@ -148,6 +152,10 @@ async function loadState(): Promise<AppState> {
         pendingProPickPool: parsed.profile?.pendingProPickPool ?? [],
         pendingFreeAlt: parsed.profile?.pendingFreeAlt ?? null,
         pendingFreeAltPool: parsed.profile?.pendingFreeAltPool ?? [],
+        motivationHintSeen: parsed.profile?.motivationHintSeen ?? false,
+        earlyBirdAchieved: parsed.profile?.earlyBirdAchieved ?? false,
+        fullDayAchieved: parsed.profile?.fullDayAchieved ?? false,
+        redeemedCodeOnce: parsed.profile?.redeemedCodeOnce ?? false,
       },
     };
   } catch (e) {
@@ -164,19 +172,47 @@ async function saveState(state: AppState): Promise<void> {
   }
 }
 
-function evaluateBadges(state: AppState): string[] {
+function evaluateBadges(state: AppState): { ids: string[]; newlyUnlocked: string[] } {
   const completed = Object.values(state.history).reduce((s, d) => s + d.completed, 0) +
     state.tasks.filter((t) => t.status === "completed").length;
+  const businessesTried = (state.profile.pastBusinesses?.length ?? 0) + (state.profile.business ? 1 : 0);
+  // Distinct days the user has touched the app (any history entry counts).
+  const todayKeyStr = (() => {
+    const d = new Date();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${d.getFullYear()}-${m}-${day}`;
+  })();
+  const historyDays = new Set(Object.keys(state.history));
+  if (state.tasks.some((t) => t.dateKey === todayKeyStr && t.status !== "pending")) {
+    historyDays.add(todayKeyStr);
+  }
+  const daysActive = historyDays.size;
+  const isPremium = state.profile.subscription.plan === "premium" && state.profile.subscription.active;
   const unlocked = new Set(state.unlockedBadges);
+  const newlyUnlocked: string[] = [];
   for (const b of BADGES) {
     if (unlocked.has(b.id)) continue;
-    const value =
-      b.metric === "completed" ? completed :
-      b.metric === "streak" ? state.streak :
-      state.points;
-    if (value >= b.threshold) unlocked.add(b.id);
+    let value = 0;
+    switch (b.metric) {
+      case "completed": value = completed; break;
+      case "streak": value = state.streak; break;
+      case "points": value = state.points; break;
+      case "businesses_tried": value = businessesTried; break;
+      case "days_active": value = daysActive; break;
+      case "early_bird": value = state.profile.earlyBirdAchieved ? 1 : 0; break;
+      case "full_day":
+      case "full_first_day": value = state.profile.fullDayAchieved ? 1 : 0; break;
+      case "code_redeemed": value = state.profile.redeemedCodeOnce ? 1 : 0; break;
+      case "premium": value = isPremium ? 1 : 0; break;
+      default: value = 0;
+    }
+    if (value >= b.threshold) {
+      unlocked.add(b.id);
+      newlyUnlocked.push(b.id);
+    }
   }
-  return Array.from(unlocked);
+  return { ids: Array.from(unlocked), newlyUnlocked };
 }
 
 function evaluateAchievements(state: AppState): { ids: string[]; effects: NameEffect[]; newlyUnlocked: string[] } {
@@ -208,6 +244,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const stateRef = useRef<AppState>(DEFAULT_STATE);
   const [hydrated, setHydrated] = useState<boolean>(false);
   const [pendingAchievements, setPendingAchievements] = useState<string[]>([]);
+  const [pendingBadges, setPendingBadges] = useState<string[]>([]);
   const qc = useQueryClient();
 
   const stateQuery = useQuery({
@@ -394,8 +431,15 @@ export const [AppProvider, useApp] = createContextHook(() => {
     };
     commit(next);
     syncToSupabase(next);
+    const badge = evaluateBadges(next);
+    next = { ...next, unlockedBadges: badge.ids };
+    commit(next);
+    syncToSupabase(next);
     if (ach.newlyUnlocked.length > 0) {
       setPendingAchievements((p) => [...p, ...ach.newlyUnlocked]);
+    }
+    if (badge.newlyUnlocked.length > 0) {
+      setPendingBadges((p) => [...p, ...badge.newlyUnlocked]);
     }
   }, [commit, syncToSupabase]);
 
@@ -418,9 +462,19 @@ export const [AppProvider, useApp] = createContextHook(() => {
     const shouldGrant = remaining === 0 && !(prev.profile.premiumSwitchBonusGranted ?? false);
     const nextBonus = shouldGrant ? currentBonus + 2 : currentBonus;
     const nextGranted = shouldGrant ? true : (prev.profile.premiumSwitchBonusGranted ?? false);
-    const next: AppState = { ...prev, profile: { ...prev.profile, subscription: sub, businessSwitchBonus: nextBonus, premiumSwitchBonusGranted: nextGranted } };
+    let next: AppState = { ...prev, profile: { ...prev.profile, subscription: sub, businessSwitchBonus: nextBonus, premiumSwitchBonusGranted: nextGranted, redeemedCodeOnce: true } };
+    const ach = evaluateAchievements(next);
+    const badge = evaluateBadges(next);
+    next = {
+      ...next,
+      unlockedAchievements: ach.ids,
+      unlockedBadges: badge.ids,
+      profile: { ...next.profile, unlockedEffects: ach.effects },
+    };
     commit(next);
     syncToSupabase(next);
+    if (ach.newlyUnlocked.length > 0) setPendingAchievements((p) => [...p, ...ach.newlyUnlocked]);
+    if (badge.newlyUnlocked.length > 0) setPendingBadges((p) => [...p, ...badge.newlyUnlocked]);
   }, [commit, syncToSupabase]);
 
   const cancelSubscription = useCallback(() => {
@@ -550,7 +604,19 @@ export const [AppProvider, useApp] = createContextHook(() => {
       bestStreak,
       lastActiveDate: key,
     };
-    next = { ...next, unlockedBadges: evaluateBadges(next) };
+    // Track behavior flags before evaluating badges.
+    const hour = new Date().getHours();
+    const todayKeyNow = todayKey();
+    const completedTodayNow = next.tasks.filter((t) => t.status === "completed" && t.dateKey === todayKeyNow).length;
+    const totalTodayNow = next.tasks.filter((t) => t.dateKey === todayKeyNow).length;
+    const profilePatch: Partial<UserProfile> = {};
+    if (!next.profile.earlyBirdAchieved && hour < 12) profilePatch.earlyBirdAchieved = true;
+    if (!next.profile.fullDayAchieved && totalTodayNow > 0 && completedTodayNow === totalTodayNow) profilePatch.fullDayAchieved = true;
+    if (Object.keys(profilePatch).length > 0) {
+      next = { ...next, profile: { ...next.profile, ...profilePatch } };
+    }
+    const badge = evaluateBadges(next);
+    next = { ...next, unlockedBadges: badge.ids };
     const ach = evaluateAchievements(next);
     next = {
       ...next,
@@ -564,6 +630,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
       setTimeout(() => {
         triggerHaptic("celebrate", prev.profile.hapticsEnabled);
       }, 350);
+    }
+    if (badge.newlyUnlocked.length > 0) {
+      setPendingBadges((p) => [...p, ...badge.newlyUnlocked]);
     }
   }, [commit]);
 
@@ -636,6 +705,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
           pendingProPickPool: blob.profile?.pendingProPickPool ?? [],
           pendingFreeAlt: blob.profile?.pendingFreeAlt ?? null,
           pendingFreeAltPool: blob.profile?.pendingFreeAltPool ?? [],
+          motivationHintSeen: blob.profile?.motivationHintSeen ?? false,
+          earlyBirdAchieved: blob.profile?.earlyBirdAchieved ?? false,
+          fullDayAchieved: blob.profile?.fullDayAchieved ?? false,
+          redeemedCodeOnce: blob.profile?.redeemedCodeOnce ?? false,
         },
         tasks: Array.isArray(blob.tasks) ? blob.tasks : [],
         history: blob.history ?? {},
@@ -728,6 +801,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
     setPendingAchievements((prev) => prev.filter((x) => x !== id));
   }, []);
 
+  const dismissPendingBadge = useCallback((id: string) => {
+    setPendingBadges((prev) => prev.filter((x) => x !== id));
+  }, []);
+
   const today = useMemo(() => {
     const key = todayKey();
     const list = state.tasks.filter((t) => t.dateKey === key);
@@ -806,6 +883,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     businessSwitchesRemaining,
     businessSwitchLimit,
     pendingAchievements,
+    pendingBadges,
     setAnswers,
     setOnboardingStep,
     startSubscription,
@@ -825,5 +903,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
     resetOnboarding,
     hydrateFromAppUser,
     dismissPendingAchievement,
-  }), [hydrated, state, today, weeklyActivity, totalCompleted, totalSkipped, level, levelProgress, currentPlan, isPremium, hasActiveSubscription, customBuildsThisMonth, customBuildsRemaining, customBuildLimit, businessSwitchesThisMonth, businessSwitchesRemaining, businessSwitchLimit, pendingAchievements, setAnswers, setOnboardingStep, startSubscription, grantPremiumViaCode, cancelSubscription, setDeclineReason, markRated, markRatePromptSeen, setBusiness, setProfileField, setNotificationPrefs, equipEffect, completeOnboarding, completeTask, skipTask, undoTask, resetOnboarding, hydrateFromAppUser, dismissPendingAchievement]);
+    dismissPendingBadge,
+  }), [hydrated, state, today, weeklyActivity, totalCompleted, totalSkipped, level, levelProgress, currentPlan, isPremium, hasActiveSubscription, customBuildsThisMonth, customBuildsRemaining, customBuildLimit, businessSwitchesThisMonth, businessSwitchesRemaining, businessSwitchLimit, pendingAchievements, pendingBadges, setAnswers, setOnboardingStep, startSubscription, grantPremiumViaCode, cancelSubscription, setDeclineReason, markRated, markRatePromptSeen, setBusiness, setProfileField, setNotificationPrefs, equipEffect, completeOnboarding, completeTask, skipTask, undoTask, resetOnboarding, hydrateFromAppUser, dismissPendingAchievement, dismissPendingBadge]);
 });

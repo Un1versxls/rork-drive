@@ -8,6 +8,10 @@ export default function OnboardingLayout() {
         headerShown: false,
         contentStyle: { backgroundColor: "#ffffff" },
         animation: "slide_from_right",
+        // Lock the swipe-back gesture across onboarding so users can
+        // only progress with the explicit arrow / continue button.
+        gestureEnabled: false,
+        fullScreenGestureEnabled: false,
       }}
     />
   );

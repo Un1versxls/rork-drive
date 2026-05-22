@@ -170,6 +170,10 @@ export interface UserProfile {
   pastBusinesses: BusinessIdea[];
   pathChoice: PathChoice | null;
   firstTourSeen: boolean;
+  motivationHintSeen: boolean;
+  earlyBirdAchieved: boolean;
+  fullDayAchieved: boolean;
+  redeemedCodeOnce: boolean;
   pendingProPick: BusinessIdea | null;
   pendingProPickPool: TaskSeed[];
   pendingFreeAlt: BusinessIdea | null;
@@ -195,13 +199,26 @@ export interface Task {
   dateKey: string;
 }
 
+export type BadgeMetric =
+  | "completed"
+  | "streak"
+  | "points"
+  | "businesses_tried"
+  | "days_active"
+  | "early_bird"
+  | "full_day"
+  | "code_redeemed"
+  | "premium"
+  | "full_first_day";
+
 export interface Badge {
   id: string;
   title: string;
   description: string;
   icon: string;
   threshold: number;
-  metric: "completed" | "streak" | "points";
+  metric: BadgeMetric;
+  category?: "tasks" | "streak" | "points" | "explorer" | "premium";
 }
 
 export interface AppState {

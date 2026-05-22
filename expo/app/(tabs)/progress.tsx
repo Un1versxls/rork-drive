@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Text, UIManager, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronDown, Flame } from "lucide-react-native";
@@ -16,9 +16,35 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
 const MINUTES_PER_TASK = 8;
 
 export default function ProgressScreen() {
-  const { state, weeklyActivity, totalCompleted, totalSkipped, level } = useApp();
+  const { state, weeklyActivity, totalCompleted, totalSkipped, level, setProfileField } = useApp();
   const tier = getStreakTier(state.streak);
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
+
+  // First-visit hint: nudge the motivation card up & down so the user
+  // discovers it can be tapped to swap. Only runs once, after the 5-step
+  // tour has been completed.
+  const hintAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!state.onboarded) return;
+    if (!state.profile.firstTourSeen) return;
+    if (state.profile.motivationHintSeen) return;
+    const t = setTimeout(() => {
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      }
+      Animated.sequence([
+        Animated.timing(hintAnim, { toValue: 1, duration: 360, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(hintAnim, { toValue: 0.6, duration: 220, useNativeDriver: true }),
+        Animated.timing(hintAnim, { toValue: 1, duration: 240, useNativeDriver: true }),
+        Animated.timing(hintAnim, { toValue: 0, duration: 380, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
+      ]).start(() => {
+        setProfileField("motivationHintSeen", true);
+      });
+    }, 700);
+    return () => clearTimeout(t);
+  }, [state.onboarded, state.profile.firstTourSeen, state.profile.motivationHintSeen, hintAnim, setProfileField]);
+  const hintTranslate = hintAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -14] });
+  const hintShadow = hintAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.18] });
 
   const weekCompleted = useMemo(() => weeklyActivity.reduce((s, d) => s + d.completed, 0), [weeklyActivity]);
   const weekMinutes = weekCompleted * MINUTES_PER_TASK;
@@ -190,7 +216,19 @@ export default function ProgressScreen() {
 
           <View style={styles.headlines}>
             <Pressable onPress={onFactPress} testID="progress-insight">
-              <Animated.View style={[styles.headCard, { opacity: factOpacity, transform: [{ translateY: factTranslate }] }]}>
+              <Animated.View
+                style={[
+                  styles.headCard,
+                  {
+                    opacity: factOpacity,
+                    transform: [{ translateY: Animated.add(factTranslate, hintTranslate) }],
+                    shadowOpacity: hintShadow,
+                    shadowColor: "#000",
+                    shadowRadius: 16,
+                    shadowOffset: { width: 0, height: 6 },
+                  },
+                ]}
+              >
                 <Text style={styles.headEmoji}>{headline.emoji}</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.headTitle}>{headline.title}</Text>
@@ -198,6 +236,9 @@ export default function ProgressScreen() {
                 </View>
               </Animated.View>
             </Pressable>
+            {!state.profile.motivationHintSeen ? (
+              <Animated.Text style={[styles.hintCaption, { opacity: hintAnim }]}>tap to change ↑</Animated.Text>
+            ) : null}
           </View>
 
           <View style={styles.week}>
@@ -267,6 +308,7 @@ const styles = StyleSheet.create({
   headEmoji: { fontSize: 28 },
   headTitle: { color: Colors.text, fontSize: 15, fontWeight: "800" },
   headSub: { color: Colors.textDim, fontSize: 12, fontWeight: "600", marginTop: 2 },
+  hintCaption: { color: Colors.accentDeep, fontSize: 11, fontWeight: "800", letterSpacing: 0.4, textAlign: "center", marginTop: 4 },
 
   week: { marginBottom: 22 },
   weekLabel: { color: Colors.textDim, fontSize: 11, fontWeight: "900", letterSpacing: 1.2, marginBottom: 12 },
