@@ -1,74 +1,37 @@
-# AI scope, swipe hint, onboarding gestures, badges & Supabase fix
+# Rebuild the age slider from scratch with a crash-proof design
 
-**AI assistant scope**
+## The problem
 
-- Restrict the in-app AI to only answering questions about the user's current tasks — no writing, drafting, generating content, or doing work on the user's behalf.
-- If asked to do work, it politely declines and offers a clarifying question instead.
+The current age slider is the source of the launch crash. It mixes a hand-rolled finger-tracking gesture, a looping auto-demo animation, and several animated effects (shadows, pulsing hint pill, knob glow) all sharing values across JS and native animation drivers. Even after two rounds of patching, the moment the cold-start redirect lands the user back on this screen, the tear-down + re-init race fires and the app dies before anything renders.
 
-**Motivation card hint animation**
+## What I'll build instead
 
-- The first time someone reaches the dashboard after finishing the 5-step tutorial, the motivation card under the streak does a gentle half-swipe-up wiggle (with a subtle haptic tick) to teach that it can be swiped to change.
-- Plays once, then never again.
+A brand-new age slider built on the standard, battle-tested gesture library that the rest of the app already uses — no PanResponder, no auto-demo loop, no mixed animation drivers.
 
-**Dashboard swipe behavior**
+**Feel & interaction**
 
-- Swiping right inside the dashboard no longer kicks you back to onboarding.
-- Replaced with a smooth horizontal swipe animation between dashboard sections plus a soft haptic when the swipe completes.
+- A clean horizontal track with a single round knob you drag left and right.
+- Big age number that updates live as you drag (e.g. "24 years old").
+- Subtle haptic tick every time the number changes.
+- A small static "Slide to set your age" hint underneath the track on first view — no pulsing, no looping animation.
+- Min 13, max 65+, same as today.
+- Tap anywhere on the track to jump the knob there instantly.
 
-**Onboarding swipe lock**
+**Visuals**
 
-- Disabled the back-swipe gesture on every onboarding screen so people can only move forward with the arrow button.
+- Same black-and-white aesthetic as the rest of onboarding.
+- Filled portion of the track in solid black; unfilled in light grey.
+- White knob with a black border and a soft static shadow (no animated shadow).
+- A small descriptive card below ("Builder", "Early-career", etc.) that fades between states with a single safe opacity transition.
 
-**Keyboard-safe text boxes**
+**Behavior**
 
-- Every remaining text input that wasn't already lifted now floats above the keyboard while typing.
+- Continue button saves the age and moves to the next screen exactly like before.
+- No auto-demo, no looping shimmer, no pulsing pill — these were the crash surface and aren't needed for usability.
+- Safe against being navigated back to from any previous screen.
 
-**Badge room improvements**
+## Result
 
-- Visual refresh of the badge room tab: better spacing, locked/unlocked states, subtle shine on earned badges, cleaner section headers.
-- Added new badge categories beyond streaks and points:
-  - First task completed
-  - Finish a full task in one day
-  - Try 3 different businesses
-  - Complete a task before noon (early bird)
-  - Use the app 7 different days
-  - Redeem a code
-  - Reach Premium
-- Show a small notification when someone gets a badge
+Same question, same data captured, same look-and-feel direction — but with all the fragile animation machinery removed. The launch crash goes away because the screen no longer contains the code path that triggers it.
 
-**Supabase sync fix**
-
-- Fixed the "business change bonuses column not found" error so the new bonus columns sync cleanly on every device, with a safe fallback if the migration hasn't run yet on a given project.
-
----
-
-# Age picker, task widgets, hint coachmarks & richer Supabase data
-
-**Age picker in onboarding**
-
-- New onboarding step right after the welcome screen with a slider from 13 to 65.
-- Sub-copy explains it's used to recommend businesses they can legally do — saves them from picking something that would get them in trouble.
-- Age stored on profile and synced to Supabase (new `age` column).
-
-**Recommended age ranges on businesses**
-
-- Path cards (AI vs In-Person) show a small "Best for 17+" / "Great for teens" hint.
-- Each business idea carries a `recommendedAge` label that renders as a pill on the pick-business cards and the swap-business match screen.
-- AI-heavy / capital-heavy businesses default to 17+, in-person low-cost hustles to teen-friendly.
-
-**In-app task widgets — removed**
-
-- Removed the dashboard widget strip per user request.
-- Native iOS Home Screen / Lock Screen widgets require a Swift WidgetKit extension target, which this Expo project does not support.
-
-**Task & subtask coachmarks**
-
-- First open of the dashboard after the tour wiggles the first pending task card with a soft haptic — teaches that you can tap a task to open its plan. Fires once.
-- First time the task detail sheet opens after the tour, the first subtask checkbox wiggles & glows so users learn they can check sub-steps off. Fires once.
-- Both reuse the motivation-hint animation style.
-
-**More Supabase data**
-
-- Added columns: `age`, `equipped_effect`, `unlocked_badges`, `unlocked_achievements`, `total_completed`, `total_skipped`, `task_hint_seen`, `subtask_hint_seen`, `motivation_hint_seen`, `app_version`, `platform`.
-- Sync layer pushes them on every state commit, falling back gracefully if the column doesn't exist on older projects.
-
+Then ship it straight to TestFlight.
