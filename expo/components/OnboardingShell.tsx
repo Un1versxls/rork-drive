@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { ChevronLeft } from "lucide-react-native";
 import { useRouter, usePathname, type Href } from "expo-router";
 
@@ -63,12 +64,29 @@ export function OnboardingShell({ step, total, title, subtitle, children, footer
   const { setOnboardingStep } = useApp();
   const progress = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(0)).current;
+  const shimmer = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
+  const trackWidth = useRef<number>(0);
 
   useEffect(() => {
-    Animated.timing(progress, { toValue: step / total, duration: 420, useNativeDriver: false }).start();
+    Animated.timing(progress, { toValue: step / total, duration: 520, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
     fade.setValue(0);
     Animated.timing(fade, { toValue: 1, duration: 320, useNativeDriver: true }).start();
-  }, [step, total, progress, fade]);
+    // Pulse the glow on step change
+    pulse.setValue(0);
+    Animated.sequence([
+      Animated.timing(pulse, { toValue: 1, duration: 320, useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 0, duration: 480, useNativeDriver: true }),
+    ]).start();
+  }, [step, total, progress, fade, pulse]);
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(shimmer, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [shimmer]);
 
   useEffect(() => {
     if (!pathname) return;
@@ -89,6 +107,8 @@ export function OnboardingShell({ step, total, title, subtitle, children, footer
   }, [pathname, setOnboardingStep]);
 
   const width = progress.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] });
+  const glowOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.9] });
+  const glowScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
 
   return (
     <View style={styles.root}>
@@ -140,8 +160,53 @@ export function OnboardingShell({ step, total, title, subtitle, children, footer
               <ChevronLeft color={Colors.text} size={22} />
             </Pressable>
           ) : <View style={styles.backBtn} />}
-          <View style={styles.progressTrack}>
-            <Animated.View style={[styles.progressFill, { width }]} />
+          <View
+            style={styles.progressTrack}
+            onLayout={(e) => { trackWidth.current = e.nativeEvent.layout.width; }}
+          >
+            <Animated.View style={[styles.progressFillWrap, { width }]}>
+              <LinearGradient
+                colors={["#b8862a", "#d4af37", "#f4d77a", "#d4af37", "#b8862a"]}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={styles.progressGradient}
+              />
+              {/* Soft glow halo that pulses on step changes */}
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.progressGlow,
+                  { opacity: glowOpacity, transform: [{ scaleY: glowScale }] },
+                ]}
+              />
+              {/* Travelling shimmer streak */}
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.shimmer,
+                  {
+                    transform: [
+                      {
+                        translateX: shimmer.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [-60, 220],
+                        }),
+                      },
+                      { skewX: "-20deg" },
+                    ],
+                  },
+                ]}
+              >
+                <LinearGradient
+                  colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.85)", "rgba(255,255,255,0)"]}
+                  start={{ x: 0, y: 0.5 }}
+                  end={{ x: 1, y: 0.5 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              </Animated.View>
+              {/* Bright leading-edge cap */}
+              <View style={styles.leadCap} pointerEvents="none" />
+            </Animated.View>
           </View>
           <View style={styles.backBtn} />
         </View>
@@ -165,8 +230,30 @@ const styles = StyleSheet.create({
   kav: { flex: 1 },
   topRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingTop: 6, paddingBottom: 18 },
   backBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
-  progressTrack: { flex: 1, height: 4, borderRadius: 2, backgroundColor: "#f0f0f0", overflow: "hidden" },
-  progressFill: { height: "100%", backgroundColor: Colors.text, borderRadius: 2 },
+  progressTrack: { flex: 1, height: 6, borderRadius: 3, backgroundColor: "#efece4", overflow: "hidden" },
+  progressFillWrap: { height: "100%", borderRadius: 3, overflow: "hidden" },
+  progressGradient: { ...StyleSheet.absoluteFillObject, borderRadius: 3 },
+  progressGlow: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 3,
+    shadowColor: "#d4af37",
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  shimmer: { position: "absolute", top: 0, bottom: 0, width: 40 },
+  leadCap: {
+    position: "absolute",
+    right: 0,
+    top: -1,
+    bottom: -1,
+    width: 3,
+    backgroundColor: "#fff4cc",
+    shadowColor: "#f4d77a",
+    shadowOpacity: 0.9,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
+  },
   content: { flex: 1, paddingTop: 8 },
   title: { color: Colors.text, fontSize: 28, fontWeight: "800", letterSpacing: -0.5, lineHeight: 34 },
   subtitle: { color: Colors.textDim, fontSize: 15, marginTop: 8, lineHeight: 21 },
