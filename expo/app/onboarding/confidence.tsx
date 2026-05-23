@@ -53,8 +53,10 @@ export default function ConfidenceScreen() {
           disabled={!value}
           onPress={() => {
             if (!value) return;
-            setProfileField("confidence", value);
-            router.push("/onboarding/time");
+            try { setProfileField("confidence", value); } catch (e) { console.log("[confidence] save failed", e); }
+            requestAnimationFrame(() => {
+              try { router.push("/onboarding/time"); } catch (e) { console.log("[confidence] nav failed", e); }
+            });
           }}
           testID="cta-confidence-continue"
         />

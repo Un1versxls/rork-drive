@@ -42,7 +42,7 @@ export default function Welcome() {
         </Animated.View>
 
         <Animated.View style={[styles.cta, { opacity: ctaFade, transform: [{ translateY: ctaShift }] }]}>
-          <GradientButton title="Get started" onPress={() => router.push("/onboarding/goal")} testID="cta-start" />
+          <GradientButton title="Get started" onPress={() => router.push("/onboarding/age")} testID="cta-start" />
           <Text style={styles.smallLegal}>Takes under two minutes</Text>
         </Animated.View>
       </SafeAreaView>

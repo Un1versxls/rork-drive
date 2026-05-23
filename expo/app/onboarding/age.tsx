@@ -175,13 +175,26 @@ export default function AgeScreen() {
   const label = ageLabel(age);
 
   const onContinue = () => {
-    setProfileField("age", age);
-    router.push("/onboarding/experience");
+    try {
+      setProfileField("age", age);
+    } catch (e) {
+      console.log("[age] setProfileField failed", e);
+    }
+    // Defer navigation one frame so any pending state commits + Animated
+    // tear-down (demo loop) finish before expo-router's slide transition
+    // starts. Same defensive pattern as the back-button fix.
+    requestAnimationFrame(() => {
+      try {
+        router.push("/onboarding/goal");
+      } catch (e) {
+        console.log("[age] router.push failed", e);
+      }
+    });
   };
 
   return (
     <OnboardingShell
-      step={2}
+      step={1}
       total={11}
       title="How old are you?"
       subtitle="We use this to recommend businesses you can legally start — saves you from picking something risky."

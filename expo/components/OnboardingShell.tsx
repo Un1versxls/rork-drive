@@ -25,10 +25,10 @@ export function resetOnboardingHistory(): void {
 }
 
 const PREV_STEP: Record<string, Href> = {
-  "/onboarding/goal": "/onboarding",
-  "/onboarding/age": "/onboarding/goal",
+  "/onboarding/age": "/onboarding",
+  "/onboarding/goal": "/onboarding/age",
   "/onboarding/build-business": "/onboarding/goal",
-  "/onboarding/experience": "/onboarding/age",
+  "/onboarding/experience": "/onboarding/goal",
   "/onboarding/skill-topic": "/onboarding/goal",
   "/onboarding/confidence": "/onboarding/experience",
   "/onboarding/time": "/onboarding/confidence",

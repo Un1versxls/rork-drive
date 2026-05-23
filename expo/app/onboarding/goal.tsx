@@ -17,14 +17,24 @@ export default function GoalScreen() {
   const onContinue = () => {
     if (!selected) return;
     const goal = selected === "ai" ? "ai_business" : "in_person_hustle";
-    setProfileField("pathChoice", selected);
-    setAnswers({ goal });
-    router.push("/onboarding/age");
+    try {
+      setProfileField("pathChoice", selected);
+      setAnswers({ goal });
+    } catch (e) {
+      console.log("[goal] save failed", e);
+    }
+    requestAnimationFrame(() => {
+      try {
+        router.push("/onboarding/experience");
+      } catch (e) {
+        console.log("[goal] router.push failed", e);
+      }
+    });
   };
 
   return (
     <OnboardingShell
-      step={1}
+      step={2}
       total={11}
       title="What kind of business?"
       subtitle="Pick a path. We'll tailor everything from here."

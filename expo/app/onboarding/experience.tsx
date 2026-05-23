@@ -29,12 +29,12 @@ export default function ExperienceScreen() {
   const router = useRouter();
   const { state, setAnswers } = useApp();
   const [selected, setSelected] = useState<ExperienceLevel | null>(state.profile.experience);
-  const OPTIONS: Option[] = state.profile.goal === "in-person" ? INPERSON_OPTIONS : AI_OPTIONS;
+  const OPTIONS: Option[] = state.profile.pathChoice === "in_person" ? INPERSON_OPTIONS : AI_OPTIONS;
 
   return (
     <OnboardingShell
-      step={2}
-      total={5}
+      step={3}
+      total={11}
       title="Your experience level?"
       subtitle="Be honest — it helps us match difficulty."
       footer={
@@ -43,8 +43,21 @@ export default function ExperienceScreen() {
           disabled={!selected}
           onPress={() => {
             if (!selected) return;
-            setAnswers({ experience: selected });
-            router.push("/onboarding/confidence");
+            try {
+              setAnswers({ experience: selected });
+            } catch (e) {
+              console.log("[experience] setAnswers failed", e);
+            }
+            // Defer the navigation one frame so commit/saveState/syncToSupabase
+            // finishes scheduling before expo-router's slide transition begins.
+            // Doing both in the same tick was crashing the app on this screen.
+            requestAnimationFrame(() => {
+              try {
+                router.push("/onboarding/confidence");
+              } catch (e) {
+                console.log("[experience] router.push failed", e);
+              }
+            });
           }}
         />
       }
