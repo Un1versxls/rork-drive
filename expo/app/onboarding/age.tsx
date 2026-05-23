@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
-import { Animated, LayoutChangeEvent, PanResponder, Platform, StyleSheet, Text, View } from "react-native";
+import { Animated, GestureResponderEvent, LayoutChangeEvent, PanResponder, Platform, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { ShieldCheck } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
@@ -25,29 +25,42 @@ export default function AgeScreen() {
   const router = useRouter();
   const { state, setProfileField } = useApp();
   const [age, setAge] = useState<number>(state.profile.age ?? 21);
-  const [trackWidth, setTrackWidth] = useState<number>(0);
+  const trackWidthRef = useRef<number>(0);
+  const trackPageXRef = useRef<number>(0);
+  const trackRef = useRef<View>(null);
   const knob = useRef(new Animated.Value(0)).current;
   const ageRef = useRef<number>(age);
   ageRef.current = age;
 
   const ratio = useMemo(() => (age - MIN_AGE) / (MAX_AGE - MIN_AGE), [age]);
 
+  const measureTrack = () => {
+    trackRef.current?.measureInWindow((x, _y, w) => {
+      trackPageXRef.current = x;
+      if (w > 0) trackWidthRef.current = w;
+    });
+  };
+
   const onLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
-    setTrackWidth(w);
+    trackWidthRef.current = w;
     knob.setValue(ratio * w);
+    measureTrack();
   };
 
   React.useEffect(() => {
-    if (trackWidth > 0) {
-      Animated.timing(knob, { toValue: ratio * trackWidth, duration: 120, useNativeDriver: false }).start();
+    const w = trackWidthRef.current;
+    if (w > 0) {
+      Animated.timing(knob, { toValue: ratio * w, duration: 120, useNativeDriver: false }).start();
     }
-  }, [ratio, trackWidth, knob]);
+  }, [ratio, knob]);
 
-  const updateFromX = (x: number) => {
-    if (trackWidth <= 0) return;
-    const clamped = Math.max(0, Math.min(trackWidth, x));
-    const next = Math.round(MIN_AGE + (clamped / trackWidth) * (MAX_AGE - MIN_AGE));
+  const updateFromPageX = (pageX: number) => {
+    const w = trackWidthRef.current;
+    if (w <= 0) return;
+    const local = pageX - trackPageXRef.current;
+    const clamped = Math.max(0, Math.min(w, local));
+    const next = Math.round(MIN_AGE + (clamped / w) * (MAX_AGE - MIN_AGE));
     if (next !== ageRef.current) {
       setAge(next);
       if (Platform.OS !== "web") {
@@ -59,9 +72,15 @@ export default function AgeScreen() {
   const responder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (e) => updateFromX(e.nativeEvent.locationX),
-      onPanResponderMove: (e) => updateFromX(e.nativeEvent.locationX),
+      onMoveShouldSetPanResponderCapture: () => true,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: (e: GestureResponderEvent) => {
+        measureTrack();
+        updateFromPageX(e.nativeEvent.pageX);
+      },
+      onPanResponderMove: (e: GestureResponderEvent) => updateFromPageX(e.nativeEvent.pageX),
     })
   ).current;
 
@@ -69,13 +88,13 @@ export default function AgeScreen() {
 
   const onContinue = () => {
     setProfileField("age", age);
-    router.push("/onboarding/goal");
+    router.push("/onboarding/experience");
   };
 
   return (
     <OnboardingShell
-      step={1}
-      total={5}
+      step={2}
+      total={11}
       title="How old are you?"
       subtitle="We use this to recommend businesses you can legally start — saves you from picking something risky."
       footer={<GradientButton title="Continue" onPress={onContinue} testID="cta-age-continue" />}
@@ -87,8 +106,15 @@ export default function AgeScreen() {
         </View>
 
         <View style={styles.sliderWrap}>
-          <View style={styles.trackBg} onLayout={onLayout} {...responder.panHandlers}>
-            <Animated.View style={[styles.trackFill, { width: knob }]} />
+          <View
+            ref={trackRef}
+            style={styles.trackBg}
+            onLayout={onLayout}
+            collapsable={false}
+            {...responder.panHandlers}
+          >
+            <View style={styles.trackBaseline} pointerEvents="none" />
+            <Animated.View style={[styles.trackFill, { width: knob }]} pointerEvents="none" />
             <Animated.View style={[styles.knob, { transform: [{ translateX: Animated.subtract(knob, 14) }] }]} pointerEvents="none" />
           </View>
           <View style={styles.scaleRow}>
@@ -118,7 +144,14 @@ const styles = StyleSheet.create({
   ageUnit: { color: Colors.textDim, fontSize: 14, fontWeight: "700", letterSpacing: 0.4, marginTop: 2 },
   sliderWrap: { gap: 8, paddingHorizontal: 4 },
   trackBg: {
-    height: 34, justifyContent: "center",
+    height: 44, justifyContent: "center",
+  },
+  trackBaseline: {
+    position: "absolute",
+    left: 0, right: 0,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#eeeeee",
   },
   trackFill: {
     position: "absolute",

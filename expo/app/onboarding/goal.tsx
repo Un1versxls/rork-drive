@@ -19,13 +19,13 @@ export default function GoalScreen() {
     const goal = selected === "ai" ? "ai_business" : "in_person_hustle";
     setProfileField("pathChoice", selected);
     setAnswers({ goal });
-    router.push("/onboarding/experience");
+    router.push("/onboarding/age");
   };
 
   return (
     <OnboardingShell
       step={1}
-      total={5}
+      total={11}
       title="What kind of business?"
       subtitle="Pick a path. We'll tailor everything from here."
       footer={
