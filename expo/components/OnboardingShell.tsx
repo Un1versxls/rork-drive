@@ -14,8 +14,14 @@ import { useApp } from "@/providers/AppProvider";
 // build-business vs sync-accounts would otherwise both pop to sync-accounts).
 const onboardingHistory: string[] = [];
 
+// Module-level persisted progress value so the golden bar animates smoothly
+// from the previous step's fill to the new step's fill across screen mounts
+// (instead of resetting to 0 on every page).
+const progressValue = new Animated.Value(0);
+
 export function resetOnboardingHistory(): void {
   onboardingHistory.length = 0;
+  progressValue.setValue(0);
 }
 
 const PREV_STEP: Record<string, Href> = {
@@ -62,14 +68,13 @@ export function OnboardingShell({ step, total, title, subtitle, children, footer
   const router = useRouter();
   const pathname = usePathname();
   const { setOnboardingStep } = useApp();
-  const progress = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(0)).current;
   const shimmer = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(0)).current;
   const trackWidth = useRef<number>(0);
 
   useEffect(() => {
-    Animated.timing(progress, { toValue: step / total, duration: 520, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+    Animated.timing(progressValue, { toValue: step / total, duration: 620, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
     fade.setValue(0);
     Animated.timing(fade, { toValue: 1, duration: 320, useNativeDriver: true }).start();
     // Pulse the glow on step change
@@ -78,7 +83,7 @@ export function OnboardingShell({ step, total, title, subtitle, children, footer
       Animated.timing(pulse, { toValue: 1, duration: 320, useNativeDriver: true }),
       Animated.timing(pulse, { toValue: 0, duration: 480, useNativeDriver: true }),
     ]).start();
-  }, [step, total, progress, fade, pulse]);
+  }, [step, total, fade, pulse]);
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -106,7 +111,7 @@ export function OnboardingShell({ step, total, title, subtitle, children, footer
     }
   }, [pathname, setOnboardingStep]);
 
-  const width = progress.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] });
+  const width = progressValue.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] });
   const glowOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.9] });
   const glowScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
 
