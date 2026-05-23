@@ -9,6 +9,46 @@ import { fetchAppUser } from "@/lib/appUserTracking";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
+// Whitelist of onboarding routes the app is allowed to resume into on
+// cold start. If state.profile.onboardingStep ever holds a stale or
+// invalid path (e.g. a screen that was renamed or removed in a later
+// build), redirecting to it would crash expo-router at launch. We fall
+// back to /onboarding instead.
+const VALID_ONBOARDING_STEPS = new Set<string>([
+  "/onboarding",
+  "/onboarding/age",
+  "/onboarding/goal",
+  "/onboarding/build-business",
+  "/onboarding/skill-topic",
+  "/onboarding/experience",
+  "/onboarding/confidence",
+  "/onboarding/time",
+  "/onboarding/priority",
+  "/onboarding/results",
+  "/onboarding/industry",
+  "/onboarding/budget",
+  "/onboarding/obstacle",
+  "/onboarding/name",
+  "/onboarding/sync-accounts",
+  "/onboarding/sign-in",
+  "/onboarding/apple-signin",
+  "/onboarding/email",
+  "/onboarding/verify",
+  "/onboarding/source",
+  "/onboarding/match",
+  "/onboarding/business",
+  "/onboarding/pick-business",
+  "/onboarding/day-trading",
+  "/onboarding/feature-preview",
+  "/onboarding/notifications",
+  "/onboarding/plan-summary",
+  "/onboarding/try-free",
+  "/onboarding/paywall",
+  "/onboarding/decline",
+  "/onboarding/downgrade-confirm",
+  "/onboarding/complete",
+]);
+
 export default function Index() {
   const { hydrated, state, hydrateFromAppUser } = useApp();
   const { booting, session } = useAuth();
@@ -84,7 +124,9 @@ export default function Index() {
     if (step === "/onboarding/try-free" || step === "/onboarding/paywall") {
       return <Redirect href="/onboarding/plan-summary" />;
     }
-    if (step && step !== "/") {
+    // Only resume into a step we recognise. A stale path from an older
+    // build (or a typo'd value) would crash expo-router on cold start.
+    if (step && step !== "/" && VALID_ONBOARDING_STEPS.has(step)) {
       return <Redirect href={step as never} />;
     }
     return <Redirect href="/onboarding" />;

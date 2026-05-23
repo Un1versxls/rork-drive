@@ -11,6 +11,7 @@ import { AppProvider } from "@/providers/AppProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { Colors } from "@/constants/colors";
 import { KeyboardToolbar } from "@/components/KeyboardToolbar";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -53,21 +54,23 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView style={styles.root}>
-        <SafeAreaProvider>
-          <AuthProvider>
-            <AppProvider>
-              <View style={styles.root}>
-                <StatusBar style="dark" />
-                <RootLayoutNav />
-                <KeyboardToolbar />
-              </View>
-            </AppProvider>
-          </AuthProvider>
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <GestureHandlerRootView style={styles.root}>
+          <SafeAreaProvider>
+            <AuthProvider>
+              <AppProvider>
+                <View style={styles.root}>
+                  <StatusBar style="dark" />
+                  <RootLayoutNav />
+                  <KeyboardToolbar />
+                </View>
+              </AppProvider>
+            </AuthProvider>
+          </SafeAreaProvider>
+        </GestureHandlerRootView>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
