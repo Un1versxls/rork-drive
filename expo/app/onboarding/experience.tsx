@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { ScrollView, StyleSheet } from "react-native";
+import React, { useRef, useState } from "react";
+import { InteractionManager, ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { Sprout, Rocket, Flame, Crown, type LucideIcon } from "lucide-react-native";
 
@@ -27,8 +27,9 @@ const INPERSON_OPTIONS: Option[] = [
 
 export default function ExperienceScreen() {
   const router = useRouter();
-  const { state, setAnswers } = useApp();
+  const { state, setProfileField } = useApp();
   const [selected, setSelected] = useState<ExperienceLevel | null>(state.profile.experience);
+  const navLockRef = useRef<boolean>(false);
   const OPTIONS: Option[] = state.profile.pathChoice === "in_person" ? INPERSON_OPTIONS : AI_OPTIONS;
 
   return (
@@ -43,19 +44,28 @@ export default function ExperienceScreen() {
           disabled={!selected}
           onPress={() => {
             if (!selected) return;
+            // Re-entry lock so a double tap (or fast tap during the slide
+            // transition) can't fire two navigations + two state commits.
+            if (navLockRef.current) return;
+            navLockRef.current = true;
+            // Save state first, fully wrapped so a sync/AsyncStorage hiccup
+            // can't tank the press.
             try {
-              setAnswers({ experience: selected });
+              setProfileField("experience", selected);
             } catch (e) {
-              console.log("[experience] setAnswers failed", e);
+              console.log("[experience] save failed", e);
             }
-            // Defer the navigation one frame so commit/saveState/syncToSupabase
-            // finishes scheduling before expo-router's slide transition begins.
-            // Doing both in the same tick was crashing the app on this screen.
-            requestAnimationFrame(() => {
+            // Wait for any in-flight UI work (Pressable press animation,
+            // ripple, haptic) to finish before kicking off expo-router's
+            // slide transition. requestAnimationFrame alone wasn't enough on
+            // some devices — InteractionManager guarantees the gesture
+            // handler is done before nav.
+            InteractionManager.runAfterInteractions(() => {
               try {
                 router.push("/onboarding/confidence");
               } catch (e) {
                 console.log("[experience] router.push failed", e);
+                navLockRef.current = false;
               }
             });
           }}

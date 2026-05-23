@@ -395,9 +395,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
       const tasks = generateDailyTasks(a.goal, plan.taskLimit, key, next.profile.businessTaskPool);
       next = { ...next, tasks, lastActiveDate: key };
     }
+    // commit() already calls syncToSupabase internally — don't double-fire,
+    // back-to-back getUser/upsert calls were stacking up during onboarding.
     commit(next);
-    syncToSupabase(next);
-  }, [commit, syncToSupabase]);
+  }, [commit]);
 
   const setOnboardingStep = useCallback((path: string) => {
     const prev = stateRef.current;
