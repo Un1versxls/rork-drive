@@ -29,6 +29,7 @@ interface Props {
 export function FirstTimeTour({ visible, onComplete, hapticsEnabled }: Props) {
   const [idx, setIdx] = useState<number>(0);
   const [dismissed, setDismissed] = useState<boolean>(false);
+  const [passThrough, setPassThrough] = useState<boolean>(false);
   const fade = useRef(new Animated.Value(0)).current;
   const rise = useRef(new Animated.Value(20)).current;
   const pulse = useRef(new Animated.Value(0)).current;
@@ -37,6 +38,7 @@ export function FirstTimeTour({ visible, onComplete, hapticsEnabled }: Props) {
     if (!visible) return;
     setIdx(0);
     setDismissed(false);
+    setPassThrough(false);
   }, [visible]);
 
   useEffect(() => {
@@ -71,12 +73,22 @@ export function FirstTimeTour({ visible, onComplete, hapticsEnabled }: Props) {
   const glowScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.15] });
 
   const finish = () => {
-    // Dismiss synchronously so the underlying screen is immediately
-    // interactive, then persist the seen flag one tick later so state
-    // has time to commit before the parent re-renders.
-    setDismissed(true);
     triggerHaptic("select", hapticsEnabled);
-    setTimeout(() => onComplete(), 0);
+    // 1. Immediately make the overlay click-through so the underlying
+    //    tasks tab is tappable on the very next finger-down — even
+    //    while the fade-out is still playing.
+    setPassThrough(true);
+    // 2. Fade the card out smoothly.
+    Animated.timing(fade, {
+      toValue: 0,
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => {
+      // 3. Fully unmount and persist the seen flag.
+      setDismissed(true);
+      onComplete();
+    });
   };
 
   const next = () => {
@@ -92,13 +104,15 @@ export function FirstTimeTour({ visible, onComplete, hapticsEnabled }: Props) {
   // statusBarTranslucent has a known iOS hit-test bug where the first
   // tap on the CTA gets swallowed by the fade animation. A plain View
   // overlay registers taps immediately and reliably.
+  //
+  // Once `passThrough` flips on (during dismiss fade-out), the wrapper
+  // becomes click-through so the tasks tab below is instantly tappable.
   return (
-    <View style={styles.backdrop} pointerEvents="auto">
-      <Animated.View style={[styles.card, { opacity: fade, transform: [{ translateY: rise }] }]}>
-        <Pressable onPress={finish} style={styles.skipBtn} hitSlop={12} testID="tour-skip">
-          <Text style={styles.skipText}>Skip</Text>
-        </Pressable>
-
+    <Animated.View
+      style={[styles.backdrop, passThrough && { backgroundColor: "transparent" }, { opacity: fade }]}
+      pointerEvents={passThrough ? "none" : "auto"}
+    >
+      <Animated.View style={[styles.card, { transform: [{ translateY: rise }] }]}>
         <View style={styles.iconWrap}>
           <Animated.View
             style={[
@@ -131,14 +145,12 @@ export function FirstTimeTour({ visible, onComplete, hapticsEnabled }: Props) {
           <ChevronRight color="#ffffff" size={18} strokeWidth={2.6} />
         </Pressable>
       </Animated.View>
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   backdrop: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.85)", alignItems: "center", justifyContent: "center", padding: 22, zIndex: 1000, elevation: 1000 },
-  skipBtn: { position: "absolute", top: 12, right: 14, paddingHorizontal: 10, paddingVertical: 6, zIndex: 2 },
-  skipText: { color: Colors.textMuted, fontSize: 13, fontWeight: "700" },
   card: {
     width: "100%",
     maxWidth: 380,
