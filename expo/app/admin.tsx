@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Alert, FlatList, Platform, Pressable, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
@@ -102,58 +102,60 @@ export default function AdminScreen() {
     );
   }
 
+  const users = usersQuery.data ?? [];
+  const codes = codesQuery.data ?? [];
+
   return (
     <SafeAreaView style={styles.root} edges={["bottom"]}>
-      <FlatList
-        data={usersQuery.data ?? []}
-        keyExtractor={(u) => u.id}
+      <ScrollView
         contentContainerStyle={styles.list}
-        ListHeaderComponent={
-          <View>
-            <Text style={styles.h2}>Redeem codes</Text>
-            <View style={styles.card}>
-              <TextInput
-                value={newCode}
-                onChangeText={(s) => setNewCode(s.toUpperCase())}
-                placeholder="NEW CODE"
-                placeholderTextColor={Colors.textMuted}
-                autoCapitalize="characters"
-                style={styles.input}
-              />
-              <View style={styles.row}>
-                <Pressable onPress={() => setNewCodePlan("base")} style={[styles.pill, newCodePlan === "base" && styles.pillOn]}>
-                  <Text style={[styles.pillText, newCodePlan === "base" && styles.pillTextOn]}>Base</Text>
-                </Pressable>
-                <Pressable onPress={() => setNewCodePlan("premium")} style={[styles.pill, newCodePlan === "premium" && styles.pillOn]}>
-                  <Text style={[styles.pillText, newCodePlan === "premium" && styles.pillTextOn]}>Premium</Text>
-                </Pressable>
-                <TextInput
-                  value={newCodeUses}
-                  onChangeText={setNewCodeUses}
-                  placeholder="uses"
-                  keyboardType="number-pad"
-                  placeholderTextColor={Colors.textMuted}
-                  style={[styles.input, { flex: 0, width: 80, paddingVertical: 10 }]}
-                />
-              </View>
-              <GradientButton title="Create code" onPress={() => createCode.mutate()} disabled={!newCode} />
-            </View>
-
-            {(codesQuery.data ?? []).map((c) => (
-              <View key={c.code} style={styles.codeRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.codeText}>{c.code}</Text>
-                  <Text style={styles.codeMeta}>{c.plan.toUpperCase()} · {c.uses}/{c.max_uses} used</Text>
-                </View>
-                <Switch value={c.active} onValueChange={(v) => toggleCode.mutate({ code: c.code, active: v })} />
-              </View>
-            ))}
-
-            <Text style={[styles.h2, { marginTop: 22 }]}>Users ({usersQuery.data?.length ?? 0})</Text>
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+      >
+        <Text style={styles.h2}>Redeem codes</Text>
+        <View style={styles.card}>
+          <TextInput
+            value={newCode}
+            onChangeText={(s) => setNewCode(s.toUpperCase())}
+            placeholder="NEW CODE"
+            placeholderTextColor={Colors.textMuted}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            style={styles.input}
+            testID="admin-code-input"
+          />
+          <View style={styles.row}>
+            <Pressable onPress={() => setNewCodePlan("base")} style={[styles.pill, newCodePlan === "base" && styles.pillOn]}>
+              <Text style={[styles.pillText, newCodePlan === "base" && styles.pillTextOn]}>Base</Text>
+            </Pressable>
+            <Pressable onPress={() => setNewCodePlan("premium")} style={[styles.pill, newCodePlan === "premium" && styles.pillOn]}>
+              <Text style={[styles.pillText, newCodePlan === "premium" && styles.pillTextOn]}>Premium</Text>
+            </Pressable>
+            <TextInput
+              value={newCodeUses}
+              onChangeText={setNewCodeUses}
+              placeholder="uses"
+              keyboardType="number-pad"
+              placeholderTextColor={Colors.textMuted}
+              style={[styles.input, { flex: 0, width: 80, paddingVertical: 10 }]}
+            />
           </View>
-        }
-        renderItem={({ item }) => (
-          <View style={styles.userCard}>
+          <GradientButton title="Create code" onPress={() => createCode.mutate()} disabled={!newCode} />
+        </View>
+
+        {codes.map((c) => (
+          <View key={c.code} style={styles.codeRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.codeText}>{c.code}</Text>
+              <Text style={styles.codeMeta}>{c.plan.toUpperCase()} · {c.uses}/{c.max_uses} used</Text>
+            </View>
+            <Switch value={c.active} onValueChange={(v) => toggleCode.mutate({ code: c.code, active: v })} />
+          </View>
+        ))}
+
+        <Text style={[styles.h2, { marginTop: 22 }]}>Users ({users.length})</Text>
+        {users.map((item) => (
+          <View key={item.id} style={styles.userCard}>
             <Text style={styles.userEmail}>{item.email}</Text>
             <Text style={styles.userId}>{item.id}</Text>
             <View style={styles.toggleRow}>
@@ -179,8 +181,8 @@ export default function AdminScreen() {
               <Text style={styles.revokeText}>Revoke access</Text>
             </Pressable>
           </View>
-        )}
-      />
+        ))}
+      </ScrollView>
     </SafeAreaView>
   );
 }

@@ -78,26 +78,26 @@ export function OnboardingShell({ step, total, title, subtitle, children, footer
           {canGoBack ? (
             <Pressable
               onPress={() => {
-                // Prefer the deterministic PREV_STEP map over router.back().
-                // router.back() can crash on certain screens (e.g. time) when
-                // the native stack is mid-animation or the previous entry's
-                // mount triggers re-entrant state commits during the pop.
+                // Defer navigation to the next frame so the Pressable's press
+                // animation/state settles before the native stack starts a
+                // transition. Doing both in the same frame has been observed
+                // to crash on certain screens (e.g. /onboarding/time) when
+                // expo-router's slide animation collides with re-entrant
+                // state commits from the screen being mounted.
                 const prev = prevPath ?? (pathname ? PREV_STEP[pathname] : undefined);
-                if (prev) {
+                const target: Href = prev ?? ("/onboarding" as Href);
+                requestAnimationFrame(() => {
                   try {
-                    router.replace(prev);
+                    router.replace(target);
                   } catch (e) {
                     console.log("[OnboardingShell] back replace failed", e);
-                    if (router.canGoBack()) router.back();
+                    try {
+                      if (router.canGoBack()) router.back();
+                    } catch (e2) {
+                      console.log("[OnboardingShell] router.back fallback failed", e2);
+                    }
                   }
-                  return;
-                }
-                if (router.canGoBack()) {
-                  try { router.back(); return; } catch (e) {
-                    console.log("[OnboardingShell] router.back failed", e);
-                  }
-                }
-                router.replace("/onboarding" as Href);
+                });
               }}
               style={styles.backBtn}
               hitSlop={12}
