@@ -40,6 +40,12 @@ export function EmojiRating({ options, value, onChange, testID }: Props) {
 }
 
 function EmojiBubble({ option, selected, onPress }: { option: Option; selected: boolean; onPress: () => void }) {
+  // CRITICAL: scale (native driver) and backgroundColor/borderColor (JS
+  // driver) MUST live on different Animated nodes, otherwise React Native
+  // throws "Attempting to run JS driven animation on animated node that
+  // has been moved to native" on mount. We split them across two nested
+  // Animated.Views: the outer one owns the transform, the inner one owns
+  // the color interpolation.
   const scale = useRef(new Animated.Value(selected ? 1.15 : 1)).current;
   const bg = useRef(new Animated.Value(selected ? 1 : 0)).current;
 
@@ -68,13 +74,12 @@ function EmojiBubble({ option, selected, onPress }: { option: Option; selected: 
 
   return (
     <Pressable onPress={onPress} hitSlop={6} style={styles.bubbleWrap}>
-      <Animated.View
-        style={[
-          styles.bubble,
-          { transform: [{ scale }], backgroundColor: bgColor, borderColor },
-        ]}
-      >
-        <Text style={styles.emoji}>{option.emoji}</Text>
+      <Animated.View style={[styles.bubbleScale, { transform: [{ scale }] }]}>
+        <Animated.View
+          style={[styles.bubble, { backgroundColor: bgColor, borderColor }]}
+        >
+          <Text style={styles.emoji}>{option.emoji}</Text>
+        </Animated.View>
       </Animated.View>
       <Text style={[styles.label, selected && styles.labelSelected]} numberOfLines={1}>
         {option.label}
@@ -86,6 +91,7 @@ function EmojiBubble({ option, selected, onPress }: { option: Option; selected: 
 const styles = StyleSheet.create({
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 6 },
   bubbleWrap: { alignItems: "center", flex: 1, gap: 8 },
+  bubbleScale: { alignItems: "center", justifyContent: "center" },
   bubble: {
     width: 56,
     height: 56,
