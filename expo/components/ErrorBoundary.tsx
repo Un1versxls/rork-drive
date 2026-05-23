@@ -31,6 +31,20 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, info: { componentStack?: string | null }): void {
     console.log("[ErrorBoundary] caught", error?.message, info?.componentStack);
+    // Some React Native errors are non-fatal warnings that get promoted to
+    // exceptions in release mode (e.g. the JS/native Animated driver
+    // mismatch warning). They don't actually break the UI — silently
+    // self-recover instead of stranding the user on a crash screen.
+    const msg = error?.message ?? "";
+    const isBenignAnimated =
+      msg.includes("JS driven animation on animated node") ||
+      msg.includes("useNativeDriver") ||
+      msg.includes("native node");
+    if (isBenignAnimated) {
+      setTimeout(() => {
+        this.setState({ error: null });
+      }, 0);
+    }
   }
 
   handleReset = async (): Promise<void> => {

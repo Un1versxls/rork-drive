@@ -29,6 +29,7 @@ export default function AgeScreen() {
   const trackPageXRef = useRef<number>(0);
   const trackRef = useRef<View>(null);
   const knob = useRef(new Animated.Value(0)).current;
+  const knobShadow = useRef(new Animated.Value(0)).current;
   const ageRef = useRef<number>(age);
   ageRef.current = age;
 
@@ -37,9 +38,14 @@ export default function AgeScreen() {
   const demoAnim = useRef(new Animated.Value(0)).current;
   const demoLoopRef = useRef<Animated.CompositeAnimation | null>(null);
   const demoPulseRef = useRef<Animated.CompositeAnimation | null>(null);
+  const demoPulseShadowRef = useRef<Animated.CompositeAnimation | null>(null);
   const demoListenerIdRef = useRef<string | null>(null);
   const hintFade = useRef(new Animated.Value(0)).current;
   const hintPulse = useRef(new Animated.Value(0)).current;
+  // Separate JS-driven pulse for shadowOpacity, which is NOT supported by
+  // the native driver. Mixing it with the native-driven hintPulse on the
+  // same Animated.Value triggers a "JS animation on native node" crash.
+  const hintPulseJS = useRef(new Animated.Value(0)).current;
 
   const ratio = useMemo(() => (age - MIN_AGE) / (MAX_AGE - MIN_AGE), [age]);
 
@@ -88,6 +94,14 @@ export default function AgeScreen() {
       );
       demoPulseRef.current = pulse;
       pulse.start();
+      const pulseShadow = Animated.loop(
+        Animated.sequence([
+          Animated.timing(hintPulseJS, { toValue: 1, duration: 900, useNativeDriver: false, easing: Easing.inOut(Easing.ease) }),
+          Animated.timing(hintPulseJS, { toValue: 0, duration: 900, useNativeDriver: false, easing: Easing.inOut(Easing.ease) }),
+        ])
+      );
+      demoPulseShadowRef.current = pulseShadow;
+      pulseShadow.start();
       const loop = Animated.loop(
         Animated.sequence([
           Animated.timing(demoAnim, { toValue: 1, duration: 1400, useNativeDriver: false, easing: Easing.inOut(Easing.quad) }),
@@ -125,8 +139,10 @@ export default function AgeScreen() {
     }
     try { demoLoopRef.current?.stop(); } catch {}
     try { demoPulseRef.current?.stop(); } catch {}
+    try { demoPulseShadowRef.current?.stop(); } catch {}
     demoLoopRef.current = null;
     demoPulseRef.current = null;
+    demoPulseShadowRef.current = null;
     demoAnim.stopAnimation();
     Animated.timing(hintFade, { toValue: 0, duration: 220, useNativeDriver: true }).start();
     setDemoActive(false);
@@ -217,6 +233,9 @@ export default function AgeScreen() {
                     translateY: hintPulse.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }),
                   },
                 ],
+                // shadowOpacity is NOT supported by the native driver, so
+                // use the separate JS-driven hintPulseJS here.
+                shadowOpacity: hintPulseJS.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.7] }),
               },
             ]}
             pointerEvents="none"
@@ -233,13 +252,21 @@ export default function AgeScreen() {
           >
             <View style={styles.trackBaseline} pointerEvents="none" />
             <Animated.View style={[styles.trackFill, { width: knob }]} pointerEvents="none" />
+            {/*
+             * Knob position is JS-driven (via setValue on `knob`) to match
+             * the JS-driven `width: knob` above. Using `left` here keeps
+             * everything on the JS driver — mixing `transform.translateX`
+             * (native-supported) with `width` (JS-only) on the same
+             * Animated.Value promotes it to a native node, then the JS
+             * setValue calls crash with "JS animation on native node".
+             */}
             <Animated.View
               style={[
                 styles.knob,
-                { transform: [{ translateX: Animated.subtract(knob, 14) }] },
+                { left: Animated.subtract(knob, 14) },
                 demoActive && styles.knobDemo,
                 demoActive && {
-                  shadowOpacity: hintPulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.75] }),
+                  shadowOpacity: hintPulseJS.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.75] }),
                 },
               ]}
               pointerEvents="none"
@@ -289,6 +316,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.text,
   },
   knob: {
+    position: "absolute",
+    top: 8,
     width: 28, height: 28, borderRadius: 14,
     backgroundColor: "#ffffff",
     borderWidth: 2.5, borderColor: Colors.text,

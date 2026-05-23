@@ -37,6 +37,10 @@ export function WheelPicker({
   const [demoActive, setDemoActive] = useState<boolean>(true);
   const hintFade = useRef(new Animated.Value(0)).current;
   const hintPulse = useRef(new Animated.Value(0)).current;
+  // Separate JS-driven pulse for shadowOpacity (which is NOT supported by
+  // the native driver). Mixing it with the native-driven hintPulse on the
+  // same Animated.Value triggers a "JS animation on native node" crash.
+  const hintPulseJS = useRef(new Animated.Value(0)).current;
   const lastHapticAt = useRef<number>(0);
 
   const containerHeight = itemHeight * visibleCount;
@@ -130,6 +134,13 @@ export function WheelPicker({
       ])
     );
     pulse.start();
+    const pulseShadow = Animated.loop(
+      Animated.sequence([
+        Animated.timing(hintPulseJS, { toValue: 1, duration: 900, useNativeDriver: false, easing: Easing.inOut(Easing.ease) }),
+        Animated.timing(hintPulseJS, { toValue: 0, duration: 900, useNativeDriver: false, easing: Easing.inOut(Easing.ease) }),
+      ])
+    );
+    pulseShadow.start();
     const baseIdx = Math.max(0, values.indexOf(value));
     const nudge = () => {
       if (cancelled) return;
@@ -150,9 +161,10 @@ export function WheelPicker({
       clearTimeout(startTimer);
       clearInterval(loopTimer);
       pulse.stop();
+      pulseShadow.stop();
       Animated.timing(hintFade, { toValue: 0, duration: 200, useNativeDriver: true }).start();
     };
-  }, [demoActive, hintFade, hintPulse, itemHeight, value, values]);
+  }, [demoActive, hintFade, hintPulse, hintPulseJS, itemHeight, value, values]);
 
   return (
     <View style={[styles.wrap, { height: containerHeight }]} testID={testID}>
@@ -166,7 +178,7 @@ export function WheelPicker({
             borderColor: "#d4af37",
             backgroundColor: "#fffdf3",
             shadowColor: "#d4af37",
-            shadowOpacity: hintPulse.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.65] }),
+            shadowOpacity: hintPulseJS.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.65] }),
             shadowRadius: 14,
             shadowOffset: { width: 0, height: 0 },
           },
