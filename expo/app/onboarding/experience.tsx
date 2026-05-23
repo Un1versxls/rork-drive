@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { InteractionManager, ScrollView, StyleSheet } from "react-native";
+import { ScrollView, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { Sprout, Rocket, Flame, Crown, type LucideIcon } from "lucide-react-native";
 
@@ -44,30 +44,33 @@ export default function ExperienceScreen() {
           disabled={!selected}
           onPress={() => {
             if (!selected) return;
-            // Re-entry lock so a double tap (or fast tap during the slide
-            // transition) can't fire two navigations + two state commits.
+            // Re-entry lock so a double tap (or tap during slide) can't
+            // fire twice.
             if (navLockRef.current) return;
             navLockRef.current = true;
-            // Save state first, fully wrapped so a sync/AsyncStorage hiccup
-            // can't tank the press.
+            // CRITICAL: navigate FIRST, save state AFTER. Doing the state
+            // commit before nav was scheduling a re-render in the same JS
+            // tick the slide animation started, which crashed under load.
+            // By the time the deferred save runs the slide is already
+            // underway and the commit happens cleanly.
+            const choice = selected;
             try {
-              setProfileField("experience", selected);
+              router.push("/onboarding/confidence");
             } catch (e) {
-              console.log("[experience] save failed", e);
+              console.log("[experience] router.push failed", e);
+              navLockRef.current = false;
+              return;
             }
-            // Wait for any in-flight UI work (Pressable press animation,
-            // ripple, haptic) to finish before kicking off expo-router's
-            // slide transition. requestAnimationFrame alone wasn't enough on
-            // some devices — InteractionManager guarantees the gesture
-            // handler is done before nav.
-            InteractionManager.runAfterInteractions(() => {
+            // Save state on the next tick, well after navigation has
+            // started. Wrapped so an AsyncStorage / sync hiccup can't
+            // bubble up and tank the screen.
+            setTimeout(() => {
               try {
-                router.push("/onboarding/confidence");
+                setProfileField("experience", choice);
               } catch (e) {
-                console.log("[experience] router.push failed", e);
-                navLockRef.current = false;
+                console.log("[experience] save failed", e);
               }
-            });
+            }, 50);
           }}
         />
       }

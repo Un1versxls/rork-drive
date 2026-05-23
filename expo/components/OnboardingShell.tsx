@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Easing, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, InteractionManager, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { ChevronLeft } from "lucide-react-native";
@@ -95,20 +95,26 @@ export function OnboardingShell({ step, total, title, subtitle, children, footer
 
   useEffect(() => {
     if (!pathname) return;
-    setOnboardingStep(pathname);
-    // Push onto the history stack only when moving forward (i.e. the path is
-    // not already the top of the stack). Back navigation pops the stack
-    // before navigating, so the new top matches the destination.
+    // History bookkeeping is cheap — do it immediately so back works.
     const top = onboardingHistory[onboardingHistory.length - 1];
     if (top !== pathname) {
       const idx = onboardingHistory.lastIndexOf(pathname);
       if (idx >= 0) {
-        // Re-entering a previous screen via replace — truncate forward history.
         onboardingHistory.length = idx + 1;
       } else {
         onboardingHistory.push(pathname);
       }
     }
+    // Defer the global state commit until AFTER the slide transition
+    // completes. Calling setOnboardingStep during a mount-mid-transition
+    // was triggering a setState while the native stack was still
+    // animating, which on slower devices crashed the screen we were
+    // navigating into. The onboardingStep field is only read on cold
+    // start to resume the flow — it's safe to write it late.
+    const handle = InteractionManager.runAfterInteractions(() => {
+      try { setOnboardingStep(pathname); } catch (e) { console.log("[OnboardingShell] setOnboardingStep failed", e); }
+    });
+    return () => { handle.cancel(); };
   }, [pathname, setOnboardingStep]);
 
   const width = progressValue.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] });
