@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
 import { Award, CheckCircle2, ChevronRight, Crown, Flame, Sparkles, RefreshCw } from "lucide-react-native";
 
 import { Colors } from "@/constants/colors";
@@ -70,67 +70,75 @@ export function FirstTimeTour({ visible, onComplete, hapticsEnabled }: Props) {
   const glow = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.9] });
   const glowScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.15] });
 
+  const finish = () => {
+    // Dismiss synchronously so the underlying screen is immediately
+    // interactive, then persist the seen flag one tick later so state
+    // has time to commit before the parent re-renders.
+    setDismissed(true);
+    triggerHaptic("select", hapticsEnabled);
+    setTimeout(() => onComplete(), 0);
+  };
+
   const next = () => {
     if (isLast) {
-      // Dismiss the modal synchronously so the underlying screen is
-      // immediately interactive, then persist the seen flag. Without
-      // this the Modal's fade-out can swallow taps for ~300ms.
-      setDismissed(true);
-      triggerHaptic("select", hapticsEnabled);
-      // Defer onComplete one tick so state has time to commit before
-      // the parent re-renders.
-      setTimeout(() => onComplete(), 0);
+      finish();
       return;
     }
     triggerHaptic("select", hapticsEnabled);
     setIdx((i) => Math.min(i + 1, STEPS.length - 1));
   };
 
+  // Rendered as an in-tree absolute overlay (NOT a Modal) — Modal +
+  // statusBarTranslucent has a known iOS hit-test bug where the first
+  // tap on the CTA gets swallowed by the fade animation. A plain View
+  // overlay registers taps immediately and reliably.
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
-      <View style={styles.backdrop}>
-        <Animated.View style={[styles.card, { opacity: fade, transform: [{ translateY: rise }] }]}>
-          <View style={styles.iconWrap}>
-            <Animated.View
-              style={[
-                styles.iconGlow,
-                { backgroundColor: step.accent, opacity: glow, transform: [{ scale: glowScale }] },
-              ]}
-              pointerEvents="none"
-            />
-            <View style={[styles.iconCircle, { backgroundColor: step.accent }]}>
-              <Icon color="#ffffff" size={32} />
-            </View>
+    <View style={styles.backdrop} pointerEvents="auto">
+      <Animated.View style={[styles.card, { opacity: fade, transform: [{ translateY: rise }] }]}>
+        <Pressable onPress={finish} style={styles.skipBtn} hitSlop={12} testID="tour-skip">
+          <Text style={styles.skipText}>Skip</Text>
+        </Pressable>
+
+        <View style={styles.iconWrap}>
+          <Animated.View
+            style={[
+              styles.iconGlow,
+              { backgroundColor: step.accent, opacity: glow, transform: [{ scale: glowScale }] },
+            ]}
+            pointerEvents="none"
+          />
+          <View style={[styles.iconCircle, { backgroundColor: step.accent }]}>
+            <Icon color="#ffffff" size={32} />
           </View>
+        </View>
 
-          <View style={styles.eyebrowPill}>
-            <Sparkles size={11} color={Colors.accentGold} />
-            <Text style={styles.eyebrow}>WELCOME · {idx + 1} OF {STEPS.length}</Text>
-          </View>
+        <View style={styles.eyebrowPill}>
+          <Sparkles size={11} color={Colors.accentGold} />
+          <Text style={styles.eyebrow}>WELCOME · {idx + 1} OF {STEPS.length}</Text>
+        </View>
 
-          <Text style={styles.title}>{step.title}</Text>
-          <Text style={styles.body}>{step.body}</Text>
+        <Text style={styles.title}>{step.title}</Text>
+        <Text style={styles.body}>{step.body}</Text>
 
-          <View style={styles.dots}>
-            {STEPS.map((_, i) => (
-              <View key={i} style={[styles.dot, i === idx && styles.dotOn, i < idx && styles.dotDone]} />
-            ))}
-          </View>
+        <View style={styles.dots}>
+          {STEPS.map((_, i) => (
+            <View key={i} style={[styles.dot, i === idx && styles.dotOn, i < idx && styles.dotDone]} />
+          ))}
+        </View>
 
-          <Pressable onPress={next} style={({ pressed }) => [styles.cta, pressed && { opacity: 0.9 }]} testID="tour-next">
-            <Text style={styles.ctaText}>{isLast ? "Let's go" : "Next"}</Text>
-            <ChevronRight color="#ffffff" size={18} strokeWidth={2.6} />
-          </Pressable>
-
-          <Text style={styles.lock}>You can&apos;t skip this — only 5 quick steps.</Text>
-        </Animated.View>
-      </View>
-    </Modal>
+        <Pressable onPress={next} style={({ pressed }) => [styles.cta, pressed && { opacity: 0.9 }]} testID="tour-next">
+          <Text style={styles.ctaText}>{isLast ? "Let's go" : "Next"}</Text>
+          <ChevronRight color="#ffffff" size={18} strokeWidth={2.6} />
+        </Pressable>
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.85)", alignItems: "center", justifyContent: "center", padding: 22 },
+  backdrop: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.85)", alignItems: "center", justifyContent: "center", padding: 22, zIndex: 1000, elevation: 1000 },
+  skipBtn: { position: "absolute", top: 12, right: 14, paddingHorizontal: 10, paddingVertical: 6, zIndex: 2 },
+  skipText: { color: Colors.textMuted, fontSize: 13, fontWeight: "700" },
   card: {
     width: "100%",
     maxWidth: 380,
@@ -173,5 +181,4 @@ const styles = StyleSheet.create({
     marginTop: 18, alignSelf: "stretch",
   },
   ctaText: { color: "#ffffff", fontSize: 15, fontWeight: "800" },
-  lock: { color: Colors.textMuted, fontSize: 11, marginTop: 8, textAlign: "center" },
 });
