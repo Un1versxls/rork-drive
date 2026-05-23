@@ -7,6 +7,16 @@ import { useRouter, usePathname, type Href } from "expo-router";
 import { Colors } from "@/constants/colors";
 import { useApp } from "@/providers/AppProvider";
 
+// Module-level navigation history stack for onboarding. Tracks the actual
+// forward path the user took so back navigation returns to the real previous
+// screen instead of a static guess (e.g. coming into apple-signin from
+// build-business vs sync-accounts would otherwise both pop to sync-accounts).
+const onboardingHistory: string[] = [];
+
+export function resetOnboardingHistory(): void {
+  onboardingHistory.length = 0;
+}
+
 const PREV_STEP: Record<string, Href> = {
   "/onboarding/goal": "/onboarding",
   "/onboarding/age": "/onboarding/goal",
@@ -61,7 +71,21 @@ export function OnboardingShell({ step, total, title, subtitle, children, footer
   }, [step, total, progress, fade]);
 
   useEffect(() => {
-    if (pathname) setOnboardingStep(pathname);
+    if (!pathname) return;
+    setOnboardingStep(pathname);
+    // Push onto the history stack only when moving forward (i.e. the path is
+    // not already the top of the stack). Back navigation pops the stack
+    // before navigating, so the new top matches the destination.
+    const top = onboardingHistory[onboardingHistory.length - 1];
+    if (top !== pathname) {
+      const idx = onboardingHistory.lastIndexOf(pathname);
+      if (idx >= 0) {
+        // Re-entering a previous screen via replace — truncate forward history.
+        onboardingHistory.length = idx + 1;
+      } else {
+        onboardingHistory.push(pathname);
+      }
+    }
   }, [pathname, setOnboardingStep]);
 
   const width = progress.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] });
@@ -84,8 +108,18 @@ export function OnboardingShell({ step, total, title, subtitle, children, footer
                 // to crash on certain screens (e.g. /onboarding/time) when
                 // expo-router's slide animation collides with re-entrant
                 // state commits from the screen being mounted.
-                const prev = prevPath ?? (pathname ? PREV_STEP[pathname] : undefined);
-                const target: Href = prev ?? ("/onboarding" as Href);
+                // Prefer the real navigation history; fall back to the
+                // static PREV_STEP map only if history is empty (e.g. deep
+                // link or process restart on this screen).
+                let historyTarget: string | undefined;
+                if (pathname && onboardingHistory[onboardingHistory.length - 1] === pathname) {
+                  onboardingHistory.pop();
+                  historyTarget = onboardingHistory[onboardingHistory.length - 1];
+                } else if (onboardingHistory.length > 0) {
+                  historyTarget = onboardingHistory[onboardingHistory.length - 1];
+                }
+                const prev = prevPath ?? historyTarget ?? (pathname ? PREV_STEP[pathname] : undefined);
+                const target: Href = (prev as Href) ?? ("/onboarding" as Href);
                 requestAnimationFrame(() => {
                   try {
                     router.replace(target);
