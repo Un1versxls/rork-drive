@@ -78,17 +78,26 @@ export function OnboardingShell({ step, total, title, subtitle, children, footer
           {canGoBack ? (
             <Pressable
               onPress={() => {
+                // Prefer the deterministic PREV_STEP map over router.back().
+                // router.back() can crash on certain screens (e.g. time) when
+                // the native stack is mid-animation or the previous entry's
+                // mount triggers re-entrant state commits during the pop.
+                const prev = prevPath ?? (pathname ? PREV_STEP[pathname] : undefined);
+                if (prev) {
+                  try {
+                    router.replace(prev);
+                  } catch (e) {
+                    console.log("[OnboardingShell] back replace failed", e);
+                    if (router.canGoBack()) router.back();
+                  }
+                  return;
+                }
                 if (router.canGoBack()) {
-                  router.back();
-                  return;
+                  try { router.back(); return; } catch (e) {
+                    console.log("[OnboardingShell] router.back failed", e);
+                  }
                 }
-                if (prevPath) {
-                  router.replace(prevPath);
-                  return;
-                }
-                const prev = pathname ? PREV_STEP[pathname] : undefined;
-                if (prev) router.replace(prev);
-                else router.replace("/onboarding" as Href);
+                router.replace("/onboarding" as Href);
               }}
               style={styles.backBtn}
               hitSlop={12}
