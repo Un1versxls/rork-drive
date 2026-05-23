@@ -1,7 +1,7 @@
-import React, { useMemo, useRef, useState } from "react";
-import { Animated, GestureResponderEvent, LayoutChangeEvent, PanResponder, Platform, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Animated, Easing, GestureResponderEvent, LayoutChangeEvent, PanResponder, Platform, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { ShieldCheck } from "lucide-react-native";
+import { Hand, ShieldCheck } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 
 import { OnboardingShell } from "@/components/OnboardingShell";
@@ -32,6 +32,12 @@ export default function AgeScreen() {
   const ageRef = useRef<number>(age);
   ageRef.current = age;
 
+  const [demoActive, setDemoActive] = useState<boolean>(true);
+  const demoAnim = useRef(new Animated.Value(0)).current;
+  const demoLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+  const hintFade = useRef(new Animated.Value(0)).current;
+  const hintPulse = useRef(new Animated.Value(0)).current;
+
   const ratio = useMemo(() => (age - MIN_AGE) / (MAX_AGE - MIN_AGE), [age]);
 
   const measureTrack = () => {
@@ -49,11 +55,67 @@ export default function AgeScreen() {
   };
 
   React.useEffect(() => {
+    if (demoActive) return;
     const w = trackWidthRef.current;
     if (w > 0) {
       Animated.timing(knob, { toValue: ratio * w, duration: 120, useNativeDriver: false }).start();
     }
-  }, [ratio, knob]);
+  }, [ratio, knob, demoActive]);
+
+  // Auto-demo: gently slide the knob back & forth + show a gold "Slide me!" pill.
+  useEffect(() => {
+    if (!demoActive) return;
+    let cancelled = false;
+    const startDemo = () => {
+      const w = trackWidthRef.current;
+      if (w <= 0) {
+        setTimeout(startDemo, 80);
+        return;
+      }
+      if (cancelled) return;
+      Animated.timing(hintFade, { toValue: 1, duration: 320, useNativeDriver: true }).start();
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(hintPulse, { toValue: 1, duration: 900, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+          Animated.timing(hintPulse, { toValue: 0, duration: 900, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+        ])
+      );
+      pulse.start();
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(demoAnim, { toValue: 1, duration: 1400, useNativeDriver: false, easing: Easing.inOut(Easing.quad) }),
+          Animated.timing(demoAnim, { toValue: 0, duration: 1400, useNativeDriver: false, easing: Easing.inOut(Easing.quad) }),
+        ])
+      );
+      demoLoopRef.current = loop;
+      loop.start();
+      const id = demoAnim.addListener(({ value }) => {
+        // value goes 0 -> 1 mapped to age range ~ current..(current+8) wiggle
+        const baseRatio = (ageRef.current - MIN_AGE) / (MAX_AGE - MIN_AGE);
+        const lo = Math.max(0, baseRatio - 0.08);
+        const hi = Math.min(1, baseRatio + 0.08);
+        const r = lo + (hi - lo) * value;
+        knob.setValue(r * w);
+      });
+      return () => {
+        demoAnim.removeListener(id);
+        pulse.stop();
+      };
+    };
+    const cleanup = startDemo();
+    return () => {
+      cancelled = true;
+      if (typeof cleanup === "function") cleanup();
+      demoLoopRef.current?.stop();
+    };
+  }, [demoActive, demoAnim, hintFade, hintPulse, knob]);
+
+  const stopDemo = () => {
+    if (!demoActive) return;
+    demoLoopRef.current?.stop();
+    Animated.timing(hintFade, { toValue: 0, duration: 220, useNativeDriver: true }).start();
+    setDemoActive(false);
+  };
 
   const updateFromPageX = (pageX: number) => {
     const w = trackWidthRef.current;
@@ -77,8 +139,12 @@ export default function AgeScreen() {
       onMoveShouldSetPanResponderCapture: () => true,
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: (e: GestureResponderEvent) => {
+        stopDemo();
         measureTrack();
         updateFromPageX(e.nativeEvent.pageX);
+        if (Platform.OS !== "web") {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+        }
       },
       onPanResponderMove: (e: GestureResponderEvent) => updateFromPageX(e.nativeEvent.pageX),
     })
@@ -106,6 +172,23 @@ export default function AgeScreen() {
         </View>
 
         <View style={styles.sliderWrap}>
+          <Animated.View
+            style={[
+              styles.hintPill,
+              {
+                opacity: hintFade,
+                transform: [
+                  {
+                    translateY: hintPulse.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }),
+                  },
+                ],
+              },
+            ]}
+            pointerEvents="none"
+          >
+            <Hand size={12} color="#7a5a00" />
+            <Text style={styles.hintText}>Slide me</Text>
+          </Animated.View>
           <View
             ref={trackRef}
             style={styles.trackBg}
@@ -115,7 +198,17 @@ export default function AgeScreen() {
           >
             <View style={styles.trackBaseline} pointerEvents="none" />
             <Animated.View style={[styles.trackFill, { width: knob }]} pointerEvents="none" />
-            <Animated.View style={[styles.knob, { transform: [{ translateX: Animated.subtract(knob, 14) }] }]} pointerEvents="none" />
+            <Animated.View
+              style={[
+                styles.knob,
+                { transform: [{ translateX: Animated.subtract(knob, 14) }] },
+                demoActive && styles.knobDemo,
+                demoActive && {
+                  shadowOpacity: hintPulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.75] }),
+                },
+              ]}
+              pointerEvents="none"
+            />
           </View>
           <View style={styles.scaleRow}>
             <Text style={styles.scaleText}>{MIN_AGE}</Text>
@@ -180,4 +273,31 @@ const styles = StyleSheet.create({
   cardSub: { color: Colors.textDim, fontSize: 13, lineHeight: 19, marginTop: 4 },
   legal: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 14, alignSelf: "center" },
   legalText: { color: Colors.textDim, fontSize: 11.5, fontWeight: "700" },
+  hintPill: {
+    position: "absolute",
+    top: -28,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: "#fff6d6",
+    borderWidth: 1,
+    borderColor: "#d4af37",
+    zIndex: 5,
+    shadowColor: "#d4af37",
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  hintText: { color: "#7a5a00", fontSize: 11, fontWeight: "900", letterSpacing: 0.4 },
+  knobDemo: {
+    borderColor: "#d4af37",
+    backgroundColor: "#fffdf3",
+    shadowColor: "#d4af37",
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
+  },
 });
