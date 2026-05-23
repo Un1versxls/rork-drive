@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { Crown, Lock, Sparkles } from "lucide-react-native";
+import { Crown, Lock, Sparkles, UserCheck } from "lucide-react-native";
 
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { GradientButton } from "@/components/GradientButton";
@@ -26,7 +26,7 @@ function aiPool(): Option[] {
         startupCost: "$50 – $300",
         timeToIncome: "4–8 weeks",
         firstMilestones: ["Pick a niche", "Set up AI script + voice stack", "Publish your first 10 videos", "Hit 1,000 subs"],
-        isPro: true, path: "ai", incomeRange: "$2k – $20k / mo",
+        isPro: true, path: "ai", incomeRange: "$2k – $20k / mo", minAge: 17, recommendedAge: "Best for 17+",
       },
       pool: [
         { title: "Pick 1 niche", description: "Choose a high-RPM evergreen niche.", category: "focus", difficulty: 1 },
@@ -47,7 +47,7 @@ function aiPool(): Option[] {
         startupCost: "$0 – $200",
         timeToIncome: "2–6 weeks",
         firstMilestones: ["Pick a target niche", "Build one demo automation", "Pitch 20 prospects", "Land first retainer client"],
-        isPro: true, path: "ai", incomeRange: "$3k – $15k / mo",
+        isPro: true, path: "ai", incomeRange: "$3k – $15k / mo", minAge: 17, recommendedAge: "Best for 17+",
       },
       pool: [
         { title: "List 20 target businesses", description: "Pick a niche and find 20 local prospects.", category: "focus", difficulty: 2 },
@@ -68,7 +68,7 @@ function aiPool(): Option[] {
         startupCost: "Free – $50",
         timeToIncome: "2–4 weeks",
         firstMilestones: ["Pick one painful task", "Ship a v1 in a no-code tool", "Get 10 users", "Add a $5 unlock"],
-        isPro: false, path: "ai", incomeRange: "$0 – $1,000 / mo",
+        isPro: false, path: "ai", incomeRange: "$0 – $1,000 / mo", minAge: 14, recommendedAge: "Teen-friendly",
       },
       pool: [
         { title: "Brainstorm 10 tiny tools", description: "List 10 painful one-step tasks AI could solve.", category: "focus", difficulty: 1 },
@@ -89,7 +89,7 @@ function aiPool(): Option[] {
         startupCost: "$200 – $2,000",
         timeToIncome: "6–12 weeks",
         firstMilestones: ["Pick a broker w/ API", "Backtest one strategy", "Paper trade for 2 weeks", "Go live with small size"],
-        isPro: true, path: "ai", incomeRange: "$0 – $25k / mo",
+        isPro: true, path: "ai", incomeRange: "$0 – $25k / mo", minAge: 18, recommendedAge: "18+ only",
       },
       pool: [
         { title: "Pick a broker w/ API", description: "Alpaca, IBKR, or Coinbase.", category: "focus", difficulty: 2 },
@@ -110,7 +110,7 @@ function aiPool(): Option[] {
         startupCost: "$50 – $500",
         timeToIncome: "4–10 weeks",
         firstMilestones: ["Validate one painful problem", "Ship MVP in a no-code stack", "Get 10 paying users", "Hit $1k MRR"],
-        isPro: true, path: "ai", incomeRange: "$1k – $25k / mo",
+        isPro: true, path: "ai", incomeRange: "$1k – $25k / mo", minAge: 17, recommendedAge: "Best for 17+",
       },
       pool: [
         { title: "Interview 5 ideal users", description: "Find a painful, paid problem.", category: "focus", difficulty: 3 },
@@ -131,7 +131,7 @@ function aiPool(): Option[] {
         startupCost: "$0 – $100",
         timeToIncome: "2–4 weeks",
         firstMilestones: ["Pick a niche", "Build sample posts", "DM 30 founders", "Sign first retainer"],
-        isPro: true, path: "ai", incomeRange: "$2k – $20k / mo",
+        isPro: true, path: "ai", incomeRange: "$2k – $20k / mo", minAge: 16, recommendedAge: "16+",
       },
       pool: [
         { title: "Pick your niche", description: "SaaS founders, coaches, e-com…", category: "focus", difficulty: 2 },
@@ -152,7 +152,7 @@ function aiPool(): Option[] {
         startupCost: "Free – $100",
         timeToIncome: "6–10 weeks",
         firstMilestones: ["Pick a niche + name", "Publish first 4 issues", "Reach 500 subs", "Land first sponsor"],
-        isPro: false, path: "ai", incomeRange: "$0 – $5k / mo",
+        isPro: false, path: "ai", incomeRange: "$0 – $5k / mo", minAge: 14, recommendedAge: "Teen-friendly",
       },
       pool: [
         { title: "Pick niche + name", description: "Narrow, specific, fun.", category: "focus", difficulty: 2 },
@@ -173,7 +173,7 @@ function aiPool(): Option[] {
         startupCost: "Free",
         timeToIncome: "1–2 weeks",
         firstMilestones: ["Pick a niche", "Build 25 prompts", "List on Gumroad", "Make first sale"],
-        isPro: false, path: "ai", incomeRange: "$0 – $2k / mo",
+        isPro: false, path: "ai", incomeRange: "$0 – $2k / mo", minAge: 13, recommendedAge: "Great for teens",
       },
       pool: [
         { title: "Pick a niche", description: "Marketing, sales, design, etc.", category: "focus", difficulty: 1 },
@@ -199,7 +199,7 @@ function inPersonPool(): Option[] {
         startupCost: "$500 – $2,000",
         timeToIncome: "1–2 weeks",
         firstMilestones: ["Buy core supplies + insurance", "Build a booking page", "Detail 3 free cars for reviews", "Book first paying clients"],
-        isPro: true, path: "in_person", incomeRange: "$3k – $15k / mo",
+        isPro: true, path: "in_person", incomeRange: "$3k – $15k / mo", minAge: 18, recommendedAge: "18+ (insurance)",
       },
       pool: [
         { title: "Source supplies", description: "Make a shopping list for your starter kit.", category: "focus", difficulty: 2 },
@@ -220,7 +220,7 @@ function inPersonPool(): Option[] {
         startupCost: "$800 – $2,500",
         timeToIncome: "1–2 weeks",
         firstMilestones: ["Buy gear + insurance", "Build before/after portfolio", "Quote 10 driveways", "Book first 3 jobs"],
-        isPro: true, path: "in_person", incomeRange: "$4k – $12k / mo",
+        isPro: true, path: "in_person", incomeRange: "$4k – $12k / mo", minAge: 18, recommendedAge: "18+ (insurance)",
       },
       pool: [
         { title: "Spec your gear", description: "Pick a pressure washer + chems.", category: "focus", difficulty: 2 },
@@ -241,7 +241,7 @@ function inPersonPool(): Option[] {
         startupCost: "Under $50",
         timeToIncome: "This weekend",
         firstMilestones: ["Buy soap + buckets", "Post in your local Facebook group", "Wash 5 cars this weekend", "Collect 5 reviews"],
-        isPro: false, path: "in_person", incomeRange: "$100 – $800 / mo",
+        isPro: false, path: "in_person", incomeRange: "$100 – $800 / mo", minAge: 13, recommendedAge: "Great for teens",
       },
       pool: [
         { title: "Buy basic supplies", description: "Soap, sponge, 2 buckets, microfiber.", category: "focus", difficulty: 1 },
@@ -262,7 +262,7 @@ function inPersonPool(): Option[] {
         startupCost: "Under $100",
         timeToIncome: "This weekend",
         firstMilestones: ["Print 50 flyers", "Mow 1 free lawn for photos", "Book 3 paying lawns", "Lock in 5 weekly clients"],
-        isPro: false, path: "in_person", incomeRange: "$200 – $1,200 / mo",
+        isPro: false, path: "in_person", incomeRange: "$200 – $1,200 / mo", minAge: 13, recommendedAge: "Great for teens",
       },
       pool: [
         { title: "Print 50 flyers", description: "Simple flyer with rate + phone.", category: "focus", difficulty: 1 },
@@ -283,7 +283,7 @@ function inPersonPool(): Option[] {
         startupCost: "$0 – $200",
         timeToIncome: "This week",
         firstMilestones: ["List your services", "Post on Nextdoor + Thumbtack", "Book first 3 jobs", "Collect 5 reviews"],
-        isPro: false, path: "in_person", incomeRange: "$400 – $2,500 / mo",
+        isPro: false, path: "in_person", incomeRange: "$400 – $2,500 / mo", minAge: 15, recommendedAge: "15+",
       },
       pool: [
         { title: "List your services", description: "Pick 5 jobs you're confident doing.", category: "focus", difficulty: 1 },
@@ -304,7 +304,7 @@ function inPersonPool(): Option[] {
         startupCost: "$1,500 – $4,000",
         timeToIncome: "3–6 weeks",
         firstMilestones: ["Find 1 location", "Buy first machine", "Stock + sign 6-mo agreement", "Add machine #2"],
-        isPro: true, path: "in_person", incomeRange: "$1k – $8k / mo",
+        isPro: true, path: "in_person", incomeRange: "$1k – $8k / mo", minAge: 18, recommendedAge: "18+ (contracts)",
       },
       pool: [
         { title: "Map 20 locations", description: "List gyms, offices, laundromats nearby.", category: "focus", difficulty: 2 },
@@ -325,7 +325,7 @@ function inPersonPool(): Option[] {
         startupCost: "$500 – $3,000",
         timeToIncome: "1–2 weeks",
         firstMilestones: ["Get a truck or trailer", "Set up Google profile", "Quote 10 jobs", "Book first 3 hauls"],
-        isPro: true, path: "in_person", incomeRange: "$4k – $20k / mo",
+        isPro: true, path: "in_person", incomeRange: "$4k – $20k / mo", minAge: 18, recommendedAge: "18+ (vehicle)",
       },
       pool: [
         { title: "Set up Google profile", description: "Local SEO = inbound leads.", category: "growth", difficulty: 2 },
@@ -346,7 +346,7 @@ function inPersonPool(): Option[] {
         startupCost: "$400 – $1,500",
         timeToIncome: "2–4 weeks",
         firstMilestones: ["Lock in your one dish", "Get permits", "Find a Saturday spot", "Sell out your first event"],
-        isPro: true, path: "in_person", incomeRange: "$2k – $10k / mo",
+        isPro: true, path: "in_person", incomeRange: "$2k – $10k / mo", minAge: 18, recommendedAge: "18+ (permits)",
       },
       pool: [
         { title: "Lock in your one dish", description: "Pick a signature menu item.", category: "focus", difficulty: 2 },
@@ -486,6 +486,12 @@ function BizCard({ opt, selected, onPress }: { opt: Option; selected: boolean; o
         <View style={styles.metaPill}>
           <Text style={styles.metaPillText}>{opt.idea.timeToIncome}</Text>
         </View>
+        {opt.idea.recommendedAge ? (
+          <View style={styles.agePill}>
+            <UserCheck size={10} color={Colors.text} />
+            <Text style={styles.agePillText}>{opt.idea.recommendedAge}</Text>
+          </View>
+        ) : null}
       </View>
     </Pressable>
   );
@@ -538,6 +544,13 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: "rgba(212,175,55,0.35)",
   },
   metaPillText: { color: Colors.accentDeep, fontSize: 11, fontWeight: "800" },
+  agePill: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999,
+    backgroundColor: "#f4f4f4",
+    borderWidth: 1, borderColor: "#e5e5e5",
+  },
+  agePillText: { color: Colors.text, fontSize: 11, fontWeight: "800" },
   guideNote: {
     flexDirection: "row",
     alignItems: "center",

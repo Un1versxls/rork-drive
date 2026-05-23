@@ -37,9 +37,11 @@ interface Props {
   business: BusinessIdea | null;
   hapticsEnabled: boolean;
   visible: boolean;
+  subtaskHintSeen?: boolean;
   onClose: () => void;
   onComplete: () => void;
   onSkip: () => void;
+  onSubtaskHintShown?: () => void;
 }
 
 interface ChatMsg {
@@ -58,7 +60,7 @@ STRICT RULES — never break these:
 - Stay warm, plain, and short (1-3 sentences max). No lists, no headings, no markdown.
 - You may explain concepts, give context, define terms, and ask follow-up questions about the task.`;
 
-export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClose, onComplete, onSkip }: Props) {
+export function TaskDetailPanel({ task, business, hapticsEnabled, visible, subtaskHintSeen, onClose, onComplete, onSkip, onSubtaskHintShown }: Props) {
   const translateY = useRef(new Animated.Value(600)).current;
   const fade = useRef(new Animated.Value(0)).current;
 
@@ -70,6 +72,24 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
   const scrollRef = useRef<ScrollView | null>(null);
   const msgsScrollRef = useRef<ScrollView | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
+  const subHint = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!visible) return;
+    if (subtaskHintSeen) return;
+    const t = setTimeout(() => {
+      triggerHaptic("light", hapticsEnabled);
+      Animated.sequence([
+        Animated.timing(subHint, { toValue: 1, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(subHint, { toValue: 0.45, duration: 200, useNativeDriver: true }),
+        Animated.timing(subHint, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.timing(subHint, { toValue: 0, duration: 380, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
+      ]).start(() => {
+        onSubtaskHintShown?.();
+      });
+    }, 650);
+    return () => clearTimeout(t);
+  }, [visible, subtaskHintSeen, hapticsEnabled, subHint, onSubtaskHintShown]);
 
   useEffect(() => {
     if (Platform.OS === "web") return;
@@ -248,16 +268,29 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, onClo
               <View style={styles.steps}>
                 {steps.map((s, i) => {
                   const on = !!checked[s.id];
+                  const isFirst = i === 0;
+                  const animStyle = isFirst && !subtaskHintSeen ? {
+                    transform: [{ translateX: subHint.interpolate({ inputRange: [0, 1], outputRange: [0, 6] }) }],
+                    shadowColor: Colors.accentGold,
+                    shadowOpacity: subHint.interpolate({ inputRange: [0, 1], outputRange: [0, 0.6] }),
+                    shadowRadius: 12,
+                    shadowOffset: { width: 0, height: 0 },
+                  } : null;
                   return (
-                    <Pressable key={s.id} onPress={() => toggleStep(s.id)} style={styles.stepRow}>
-                      <View style={[styles.stepCheck, on && styles.stepCheckOn]}>
-                        {on ? <Check color="#faf9f6" size={14} strokeWidth={3} /> : <Text style={styles.stepNum}>{i + 1}</Text>}
-                      </View>
-                      <Text style={[styles.stepLabel, on && styles.stepLabelOn]}>{s.label}</Text>
-                    </Pressable>
+                    <Animated.View key={s.id} style={animStyle}>
+                      <Pressable onPress={() => toggleStep(s.id)} style={styles.stepRow}>
+                        <View style={[styles.stepCheck, on && styles.stepCheckOn]}>
+                          {on ? <Check color="#faf9f6" size={14} strokeWidth={3} /> : <Text style={styles.stepNum}>{i + 1}</Text>}
+                        </View>
+                        <Text style={[styles.stepLabel, on && styles.stepLabelOn]}>{s.label}</Text>
+                      </Pressable>
+                    </Animated.View>
                   );
                 })}
               </View>
+              {!subtaskHintSeen ? (
+                <Animated.Text style={[styles.subHintCaption, { opacity: subHint }]}>tap a step to check it off ↑</Animated.Text>
+              ) : null}
 
               <Pressable onPress={() => {
                 setChatOpen(true);
@@ -403,6 +436,7 @@ const styles = StyleSheet.create({
   stepNum: { color: Colors.textDim, fontSize: 11, fontWeight: "800" },
   stepLabel: { color: Colors.text, fontSize: 13, flex: 1, lineHeight: 18 },
   stepLabelOn: { color: Colors.textDim, textDecorationLine: "line-through" },
+  subHintCaption: { color: Colors.accentDeep, fontSize: 11, fontWeight: "800", letterSpacing: 0.4, textAlign: "center", marginTop: 8 },
   coachToggle: {
     flexDirection: "row",
     alignItems: "center",

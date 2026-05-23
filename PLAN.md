@@ -40,5 +40,35 @@
 
 - Fixed the "business change bonuses column not found" error so the new bonus columns sync cleanly on every device, with a safe fallback if the migration hasn't run yet on a given project.
 
+---
 
+# Age picker, task widgets, hint coachmarks & richer Supabase data
+
+**Age picker in onboarding**
+
+- New onboarding step right after the welcome screen with a slider from 13 to 65.
+- Sub-copy explains it's used to recommend businesses they can legally do — saves them from picking something that would get them in trouble.
+- Age stored on profile and synced to Supabase (new `age` column).
+
+**Recommended age ranges on businesses**
+
+- Path cards (AI vs In-Person) show a small "Best for 17+" / "Great for teens" hint.
+- Each business idea carries a `recommendedAge` label that renders as a pill on the pick-business cards and the swap-business match screen.
+- AI-heavy / capital-heavy businesses default to 17+, in-person low-cost hustles to teen-friendly.
+
+**In-app task widgets**
+
+- Added a quick-access widget strip on the dashboard above today's tasks.
+- Includes a "Next up" widget (jumps to first pending task), a "Quick check" widget (one-tap complete on the easiest pending task) and a "Streak" widget tile.
+
+**Task & subtask coachmarks**
+
+- First open of the dashboard after the tour wiggles the first pending task card with a soft haptic — teaches that you can tap a task to open its plan. Fires once.
+- First time the task detail sheet opens after the tour, the first subtask checkbox wiggles & glows so users learn they can check sub-steps off. Fires once.
+- Both reuse the motivation-hint animation style.
+
+**More Supabase data**
+
+- Added columns: `age`, `equipped_effect`, `unlocked_badges`, `unlocked_achievements`, `total_completed`, `total_skipped`, `task_hint_seen`, `subtask_hint_seen`, `motivation_hint_seen`, `app_version`, `platform`.
+- Sync layer pushes them on every state commit, falling back gracefully if the column doesn't exist on older projects.
 

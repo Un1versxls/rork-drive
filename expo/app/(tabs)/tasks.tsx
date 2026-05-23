@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Check, Flame, RotateCcw, X } from "lucide-react-native";
+import { ArrowRight, Check, Flame, RotateCcw, Sparkles, Zap, X } from "lucide-react-native";
 
 import { BadgeToast } from "@/components/BadgeToast";
 import { CelebrationOverlay } from "@/components/CelebrationOverlay";
@@ -30,6 +30,7 @@ function greeting(): string {
 export default function TasksScreen() {
   const { state, today, currentPlan, completeTask, skipTask, undoTask, setProfileField, pendingBadges, dismissPendingBadge } = useApp();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const firstTaskHint = useRef(new Animated.Value(0)).current;
   const [celebrate, setCelebrate] = useState<boolean>(false);
   const [celebrateSeenKey, setCelebrateSeenKey] = useState<string | null>(null);
   const [halfway, setHalfway] = useState<boolean>(false);
@@ -59,6 +60,39 @@ export default function TasksScreen() {
   const pending = useMemo(() => today.list.filter((t) => t.status === "pending"), [today.list]);
   const done = useMemo(() => today.list.filter((t) => t.status !== "pending"), [today.list]);
   const tier = getStreakTier(state.streak);
+
+  // Coachmark: after the 5-step tour ends, give the first pending task card a
+  // soft wiggle so users learn they can tap into it. Only fires once.
+  useEffect(() => {
+    if (!state.onboarded) return;
+    if (!state.profile.firstTourSeen) return;
+    if (state.profile.taskHintSeen) return;
+    if (pending.length === 0) return;
+    const t = setTimeout(() => {
+      triggerHaptic("light", state.profile.hapticsEnabled);
+      Animated.sequence([
+        Animated.timing(firstTaskHint, { toValue: 1, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(firstTaskHint, { toValue: 0.4, duration: 200, useNativeDriver: true }),
+        Animated.timing(firstTaskHint, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.timing(firstTaskHint, { toValue: 0, duration: 380, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
+      ]).start(() => {
+        setProfileField("taskHintSeen", true);
+      });
+    }, 900);
+    return () => clearTimeout(t);
+  }, [state.onboarded, state.profile.firstTourSeen, state.profile.taskHintSeen, state.profile.hapticsEnabled, pending.length, firstTaskHint, setProfileField]);
+
+  const nextTask = pending[0] ?? null;
+  const quickTask = useMemo(() => {
+    if (pending.length === 0) return null;
+    return [...pending].sort((a, b) => a.difficulty - b.difficulty)[0];
+  }, [pending]);
+
+  const onQuickComplete = useCallback(() => {
+    if (!quickTask) return;
+    triggerHaptic("success", state.profile.hapticsEnabled);
+    completeTask(quickTask.id);
+  }, [quickTask, completeTask, state.profile.hapticsEnabled]);
 
   return (
     <View style={styles.root}>
@@ -104,6 +138,52 @@ export default function TasksScreen() {
             <Text style={styles.bizInline} numberOfLines={1}>{state.profile.business.name}</Text>
           ) : null}
 
+          {nextTask || quickTask ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.widgetRow}
+              style={styles.widgetScroll}
+            >
+              {nextTask ? (
+                <Pressable
+                  onPress={() => { triggerHaptic("tap", state.profile.hapticsEnabled); setSelectedTask(nextTask); }}
+                  style={({ pressed }) => [styles.widget, styles.widgetNext, pressed && { opacity: 0.9 }]}
+                  testID="widget-next"
+                >
+                  <View style={styles.widgetTopRow}>
+                    <Text style={styles.widgetLabel}>NEXT UP</Text>
+                    <ArrowRight size={14} color="#ffffff" />
+                  </View>
+                  <Text style={styles.widgetTitle} numberOfLines={2}>{nextTask.title}</Text>
+                  <Text style={styles.widgetSub}>~{nextTask.difficulty * 10} min · +{nextTask.basePoints * currentPlan.multiplier} pts</Text>
+                </Pressable>
+              ) : null}
+              {quickTask && quickTask.id !== nextTask?.id ? (
+                <Pressable
+                  onPress={onQuickComplete}
+                  style={({ pressed }) => [styles.widget, styles.widgetQuick, pressed && { opacity: 0.92 }]}
+                  testID="widget-quick"
+                >
+                  <View style={styles.widgetTopRow}>
+                    <Text style={[styles.widgetLabel, { color: Colors.accentDeep }]}>QUICK WIN</Text>
+                    <Zap size={14} color={Colors.accentDeep} />
+                  </View>
+                  <Text style={[styles.widgetTitle, { color: Colors.text }]} numberOfLines={2}>{quickTask.title}</Text>
+                  <Text style={[styles.widgetSub, { color: Colors.textDim }]}>Tap to mark done — +{quickTask.basePoints * currentPlan.multiplier} pts</Text>
+                </Pressable>
+              ) : null}
+              <View style={[styles.widget, styles.widgetStreak]}>
+                <View style={styles.widgetTopRow}>
+                  <Text style={[styles.widgetLabel, { color: Colors.accentGold }]}>STREAK</Text>
+                  <Sparkles size={14} color={Colors.accentGold} />
+                </View>
+                <Text style={[styles.widgetTitle, { color: "#ffffff" }]}>{state.streak} day{state.streak === 1 ? "" : "s"}</Text>
+                <Text style={[styles.widgetSub, { color: "rgba(255,255,255,0.7)" }]}>{tier.label} · best {state.bestStreak}</Text>
+              </View>
+            </ScrollView>
+          ) : null}
+
           <Text style={styles.sectionTitle}>Today&apos;s tasks</Text>
           {pending.length === 0 && done.length === 0 ? (
             <View style={styles.empty}>
@@ -112,12 +192,13 @@ export default function TasksScreen() {
             </View>
           ) : null}
 
-          {pending.map((t) => (
+          {pending.map((t, i) => (
             <TaskItem
               key={t.id}
               task={t}
               multiplier={currentPlan.multiplier}
               hapticsEnabled={state.profile.hapticsEnabled}
+              hintAnim={i === 0 ? firstTaskHint : null}
               onOpen={() => setSelectedTask(t)}
               onComplete={() => completeTask(t.id)}
               onSkip={() => skipTask(t.id)}
@@ -149,9 +230,11 @@ export default function TasksScreen() {
         business={state.profile.business}
         hapticsEnabled={state.profile.hapticsEnabled}
         visible={selectedTask !== null}
+        subtaskHintSeen={state.profile.subtaskHintSeen}
         onClose={() => setSelectedTask(null)}
         onComplete={() => selectedTask && completeTask(selectedTask.id)}
         onSkip={() => selectedTask && skipTask(selectedTask.id)}
+        onSubtaskHintShown={() => setProfileField("subtaskHintSeen", true)}
       />
 
       <CelebrationOverlay
@@ -183,13 +266,14 @@ interface TaskItemProps {
   task: Task;
   multiplier: number;
   hapticsEnabled: boolean;
+  hintAnim?: Animated.Value | null;
   onOpen: () => void;
   onComplete: () => void;
   onSkip: () => void;
   onUndo?: () => void;
 }
 
-function TaskItem({ task, multiplier, hapticsEnabled, onOpen, onComplete, onSkip, onUndo }: TaskItemProps) {
+function TaskItem({ task, multiplier, hapticsEnabled, hintAnim, onOpen, onComplete, onSkip, onUndo }: TaskItemProps) {
   const meta = CATEGORY_META[task.category];
   const scale = useRef(new Animated.Value(1)).current;
   const opacity = useRef(new Animated.Value(1)).current;
@@ -215,8 +299,11 @@ function TaskItem({ task, multiplier, hapticsEnabled, onOpen, onComplete, onSkip
 
   const points = task.basePoints * multiplier;
 
+  const hintTranslate = hintAnim ? hintAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -10] }) : 0;
+  const hintShadow = hintAnim ? hintAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.18] }) : 0;
+
   return (
-    <Animated.View style={{ opacity, transform: [{ scale }] }}>
+    <Animated.View style={{ opacity, transform: [{ scale }, { translateY: hintTranslate }], shadowColor: "#000", shadowOpacity: hintShadow, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } }}>
       <View style={styles.taskCard}>
         <View style={styles.taskRow}>
           <Pressable
@@ -264,7 +351,23 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "flex-start", marginBottom: 18 },
   greet: { color: Colors.textDim, fontSize: 13, fontWeight: "600" },
   name: { color: Colors.text, fontSize: 26, fontWeight: "900", letterSpacing: -0.5, marginTop: 2 },
-  bizInline: { color: Colors.textDim, fontSize: 12, fontWeight: "700", letterSpacing: 0.2, marginBottom: 16 },
+  bizInline: { color: Colors.textDim, fontSize: 12, fontWeight: "700", letterSpacing: 0.2, marginBottom: 14 },
+  widgetScroll: { marginHorizontal: -20, marginBottom: 16 },
+  widgetRow: { paddingHorizontal: 20, gap: 10 },
+  widget: {
+    width: 200,
+    borderRadius: 18,
+    padding: 14,
+    justifyContent: "space-between",
+    minHeight: 110,
+  },
+  widgetTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  widgetLabel: { color: "#ffffff", fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
+  widgetTitle: { color: "#ffffff", fontSize: 15, fontWeight: "900", letterSpacing: -0.2, marginTop: 8 },
+  widgetSub: { color: "rgba(255,255,255,0.75)", fontSize: 11, fontWeight: "700", marginTop: 6 },
+  widgetNext: { backgroundColor: Colors.text },
+  widgetQuick: { backgroundColor: "rgba(212,175,55,0.12)", borderWidth: 1, borderColor: "rgba(212,175,55,0.35)" },
+  widgetStreak: { backgroundColor: "#0a0a0a", borderWidth: 1, borderColor: "rgba(212,175,55,0.4)" },
   streakBlock: { alignItems: "center", gap: 4 },
   streakPill: {
     flexDirection: "row", alignItems: "center", gap: 4,

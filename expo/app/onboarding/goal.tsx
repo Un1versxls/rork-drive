@@ -54,6 +54,7 @@ export default function GoalScreen() {
           id="ai"
           title="AI Business"
           desc="Build something online with AI — automations, agencies, content."
+          ageHint="Best for 17+"
           Icon={Bot}
           selected={selected === "ai"}
           onPress={() => setSelected("ai")}
@@ -62,6 +63,7 @@ export default function GoalScreen() {
           id="in_person"
           title="In-Person Hustle"
           desc="Make money locally — car washing, detailing, lawn care, etc."
+          ageHint="Great for young teens"
           Icon={Wrench}
           selected={selected === "in_person"}
           onPress={() => setSelected("in_person")}
@@ -75,12 +77,13 @@ interface PathCardProps {
   id: PathChoice;
   title: string;
   desc: string;
+  ageHint?: string;
   Icon: typeof Bot;
   selected: boolean;
   onPress: () => void;
 }
 
-function PathCard({ id, title, desc, Icon, selected, onPress }: PathCardProps) {
+function PathCard({ id, title, desc, ageHint, Icon, selected, onPress }: PathCardProps) {
   return (
     <Pressable
       onPress={onPress}
@@ -92,6 +95,11 @@ function PathCard({ id, title, desc, Icon, selected, onPress }: PathCardProps) {
       </View>
       <Text style={styles.cardTitle}>{title}</Text>
       <Text style={styles.cardDesc}>{desc}</Text>
+      {ageHint ? (
+        <View style={styles.agePill}>
+          <Text style={styles.agePillText}>{ageHint}</Text>
+        </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -123,4 +131,12 @@ const styles = StyleSheet.create({
   signInBtn: { alignSelf: "center", paddingVertical: 8, paddingHorizontal: 12 },
   signInText: { color: Colors.textDim, fontSize: 13, fontWeight: "600" },
   signInLink: { color: Colors.text, fontWeight: "800", textDecorationLine: "underline" },
+  agePill: {
+    alignSelf: "flex-start",
+    marginTop: 4,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999,
+    backgroundColor: "rgba(212,175,55,0.10)",
+    borderWidth: 1, borderColor: "rgba(212,175,55,0.30)",
+  },
+  agePillText: { color: Colors.accentDeep, fontSize: 11, fontWeight: "800", letterSpacing: 0.4 },
 });

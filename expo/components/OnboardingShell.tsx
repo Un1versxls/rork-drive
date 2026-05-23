@@ -8,7 +8,8 @@ import { Colors } from "@/constants/colors";
 import { useApp } from "@/providers/AppProvider";
 
 const PREV_STEP: Record<string, Href> = {
-  "/onboarding/goal": "/onboarding",
+  "/onboarding/age": "/onboarding",
+  "/onboarding/goal": "/onboarding/age",
   "/onboarding/build-business": "/onboarding/goal",
   "/onboarding/experience": "/onboarding/goal",
   "/onboarding/skill-topic": "/onboarding/goal",

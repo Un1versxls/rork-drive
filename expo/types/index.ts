@@ -101,6 +101,10 @@ export interface BusinessIdea {
   isPro?: boolean;
   path?: PathChoice;
   incomeRange?: string;
+  /** Suggested minimum age. Defaults inferred from the path if missing. */
+  minAge?: number;
+  /** Short human label like "Great for teens" or "Best for 17+". */
+  recommendedAge?: string;
 }
 
 export type NameEffect =
@@ -171,6 +175,9 @@ export interface UserProfile {
   pathChoice: PathChoice | null;
   firstTourSeen: boolean;
   motivationHintSeen: boolean;
+  taskHintSeen: boolean;
+  subtaskHintSeen: boolean;
+  age: number | null;
   earlyBirdAchieved: boolean;
   fullDayAchieved: boolean;
   redeemedCodeOnce: boolean;

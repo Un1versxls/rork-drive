@@ -20,6 +20,19 @@ export interface AppUserUpsertInput {
   pastBusinesses?: BusinessIdea[] | null;
   businessSwitchBonus?: number | null;
   premiumSwitchBonusGranted?: boolean | null;
+  age?: number | null;
+  equippedEffect?: string | null;
+  unlockedBadges?: string[] | null;
+  unlockedAchievements?: string[] | null;
+  totalCompleted?: number | null;
+  totalSkipped?: number | null;
+  flags?: {
+    motivationHintSeen?: boolean;
+    taskHintSeen?: boolean;
+    subtaskHintSeen?: boolean;
+  } | null;
+  appVersion?: string | null;
+  platform?: string | null;
   stats?: {
     onboarded?: boolean;
     points?: number;
@@ -90,6 +103,19 @@ function buildPayload(input: AppUserUpsertInput): Record<string, unknown> {
   if (input.premiumSwitchBonusGranted !== undefined && input.premiumSwitchBonusGranted !== null) {
     payload.premium_switch_bonus_granted = input.premiumSwitchBonusGranted;
   }
+  if (input.age !== undefined) payload.age = input.age;
+  if (input.equippedEffect !== undefined) payload.equipped_effect = input.equippedEffect;
+  if (input.unlockedBadges !== undefined) payload.unlocked_badges = input.unlockedBadges;
+  if (input.unlockedAchievements !== undefined) payload.unlocked_achievements = input.unlockedAchievements;
+  if (input.totalCompleted !== undefined) payload.total_completed = input.totalCompleted;
+  if (input.totalSkipped !== undefined) payload.total_skipped = input.totalSkipped;
+  if (input.flags) {
+    if (input.flags.motivationHintSeen !== undefined) payload.motivation_hint_seen = input.flags.motivationHintSeen;
+    if (input.flags.taskHintSeen !== undefined) payload.task_hint_seen = input.flags.taskHintSeen;
+    if (input.flags.subtaskHintSeen !== undefined) payload.subtask_hint_seen = input.flags.subtaskHintSeen;
+  }
+  if (input.appVersion !== undefined) payload.app_version = input.appVersion;
+  if (input.platform !== undefined) payload.platform = input.platform;
 
   if (input.stats) {
     if (input.stats.onboarded !== undefined) payload.onboarded = input.stats.onboarded;
@@ -201,6 +227,17 @@ const OPTIONAL_COLUMNS = [
   "past_businesses",
   "state_blob",
   "last_migrated_at",
+  "age",
+  "equipped_effect",
+  "unlocked_badges",
+  "unlocked_achievements",
+  "total_completed",
+  "total_skipped",
+  "motivation_hint_seen",
+  "task_hint_seen",
+  "subtask_hint_seen",
+  "app_version",
+  "platform",
 ];
 
 function stripMissingColumn(payload: Record<string, unknown>, errMsg: string): Record<string, unknown> | null {
@@ -353,6 +390,24 @@ export function buildSyncFromAppState(
   opts?: { touchLastSeen?: boolean },
 ): AppUserUpsertInput {
   const p = state.profile;
+  const totalCompleted = Object.values(state.history).reduce((s, d) => s + d.completed, 0) +
+    state.tasks.filter((t) => t.status === "completed").length;
+  const totalSkipped = Object.values(state.history).reduce((s, d) => s + d.skipped, 0) +
+    state.tasks.filter((t) => t.status === "skipped").length;
+  // Platform/app version are best-effort; require Platform from RN.
+  // We import lazily to avoid pulling RN into non-RN contexts.
+  let platformName: string | null = null;
+  let appVersion: string | null = null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { Platform } = require("react-native");
+    platformName = Platform?.OS ?? null;
+  } catch {}
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Constants = require("expo-constants").default;
+    appVersion = Constants?.expoConfig?.version ?? Constants?.manifest?.version ?? null;
+  } catch {}
   return {
     userId: authUserId,
     appleUserId: p.appleUserId,
@@ -382,6 +437,19 @@ export function buildSyncFromAppState(
     pastBusinesses: p.pastBusinesses ?? [],
     businessSwitchBonus: p.businessSwitchBonus ?? 0,
     premiumSwitchBonusGranted: p.premiumSwitchBonusGranted ?? false,
+    age: p.age ?? null,
+    equippedEffect: p.equippedEffect ?? null,
+    unlockedBadges: state.unlockedBadges ?? [],
+    unlockedAchievements: state.unlockedAchievements ?? [],
+    totalCompleted,
+    totalSkipped,
+    flags: {
+      motivationHintSeen: p.motivationHintSeen ?? false,
+      taskHintSeen: p.taskHintSeen ?? false,
+      subtaskHintSeen: p.subtaskHintSeen ?? false,
+    },
+    appVersion,
+    platform: platformName,
     stats: {
       onboarded: state.onboarded,
       points: state.points,
