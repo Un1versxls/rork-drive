@@ -33,8 +33,11 @@ export default function AgeScreen() {
   ageRef.current = age;
 
   const [demoActive, setDemoActive] = useState<boolean>(true);
+  const demoActiveRef = useRef<boolean>(true);
   const demoAnim = useRef(new Animated.Value(0)).current;
   const demoLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+  const demoPulseRef = useRef<Animated.CompositeAnimation | null>(null);
+  const demoListenerIdRef = useRef<string | null>(null);
   const hintFade = useRef(new Animated.Value(0)).current;
   const hintPulse = useRef(new Animated.Value(0)).current;
 
@@ -58,21 +61,24 @@ export default function AgeScreen() {
     if (demoActive) return;
     const w = trackWidthRef.current;
     if (w > 0) {
-      Animated.timing(knob, { toValue: ratio * w, duration: 120, useNativeDriver: false }).start();
+      // Use setValue (not timing) so it can't collide with a pan-driven knob update.
+      knob.setValue(ratio * w);
     }
   }, [ratio, knob, demoActive]);
 
   // Auto-demo: gently slide the knob back & forth + show a gold "Slide me!" pill.
+  // Demo is controlled via refs so stopDemo() can tear everything down synchronously
+  // on the first touch — no listener / timing race with the pan responder.
   useEffect(() => {
     if (!demoActive) return;
     let cancelled = false;
     const startDemo = () => {
+      if (cancelled || !demoActiveRef.current) return;
       const w = trackWidthRef.current;
       if (w <= 0) {
         setTimeout(startDemo, 80);
         return;
       }
-      if (cancelled) return;
       Animated.timing(hintFade, { toValue: 1, duration: 320, useNativeDriver: true }).start();
       const pulse = Animated.loop(
         Animated.sequence([
@@ -80,6 +86,7 @@ export default function AgeScreen() {
           Animated.timing(hintPulse, { toValue: 0, duration: 900, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
         ])
       );
+      demoPulseRef.current = pulse;
       pulse.start();
       const loop = Animated.loop(
         Animated.sequence([
@@ -90,29 +97,37 @@ export default function AgeScreen() {
       demoLoopRef.current = loop;
       loop.start();
       const id = demoAnim.addListener(({ value }) => {
-        // value goes 0 -> 1 mapped to age range ~ current..(current+8) wiggle
+        if (!demoActiveRef.current) return;
+        const wNow = trackWidthRef.current;
+        if (wNow <= 0) return;
         const baseRatio = (ageRef.current - MIN_AGE) / (MAX_AGE - MIN_AGE);
         const lo = Math.max(0, baseRatio - 0.08);
         const hi = Math.min(1, baseRatio + 0.08);
         const r = lo + (hi - lo) * value;
-        knob.setValue(r * w);
+        knob.setValue(r * wNow);
       });
-      return () => {
-        demoAnim.removeListener(id);
-        pulse.stop();
-      };
+      demoListenerIdRef.current = id;
     };
-    const cleanup = startDemo();
+    startDemo();
     return () => {
       cancelled = true;
-      if (typeof cleanup === "function") cleanup();
-      demoLoopRef.current?.stop();
     };
   }, [demoActive, demoAnim, hintFade, hintPulse, knob]);
 
   const stopDemo = () => {
-    if (!demoActive) return;
-    demoLoopRef.current?.stop();
+    if (!demoActiveRef.current) return;
+    demoActiveRef.current = false;
+    // Tear down listener + loops synchronously BEFORE any state change so
+    // nothing else can race to set `knob`.
+    if (demoListenerIdRef.current !== null) {
+      try { demoAnim.removeListener(demoListenerIdRef.current); } catch {}
+      demoListenerIdRef.current = null;
+    }
+    try { demoLoopRef.current?.stop(); } catch {}
+    try { demoPulseRef.current?.stop(); } catch {}
+    demoLoopRef.current = null;
+    demoPulseRef.current = null;
+    demoAnim.stopAnimation();
     Animated.timing(hintFade, { toValue: 0, duration: 220, useNativeDriver: true }).start();
     setDemoActive(false);
   };
@@ -123,6 +138,9 @@ export default function AgeScreen() {
     const local = pageX - trackPageXRef.current;
     const clamped = Math.max(0, Math.min(w, local));
     const next = Math.round(MIN_AGE + (clamped / w) * (MAX_AGE - MIN_AGE));
+    // Drive the knob directly so it tracks the finger even on a single tap
+    // (before the React render flushes).
+    knob.setValue(clamped);
     if (next !== ageRef.current) {
       setAge(next);
       if (Platform.OS !== "web") {
@@ -139,11 +157,15 @@ export default function AgeScreen() {
       onMoveShouldSetPanResponderCapture: () => true,
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: (e: GestureResponderEvent) => {
-        stopDemo();
-        measureTrack();
-        updateFromPageX(e.nativeEvent.pageX);
-        if (Platform.OS !== "web") {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+        try {
+          stopDemo();
+          measureTrack();
+          updateFromPageX(e.nativeEvent.pageX);
+          if (Platform.OS !== "web") {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+          }
+        } catch (err) {
+          console.log("[AgeSlider] grant error", err);
         }
       },
       onPanResponderMove: (e: GestureResponderEvent) => updateFromPageX(e.nativeEvent.pageX),
