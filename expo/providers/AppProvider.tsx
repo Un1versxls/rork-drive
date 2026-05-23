@@ -272,8 +272,16 @@ export const [AppProvider, useApp] = createContextHook(() => {
     mutationFn: saveState,
   });
 
-  const syncToSupabase = useCallback((next: AppState) => {
+  const syncToSupabase = useCallback((next: AppState, opts?: { force?: boolean }) => {
     if (!supabase) return;
+    // Defer almost ALL syncing until onboarding is complete. During
+    // onboarding we don't yet have a stable account (email/id), and
+    // every keystroke / step was triggering getUser + upsert which
+    // stacked up requests and caused races. Once `onboarded` flips
+    // true we sync the full blob from then on. Callers that explicitly
+    // need to push mid-onboarding (e.g. the moment we *finish* it) can
+    // pass { force: true }.
+    if (!opts?.force && !next.onboarded) return;
     supabase.auth.getUser().then(({ data }) => {
       const uid = data.user?.id ?? null;
       const email = data.user?.email ?? next.profile.email ?? null;
@@ -580,7 +588,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
       profile: { ...prev.profile, onboardingStep: null },
     };
     commit(next);
-    syncToSupabase(next);
+    // Force the first full sync now that we have a complete profile.
+    syncToSupabase(next, { force: true });
   }, [commit, syncToSupabase]);
 
   const completeTask = useCallback((id: string) => {
