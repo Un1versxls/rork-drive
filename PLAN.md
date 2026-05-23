@@ -56,10 +56,10 @@
 - Each business idea carries a `recommendedAge` label that renders as a pill on the pick-business cards and the swap-business match screen.
 - AI-heavy / capital-heavy businesses default to 17+, in-person low-cost hustles to teen-friendly.
 
-**In-app task widgets**
+**In-app task widgets — removed**
 
-- Added a quick-access widget strip on the dashboard above today's tasks.
-- Includes a "Next up" widget (jumps to first pending task), a "Quick check" widget (one-tap complete on the easiest pending task) and a "Streak" widget tile.
+- Removed the dashboard widget strip per user request.
+- Native iOS Home Screen / Lock Screen widgets require a Swift WidgetKit extension target, which this Expo project does not support.
 
 **Task & subtask coachmarks**
 

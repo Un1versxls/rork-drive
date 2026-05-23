@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowRight, Check, Flame, RotateCcw, Sparkles, Zap, X } from "lucide-react-native";
+import { Check, Flame, RotateCcw, X } from "lucide-react-native";
 
 import { BadgeToast } from "@/components/BadgeToast";
 import { CelebrationOverlay } from "@/components/CelebrationOverlay";
@@ -82,18 +82,6 @@ export default function TasksScreen() {
     return () => clearTimeout(t);
   }, [state.onboarded, state.profile.firstTourSeen, state.profile.taskHintSeen, state.profile.hapticsEnabled, pending.length, firstTaskHint, setProfileField]);
 
-  const nextTask = pending[0] ?? null;
-  const quickTask = useMemo(() => {
-    if (pending.length === 0) return null;
-    return [...pending].sort((a, b) => a.difficulty - b.difficulty)[0];
-  }, [pending]);
-
-  const onQuickComplete = useCallback(() => {
-    if (!quickTask) return;
-    triggerHaptic("success", state.profile.hapticsEnabled);
-    completeTask(quickTask.id);
-  }, [quickTask, completeTask, state.profile.hapticsEnabled]);
-
   return (
     <View style={styles.root}>
       <HalfwayToast visible={halfway} onHide={() => setHalfway(false)} />
@@ -136,52 +124,6 @@ export default function TasksScreen() {
 
           {state.profile.business ? (
             <Text style={styles.bizInline} numberOfLines={1}>{state.profile.business.name}</Text>
-          ) : null}
-
-          {nextTask || quickTask ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.widgetRow}
-              style={styles.widgetScroll}
-            >
-              {nextTask ? (
-                <Pressable
-                  onPress={() => { triggerHaptic("tap", state.profile.hapticsEnabled); setSelectedTask(nextTask); }}
-                  style={({ pressed }) => [styles.widget, styles.widgetNext, pressed && { opacity: 0.9 }]}
-                  testID="widget-next"
-                >
-                  <View style={styles.widgetTopRow}>
-                    <Text style={styles.widgetLabel}>NEXT UP</Text>
-                    <ArrowRight size={14} color="#ffffff" />
-                  </View>
-                  <Text style={styles.widgetTitle} numberOfLines={2}>{nextTask.title}</Text>
-                  <Text style={styles.widgetSub}>~{nextTask.difficulty * 10} min · +{nextTask.basePoints * currentPlan.multiplier} pts</Text>
-                </Pressable>
-              ) : null}
-              {quickTask && quickTask.id !== nextTask?.id ? (
-                <Pressable
-                  onPress={onQuickComplete}
-                  style={({ pressed }) => [styles.widget, styles.widgetQuick, pressed && { opacity: 0.92 }]}
-                  testID="widget-quick"
-                >
-                  <View style={styles.widgetTopRow}>
-                    <Text style={[styles.widgetLabel, { color: Colors.accentDeep }]}>QUICK WIN</Text>
-                    <Zap size={14} color={Colors.accentDeep} />
-                  </View>
-                  <Text style={[styles.widgetTitle, { color: Colors.text }]} numberOfLines={2}>{quickTask.title}</Text>
-                  <Text style={[styles.widgetSub, { color: Colors.textDim }]}>Tap to mark done — +{quickTask.basePoints * currentPlan.multiplier} pts</Text>
-                </Pressable>
-              ) : null}
-              <View style={[styles.widget, styles.widgetStreak]}>
-                <View style={styles.widgetTopRow}>
-                  <Text style={[styles.widgetLabel, { color: Colors.accentGold }]}>STREAK</Text>
-                  <Sparkles size={14} color={Colors.accentGold} />
-                </View>
-                <Text style={[styles.widgetTitle, { color: "#ffffff" }]}>{state.streak} day{state.streak === 1 ? "" : "s"}</Text>
-                <Text style={[styles.widgetSub, { color: "rgba(255,255,255,0.7)" }]}>{tier.label} · best {state.bestStreak}</Text>
-              </View>
-            </ScrollView>
           ) : null}
 
           <Text style={styles.sectionTitle}>Today&apos;s tasks</Text>
@@ -352,22 +294,6 @@ const styles = StyleSheet.create({
   greet: { color: Colors.textDim, fontSize: 13, fontWeight: "600" },
   name: { color: Colors.text, fontSize: 26, fontWeight: "900", letterSpacing: -0.5, marginTop: 2 },
   bizInline: { color: Colors.textDim, fontSize: 12, fontWeight: "700", letterSpacing: 0.2, marginBottom: 14 },
-  widgetScroll: { marginHorizontal: -20, marginBottom: 16 },
-  widgetRow: { paddingHorizontal: 20, gap: 10 },
-  widget: {
-    width: 200,
-    borderRadius: 18,
-    padding: 14,
-    justifyContent: "space-between",
-    minHeight: 110,
-  },
-  widgetTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  widgetLabel: { color: "#ffffff", fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
-  widgetTitle: { color: "#ffffff", fontSize: 15, fontWeight: "900", letterSpacing: -0.2, marginTop: 8 },
-  widgetSub: { color: "rgba(255,255,255,0.75)", fontSize: 11, fontWeight: "700", marginTop: 6 },
-  widgetNext: { backgroundColor: Colors.text },
-  widgetQuick: { backgroundColor: "rgba(212,175,55,0.12)", borderWidth: 1, borderColor: "rgba(212,175,55,0.35)" },
-  widgetStreak: { backgroundColor: "#0a0a0a", borderWidth: 1, borderColor: "rgba(212,175,55,0.4)" },
   streakBlock: { alignItems: "center", gap: 4 },
   streakPill: {
     flexDirection: "row", alignItems: "center", gap: 4,
