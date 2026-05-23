@@ -33,6 +33,8 @@ import type {
 } from "@/types";
 
 const STORAGE_KEY = "drive.state.v4";
+const NIGHTLY_SYNC_KEY = "drive.sync.lastNightlyDate";
+const NIGHTLY_SYNC_HOUR = 17; // 5pm local time
 
 function todayKey(): string {
   const d = new Date();
@@ -62,6 +64,8 @@ const DEFAULT_SUBSCRIPTION: Subscription = {
   cycle: "yearly",
   trial: false,
   startedAt: null,
+  expiresAt: null,
+  trialEndsAt: null,
   source: "none",
 };
 
@@ -268,6 +272,43 @@ export const [AppProvider, useApp] = createContextHook(() => {
     }
   }, [stateQuery.data, hydrated]);
 
+  // Nightly forced sync — every active user pushes their full state up
+  // to Supabase once a day at ~5pm local time. We also catch up on the
+  // next app open if the window was missed. Tracked via AsyncStorage so
+  // we don't double-fire across the same day.
+  useEffect(() => {
+    if (!hydrated) return;
+    let cancelled = false;
+    const tryNightlySync = async () => {
+      try {
+        const current = stateRef.current;
+        if (!current.onboarded) return;
+        const now = new Date();
+        if (now.getHours() < NIGHTLY_SYNC_HOUR) return;
+        const m = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        const todayStr = `${now.getFullYear()}-${m}-${day}`;
+        const last = await AsyncStorage.getItem(NIGHTLY_SYNC_KEY);
+        if (last === todayStr) return;
+        if (cancelled) return;
+        console.log("[AppProvider] running nightly 5pm sync");
+        await AsyncStorage.setItem(NIGHTLY_SYNC_KEY, todayStr);
+        if (!supabase) return;
+        const { data } = await supabase.auth.getUser();
+        const uid = data.user?.id ?? null;
+        const email = data.user?.email ?? current.profile.email ?? null;
+        if (!uid && !email && !current.profile.appleUserId) return;
+        const payload = buildSyncFromAppState(uid, email, current, { touchLastSeen: true });
+        await upsertAppUser(payload);
+      } catch (e) {
+        console.log("[AppProvider] nightly sync error", e);
+      }
+    };
+    void tryNightlySync();
+    const id = setInterval(tryNightlySync, 5 * 60 * 1000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [hydrated]);
+
   const saveMutation = useMutation({
     mutationFn: saveState,
   });
@@ -416,13 +457,23 @@ export const [AppProvider, useApp] = createContextHook(() => {
   }, [commit]);
 
   const startSubscription = useCallback((plan: PlanId, cycle: BillingCycle, opts?: { source?: Subscription["source"] }) => {
+    const now = new Date();
+    const source = opts?.source ?? "trial";
+    const isTrial = source === "trial";
+    const trialEnds = new Date(now);
+    trialEnds.setDate(trialEnds.getDate() + 3);
+    const expires = new Date(now);
+    if (cycle === "yearly") expires.setFullYear(expires.getFullYear() + 1);
+    else expires.setMonth(expires.getMonth() + 1);
     const sub: Subscription = {
       active: true,
       plan,
       cycle,
-      trial: true,
-      startedAt: new Date().toISOString(),
-      source: opts?.source ?? "trial",
+      trial: isTrial,
+      startedAt: now.toISOString(),
+      expiresAt: source === "code" || source === "admin" ? null : expires.toISOString(),
+      trialEndsAt: isTrial ? trialEnds.toISOString() : null,
+      source,
     };
     const prev = stateRef.current;
     // If buying Premium with 0 remaining switches this month, grant +2 bonus (one-time).
@@ -466,6 +517,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
       cycle: "yearly",
       trial: false,
       startedAt: new Date().toISOString(),
+      expiresAt: null,
+      trialEndsAt: null,
       source: "code",
     };
     const prev = stateRef.current;
@@ -782,6 +835,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
         cycle: (row.subscription_cycle as BillingCycle | null) ?? current.profile.subscription.cycle,
         trial: row.subscription_trial ?? current.profile.subscription.trial,
         startedAt: row.subscription_started_at ?? current.profile.subscription.startedAt,
+        expiresAt: row.subscription_expires_at ?? current.profile.subscription.expiresAt ?? null,
+        trialEndsAt: row.trial_ends_at ?? current.profile.subscription.trialEndsAt ?? null,
         source: (row.subscription_source as Subscription["source"] | null) ?? current.profile.subscription.source,
       },
       dayTradingMode: (row.day_trading_mode as UserProfile["dayTradingMode"]) ?? current.profile.dayTradingMode,

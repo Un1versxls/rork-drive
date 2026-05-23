@@ -27,10 +27,11 @@ export default function PaywallScreen() {
   const router = useRouter();
   const { state, startSubscription } = useApp();
   const { user } = useAuth();
-  const params = useLocalSearchParams<{ retry?: string; fromUpgrade?: string; initialPlan?: string; initialCycle?: string; requirePro?: string }>();
+  const params = useLocalSearchParams<{ retry?: string; fromUpgrade?: string; initialPlan?: string; initialCycle?: string; requirePro?: string; expired?: string }>();
   const retry = params.retry === "1";
   const fromUpgrade = params.fromUpgrade === "1";
   const requirePro = params.requirePro === "1";
+  const expired = params.expired === "1";
 
   const [planId, setPlanId] = useState<PlanId>(params.initialPlan === "premium" ? "premium" : "base");
   const [cycle, setCycle] = useState<BillingCycle>(params.initialCycle === "monthly" ? "monthly" : "yearly");
@@ -190,6 +191,12 @@ export default function PaywallScreen() {
         )}
 
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          {expired ? (
+            <View style={styles.expiredBanner}>
+              <Lock size={12} color="#ffffff" />
+              <Text style={styles.expiredBannerText}>Your account&apos;s subscription has expired.</Text>
+            </View>
+          ) : null}
           {requirePro ? (
             <View style={styles.proBanner}>
               <Lock size={12} color="#1a1208" />
@@ -414,4 +421,13 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   proBannerText: { color: "#1a1208", fontSize: 12, fontWeight: "900", letterSpacing: 0.3, flex: 1 },
+  expiredBanner: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: Colors.text,
+    paddingHorizontal: 12, paddingVertical: 10,
+    borderRadius: 12,
+    marginTop: 6,
+    marginBottom: 2,
+  },
+  expiredBannerText: { color: "#ffffff", fontSize: 12, fontWeight: "900", letterSpacing: 0.3, flex: 1 },
 });

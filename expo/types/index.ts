@@ -130,6 +130,10 @@ export interface Subscription {
   cycle: BillingCycle;
   trial: boolean;
   startedAt: string | null;
+  /** ISO timestamp the paid period ends. Null for code/admin grants. */
+  expiresAt: string | null;
+  /** ISO timestamp the free trial ends. Null when not on a trial. */
+  trialEndsAt: string | null;
   source: "trial" | "code" | "admin" | "none";
 }
 

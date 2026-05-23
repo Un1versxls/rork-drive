@@ -7,7 +7,7 @@ import { GradientButton } from "@/components/GradientButton";
 import { Colors } from "@/constants/colors";
 import { useAuth } from "@/providers/AuthProvider";
 import { useApp } from "@/providers/AppProvider";
-import { fetchAppUser, type AppUserRow } from "@/lib/appUserTracking";
+import { fetchAppUser, isSubscriptionActiveFromRow, hasSubscriptionHistoryFromRow, type AppUserRow } from "@/lib/appUserTracking";
 import { supabase } from "@/lib/supabase";
 import type { BusinessIdea } from "@/types";
 
@@ -57,14 +57,14 @@ export default function OnboardingSignInScreen() {
             onKeepNew: () => applyHydrationKeepingLocal(row),
             onUseSaved: () => {
               hydrateFromAppUser(row);
-              router.replace("/(tabs)/tasks");
+              routeAfterHydrate(row);
             },
           });
           return;
         }
         hydrateFromAppUser(row);
-        console.log("[sign-in] existing user — going to dashboard (skipping business generation)");
-        router.replace("/(tabs)/tasks");
+        console.log("[sign-in] existing user — routing by subscription state");
+        routeAfterHydrate(row);
         return;
       }
       console.log("[sign-in] no app_users row found — advancing onboarding");
@@ -88,6 +88,18 @@ export default function OnboardingSignInScreen() {
         setError(msg);
       }
     }
+  };
+
+  const routeAfterHydrate = (row: AppUserRow) => {
+    if (isSubscriptionActiveFromRow(row)) {
+      router.replace("/(tabs)/tasks");
+      return;
+    }
+    if (hasSubscriptionHistoryFromRow(row)) {
+      router.replace({ pathname: "/onboarding/paywall", params: { expired: "1" } });
+      return;
+    }
+    router.replace("/onboarding/paywall");
   };
 
   const applyHydrationKeepingLocal = (row: AppUserRow) => {
@@ -114,7 +126,7 @@ export default function OnboardingSignInScreen() {
       if (localDayMode) setProfileField("dayTradingMode", localDayMode);
       if (localDayMarket) setProfileField("dayTradingMarket", localDayMarket);
       if (localDayCapital) setProfileField("dayTradingCapital", localDayCapital);
-      router.replace("/(tabs)/tasks");
+      routeAfterHydrate(row);
     }, 50);
   };
 

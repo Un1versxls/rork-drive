@@ -9,7 +9,7 @@ import { OnboardingShell } from "@/components/OnboardingShell";
 import { Colors } from "@/constants/colors";
 import { useApp } from "@/providers/AppProvider";
 import { submitSurveyResponse } from "@/lib/surveyTracking";
-import { upsertAppUser, fetchAppUser } from "@/lib/appUserTracking";
+import { upsertAppUser, fetchAppUser, isSubscriptionActiveFromRow, hasSubscriptionHistoryFromRow } from "@/lib/appUserTracking";
 import { useAuth } from "@/providers/AuthProvider";
 import { supabase, supabaseReady } from "@/lib/supabase";
 
@@ -44,8 +44,17 @@ export default function AppleSignInScreen() {
     if (row) {
       const ready = hydrateFromAppUser(row);
       if (ready) {
-        console.log("[apple] existing user — going to dashboard");
-        router.replace("/(tabs)/tasks");
+        if (isSubscriptionActiveFromRow(row)) {
+          console.log("[apple] existing user — active sub, going to dashboard");
+          router.replace("/(tabs)/tasks");
+          return;
+        }
+        if (hasSubscriptionHistoryFromRow(row)) {
+          console.log("[apple] existing user — subscription expired, showing paywall");
+          router.replace({ pathname: "/onboarding/paywall", params: { expired: "1" } });
+          return;
+        }
+        router.replace("/onboarding/paywall");
         return;
       }
     }

@@ -14,6 +14,8 @@ export interface AppUserUpsertInput {
     trial: boolean;
     source: Subscription["source"];
     startedAt: string | null;
+    expiresAt?: string | null;
+    trialEndsAt?: string | null;
   } | null;
   profile?: Partial<UserProfile> | null;
   business?: BusinessIdea | null;
@@ -71,6 +73,8 @@ function buildPayload(input: AppUserUpsertInput): Record<string, unknown> {
     payload.subscription_trial = input.subscription.trial;
     payload.subscription_source = input.subscription.source;
     payload.subscription_started_at = input.subscription.startedAt;
+    if (input.subscription.expiresAt !== undefined) payload.subscription_expires_at = input.subscription.expiresAt;
+    if (input.subscription.trialEndsAt !== undefined) payload.trial_ends_at = input.subscription.trialEndsAt;
   }
 
   if (input.profile) {
@@ -155,6 +159,8 @@ export interface AppUserRow {
   subscription_trial: boolean | null;
   subscription_source: Subscription["source"] | null;
   subscription_started_at: string | null;
+  subscription_expires_at: string | null;
+  trial_ends_at: string | null;
   goal: string | null;
   skill_topic: string | null;
   experience: string | null;
@@ -181,7 +187,37 @@ export interface AppUserRow {
   premium_switch_bonus_granted: boolean | null;
 }
 
-const APP_USER_COLUMNS = "id, user_id, apple_user_id, email, name, auth_provider, subscription_plan, subscription_cycle, subscription_active, subscription_trial, subscription_source, subscription_started_at, goal, skill_topic, experience, time_commitment, priority, industry, budget, obstacle, source, decline_reason, business_id, business_name, business_tagline, onboarded, points, streak, best_streak, last_active_date, state_blob, day_trading_mode, day_trading_market, day_trading_capital, business_switch_bonus, premium_switch_bonus_granted";
+const APP_USER_COLUMNS = "id, user_id, apple_user_id, email, name, auth_provider, subscription_plan, subscription_cycle, subscription_active, subscription_trial, subscription_source, subscription_started_at, subscription_expires_at, trial_ends_at, goal, skill_topic, experience, time_commitment, priority, industry, budget, obstacle, source, decline_reason, business_id, business_name, business_tagline, onboarded, points, streak, best_streak, last_active_date, state_blob, day_trading_mode, day_trading_market, day_trading_capital, business_switch_bonus, premium_switch_bonus_granted";
+
+/**
+ * True if the cloud row points to an active paid plan or trial right now.
+ * Treats the explicit `subscription_active` flag as the source of truth, but
+ * also honors `subscription_expires_at` / `trial_ends_at` when present so a
+ * stale `active=true` row with an expired date is not counted as active.
+ */
+export function isSubscriptionActiveFromRow(row: AppUserRow): boolean {
+  const now = Date.now();
+  const trialEnds = row.trial_ends_at ? new Date(row.trial_ends_at).getTime() : 0;
+  const subEnds = row.subscription_expires_at ? new Date(row.subscription_expires_at).getTime() : 0;
+  if (trialEnds && trialEnds > now) return true;
+  if (subEnds && subEnds > now) return true;
+  if ((trialEnds && trialEnds <= now) || (subEnds && subEnds <= now)) {
+    // Dates exist and are all in the past → expired regardless of the
+    // active flag (covers cases where RC has already moved on).
+    return false;
+  }
+  return row.subscription_active === true;
+}
+
+/** True if there's any past subscription record on this row. */
+export function hasSubscriptionHistoryFromRow(row: AppUserRow): boolean {
+  return Boolean(
+    row.subscription_started_at ||
+    row.subscription_plan ||
+    row.subscription_expires_at ||
+    row.trial_ends_at,
+  );
+}
 
 export async function fetchAppUser(by: { userId?: string | null; email?: string | null }): Promise<AppUserRow | null> {
   if (!supabaseReady || !supabase) return null;
@@ -227,6 +263,9 @@ const OPTIONAL_COLUMNS = [
   "past_businesses",
   "state_blob",
   "last_migrated_at",
+  "subscription_expires_at",
+  "trial_ends_at",
+  "last_nightly_sync_at",
   "age",
   "equipped_effect",
   "unlocked_badges",
@@ -420,6 +459,8 @@ export function buildSyncFromAppState(
       trial: p.subscription.trial,
       source: p.subscription.source,
       startedAt: p.subscription.startedAt,
+      expiresAt: p.subscription.expiresAt ?? null,
+      trialEndsAt: p.subscription.trialEndsAt ?? null,
     },
     profile: {
       goal: p.goal,
