@@ -37,6 +37,7 @@ export function WheelPicker({
   const [demoActive, setDemoActive] = useState<boolean>(true);
   const hintFade = useRef(new Animated.Value(0)).current;
   const hintPulse = useRef(new Animated.Value(0)).current;
+  const lastHapticAt = useRef<number>(0);
 
   const containerHeight = itemHeight * visibleCount;
   const padding = (containerHeight - itemHeight) / 2;
@@ -59,7 +60,12 @@ export function WheelPicker({
           const idx = Math.max(0, Math.min(values.length - 1, Math.round(y / itemHeight)));
           if (idx !== lastIndex.current) {
             lastIndex.current = idx;
-            if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+            // Throttle haptics so fast drags don't choke the JS thread and make the wheel feel laggy.
+            const now = Date.now();
+            if (Platform.OS !== "web" && now - lastHapticAt.current > 55) {
+              lastHapticAt.current = now;
+              Haptics.selectionAsync().catch(() => {});
+            }
           }
           if (demoActive) {
             setDemoActive(false);
@@ -195,9 +201,13 @@ export function WheelPicker({
         decelerationRate="fast"
         bounces={false}
         onScroll={onScroll}
-        scrollEventThrottle={16}
+        scrollEventThrottle={1}
+        disableIntervalMomentum={true}
         onMomentumScrollEnd={onMomentumEnd}
         onScrollEndDrag={onScrollEnd}
+        onScrollBeginDrag={() => {
+          if (demoActive) setDemoActive(false);
+        }}
         contentContainerStyle={{ paddingTop: padding, paddingBottom: padding }}
         getItemLayout={(_, i) => ({ length: itemHeight, offset: itemHeight * i, index: i })}
         initialScrollIndex={Math.max(0, values.indexOf(value))}

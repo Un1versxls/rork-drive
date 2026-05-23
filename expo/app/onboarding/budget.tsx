@@ -82,20 +82,20 @@ export default function BudgetScreen() {
           <Text style={styles.heroUnit}>starting budget</Text>
         </View>
 
+        <View style={styles.card}>
+          <Text style={styles.cardHeadline}>{tier.headline}</Text>
+          <Text style={styles.cardSub}>{tier.sub}</Text>
+        </View>
+
         <WheelPicker
           values={STEPS}
           value={amount}
           onChange={setAmount}
           format={formatDollars}
-          itemHeight={56}
-          visibleCount={5}
+          itemHeight={52}
+          visibleCount={4}
           testID="wheel-budget"
         />
-
-        <View style={styles.card}>
-          <Text style={styles.cardHeadline}>{tier.headline}</Text>
-          <Text style={styles.cardSub}>{tier.sub}</Text>
-        </View>
       </View>
     </OnboardingShell>
   );
@@ -103,13 +103,13 @@ export default function BudgetScreen() {
 
 const styles = StyleSheet.create({
   body: { flex: 1, paddingTop: 4 },
-  hero: { alignItems: "center", marginTop: 4, marginBottom: 18 },
+  hero: { alignItems: "center", marginTop: 4, marginBottom: 14 },
   heroAmount: { color: Colors.text, fontSize: 56, fontWeight: "900", letterSpacing: -2, lineHeight: 62 },
   heroUnit: { color: Colors.textDim, fontSize: 13, fontWeight: "700", letterSpacing: 0.4, marginTop: 2 },
   card: {
-    marginTop: 24,
-    padding: 18,
-    borderRadius: 18,
+    marginBottom: 18,
+    padding: 16,
+    borderRadius: 16,
     backgroundColor: "#fafafa",
     borderWidth: 1,
     borderColor: "#eeeeee",
