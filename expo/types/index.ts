@@ -178,6 +178,8 @@ export interface UserProfile {
   taskHintSeen: boolean;
   subtaskHintSeen: boolean;
   age: number | null;
+  /** Self-rated confidence 1-5 from the emoji rating onboarding step. */
+  confidence: number | null;
   earlyBirdAchieved: boolean;
   fullDayAchieved: boolean;
   redeemedCodeOnce: boolean;

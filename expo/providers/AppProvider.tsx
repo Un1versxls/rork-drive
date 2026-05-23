@@ -114,6 +114,7 @@ const DEFAULT_PROFILE: UserProfile = {
   taskHintSeen: false,
   subtaskHintSeen: false,
   age: null,
+  confidence: null,
   earlyBirdAchieved: false,
   fullDayAchieved: false,
   redeemedCodeOnce: false,

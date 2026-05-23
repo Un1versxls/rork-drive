@@ -44,7 +44,7 @@ export default function ExperienceScreen() {
           onPress={() => {
             if (!selected) return;
             setAnswers({ experience: selected });
-            router.push("/onboarding/time");
+            router.push("/onboarding/confidence");
           }}
         />
       }
