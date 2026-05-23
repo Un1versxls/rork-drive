@@ -1,36 +1,67 @@
-import React, { useRef, useState } from "react";
-import { ScrollView, StyleSheet } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { Sprout, Rocket, Flame, Crown, type LucideIcon } from "lucide-react-native";
 
 import { OnboardingShell } from "@/components/OnboardingShell";
-import { OptionCard } from "@/components/OptionCard";
 import { GradientButton } from "@/components/GradientButton";
+import { EmojiRating } from "@/components/EmojiRating";
+import { Colors } from "@/constants/colors";
 import { useApp } from "@/providers/AppProvider";
 import type { ExperienceLevel } from "@/types";
 
-type Option = { id: ExperienceLevel; label: string; description: string; Icon: LucideIcon };
+/**
+ * Experience level — reworked.
+ *
+ * Previous implementation used a ScrollView of OptionCards that was
+ * causing crashes on Continue across multiple builds. Replaced with the
+ * same EmojiRating pattern as the Confidence screen, which is known to
+ * be stable. Same four levels, same data shape, much simpler view tree.
+ */
 
-const AI_OPTIONS: Option[] = [
-  { id: "beginner", label: "Beginner", description: "I use ChatGPT sometimes but haven't built anything with AI", Icon: Sprout },
-  { id: "intermediate", label: "Intermediate", description: "I've tried tools like Zapier, Make, or built a custom GPT", Icon: Rocket },
-  { id: "advanced", label: "Advanced", description: "I've shipped an AI workflow or automation that actually works", Icon: Flame },
-  { id: "expert", label: "Expert", description: "I build AI products or run an AI agency for clients", Icon: Crown },
-];
+const ORDER: ExperienceLevel[] = ["beginner", "intermediate", "advanced", "expert"];
 
-const INPERSON_OPTIONS: Option[] = [
-  { id: "beginner", label: "Beginner", description: "I walk dogs or do odd chores for neighbors sometimes", Icon: Sprout },
-  { id: "intermediate", label: "Intermediate", description: "Done a few side gigs for cash — detailing, hauling, yard work", Icon: Rocket },
-  { id: "advanced", label: "Advanced", description: "Have a couple of regular clients (cleaning, landscaping, etc.)", Icon: Flame },
-  { id: "expert", label: "Expert", description: "Run a local service business with crew or repeat customers", Icon: Crown },
-];
+const AI_COPY: Record<ExperienceLevel, { headline: string; sub: string }> = {
+  beginner: { headline: "Beginner", sub: "I use ChatGPT sometimes but haven't built anything with AI yet." },
+  intermediate: { headline: "Intermediate", sub: "I've tried Zapier, Make, or built a custom GPT before." },
+  advanced: { headline: "Advanced", sub: "I've shipped an AI workflow or automation that actually works." },
+  expert: { headline: "Expert", sub: "I build AI products or run an AI agency for clients." },
+};
+
+const INPERSON_COPY: Record<ExperienceLevel, { headline: string; sub: string }> = {
+  beginner: { headline: "Beginner", sub: "I walk dogs or do odd chores for neighbors sometimes." },
+  intermediate: { headline: "Intermediate", sub: "A few side gigs for cash — detailing, hauling, yard work." },
+  advanced: { headline: "Advanced", sub: "Have a couple of regular clients (cleaning, landscaping, etc.)." },
+  expert: { headline: "Expert", sub: "Run a local service business with crew or repeat customers." },
+};
+
+const OPTIONS = [
+  { value: 1, emoji: "🌱", label: "New" },
+  { value: 2, emoji: "🚀", label: "Some" },
+  { value: 3, emoji: "🔥", label: "Solid" },
+  { value: 4, emoji: "👑", label: "Pro" },
+] as const;
 
 export default function ExperienceScreen() {
   const router = useRouter();
   const { state, setProfileField } = useApp();
-  const [selected, setSelected] = useState<ExperienceLevel | null>(state.profile.experience);
+
+  const initialIdx = state.profile.experience ? ORDER.indexOf(state.profile.experience) + 1 : null;
+  const [value, setValue] = useState<number | null>(initialIdx && initialIdx > 0 ? initialIdx : null);
+
+  const cardFade = useRef(new Animated.Value(value ? 1 : 0)).current;
   const navLockRef = useRef<boolean>(false);
-  const OPTIONS: Option[] = state.profile.pathChoice === "in_person" ? INPERSON_OPTIONS : AI_OPTIONS;
+
+  useEffect(() => {
+    Animated.timing(cardFade, {
+      toValue: value ? 1 : 0,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+  }, [value, cardFade]);
+
+  const choice: ExperienceLevel | null = value ? ORDER[value - 1] ?? null : null;
+  const copyMap = state.profile.pathChoice === "in_person" ? INPERSON_COPY : AI_COPY;
+  const copy = choice ? copyMap[choice] : null;
 
   return (
     <OnboardingShell
@@ -41,54 +72,61 @@ export default function ExperienceScreen() {
       footer={
         <GradientButton
           title="Continue"
-          disabled={!selected}
+          disabled={!choice}
           onPress={() => {
-            if (!selected) return;
-            // Re-entry lock so a double tap (or tap during slide) can't
-            // fire twice.
+            if (!choice) return;
             if (navLockRef.current) return;
             navLockRef.current = true;
-            // CRITICAL: navigate FIRST, save state AFTER. Doing the state
-            // commit before nav was scheduling a re-render in the same JS
-            // tick the slide animation started, which crashed under load.
-            // By the time the deferred save runs the slide is already
-            // underway and the commit happens cleanly.
-            const choice = selected;
-            try {
-              router.push("/onboarding/confidence");
-            } catch (e) {
-              console.log("[experience] router.push failed", e);
-              navLockRef.current = false;
-              return;
-            }
-            // Save state on the next tick, well after navigation has
-            // started. Wrapped so an AsyncStorage / sync hiccup can't
-            // bubble up and tank the screen.
-            setTimeout(() => {
+            const picked = choice;
+            // Navigate first, save state after — same bullet-proof pattern
+            // used by the confidence screen.
+            requestAnimationFrame(() => {
               try {
-                setProfileField("experience", choice);
+                router.push("/onboarding/confidence");
               } catch (e) {
-                console.log("[experience] save failed", e);
+                console.log("[experience] nav failed", e);
+                navLockRef.current = false;
+                return;
               }
-            }, 50);
+              setTimeout(() => {
+                try { setProfileField("experience", picked); } catch (e) { console.log("[experience] save failed", e); }
+              }, 60);
+            });
           }}
+          testID="cta-experience-continue"
         />
       }
     >
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
-        {OPTIONS.map((o) => (
-          <OptionCard
-            key={o.id}
-            label={o.label}
-            description={o.description}
-            Icon={o.Icon}
-            selected={selected === o.id}
-            onPress={() => setSelected(o.id)}
-          />
-        ))}
-      </ScrollView>
+      <View style={styles.body}>
+        <EmojiRating options={[...OPTIONS]} value={value} onChange={setValue} testID="emoji-experience" />
+
+        <Animated.View style={[styles.card, { opacity: cardFade }]}>
+          {copy ? (
+            <>
+              <Text style={styles.cardHeadline}>{copy.headline}</Text>
+              <Text style={styles.cardSub}>{copy.sub}</Text>
+            </>
+          ) : (
+            <Text style={styles.placeholder}>Pick a level to see what we'll tune for you.</Text>
+          )}
+        </Animated.View>
+      </View>
     </OnboardingShell>
   );
 }
 
-const styles = StyleSheet.create({ list: { paddingBottom: 12 } });
+const styles = StyleSheet.create({
+  body: { flex: 1, paddingTop: 12, gap: 28 },
+  card: {
+    padding: 18,
+    borderRadius: 18,
+    backgroundColor: "#fafafa",
+    borderWidth: 1,
+    borderColor: "#eeeeee",
+    minHeight: 84,
+    justifyContent: "center",
+  },
+  cardHeadline: { color: Colors.text, fontSize: 17, fontWeight: "900", letterSpacing: -0.2 },
+  cardSub: { color: Colors.textDim, fontSize: 13, lineHeight: 19, marginTop: 4 },
+  placeholder: { color: Colors.textMuted, fontSize: 13, fontWeight: "700", textAlign: "center" },
+});
