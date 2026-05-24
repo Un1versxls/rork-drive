@@ -16,7 +16,7 @@ import { ACHIEVEMENTS } from "@/constants/achievements";
 import { getPlan, PLANS } from "@/constants/plans";
 import { generateDailyTasks } from "@/constants/task-pool";
 import { triggerHaptic } from "@/lib/haptics";
-import { upsertAppUser, buildSyncFromAppState, type AppUserRow } from "@/lib/appUserTracking";
+import { upsertAppUser, buildSyncFromAppState, fetchAppUser, type AppUserRow } from "@/lib/appUserTracking";
 import { supabase } from "@/lib/supabase";
 import { userCodeFor } from "@/lib/userCode";
 import { currentShowcase } from "@/constants/showcase-updates";
@@ -924,6 +924,65 @@ export const [AppProvider, useApp] = createContextHook(() => {
     const next: AppState = { ...DEFAULT_STATE };
     commit(next);
   }, [commit]);
+
+  // When the signed-in Supabase user changes (sign-out, or signing in
+  // with a different account from the profile page), refresh the local
+  // app state to match the new account. Without this the previous user's
+  // businesses / badges / streak stayed on screen because hydration only
+  // ran via index.tsx on cold start.
+  const lastAuthUserIdRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!supabase) return;
+    let cancelled = false;
+
+    const handleUser = async (userId: string | null, email: string | null) => {
+      const prev = lastAuthUserIdRef.current;
+      // First run after hydrate: just record who's signed in, no reset.
+      if (prev === undefined) {
+        lastAuthUserIdRef.current = userId;
+        return;
+      }
+      if (prev === userId) return;
+      lastAuthUserIdRef.current = userId;
+
+      if (!userId) {
+        // Signed out — wipe local state so the next sign-in starts clean.
+        console.log("[AppProvider] auth change: signed out, resetting local state");
+        if (!cancelled) commit({ ...DEFAULT_STATE });
+        return;
+      }
+
+      // Signed in as a different user — hydrate from cloud, or fall back
+      // to a clean slate if there's no row yet.
+      try {
+        console.log("[AppProvider] auth change: switching to user", userId);
+        const row = await fetchAppUser({ userId, email });
+        if (cancelled) return;
+        if (row) {
+          const { next } = hydrateFromAppUserImpl(row, DEFAULT_STATE);
+          commit(next);
+        } else {
+          commit({ ...DEFAULT_STATE });
+        }
+      } catch (e) {
+        console.log("[AppProvider] auth switch hydrate error", e);
+        if (!cancelled) commit({ ...DEFAULT_STATE });
+      }
+    };
+
+    supabase.auth.getUser().then(({ data }) => {
+      if (cancelled) return;
+      void handleUser(data.user?.id ?? null, data.user?.email ?? null);
+    }).catch(() => {});
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") return;
+      void handleUser(s?.user?.id ?? null, s?.user?.email ?? null);
+    });
+    return () => { cancelled = true; sub.subscription.unsubscribe(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, commit]);
 
   const dismissPendingAchievement = useCallback((id: string) => {
     setPendingAchievements((prev) => prev.filter((x) => x !== id));
