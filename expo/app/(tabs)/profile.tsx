@@ -207,12 +207,17 @@ export default function ProfileScreen() {
             <Text style={styles.userSub}>Level {level} · {totalCompleted} tasks done</Text>
             {user ? (
               <Text style={styles.userEmail}>{user.email}</Text>
-            ) : (
+            ) : null}
+            <UserCodePill
+              code={state.profile.userCode ?? userCodeFor({ userId: user?.id ?? null, appleUserId: state.profile.appleUserId, email: user?.email ?? state.profile.email })}
+              onCopied={() => triggerHaptic("success", state.profile.hapticsEnabled)}
+            />
+            {!user ? (
               <Pressable onPress={() => router.push("/auth")} style={styles.signInRow}>
                 <LogIn color={Colors.text} size={14} />
                 <Text style={styles.signInText}>Sign in to sync across devices</Text>
               </Pressable>
-            )}
+            ) : null}
             {user ? (
               <Pressable
                 onPress={() => {

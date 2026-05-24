@@ -17,9 +17,20 @@ interface Props {
   testID?: string;
 }
 
+/** Warm-to-cool glow palette indexed by rating fraction (0..1). */
+function glowColorFor(value: number, total: number): string {
+  const ratio = total > 1 ? (value - 1) / (total - 1) : 0;
+  // Cool blue (low) -> warm gold (high). Subtle either way.
+  if (ratio < 0.25) return "rgba(110, 170, 255, 0.35)"; // cool blue
+  if (ratio < 0.55) return "rgba(180, 200, 220, 0.32)"; // neutral
+  if (ratio < 0.8) return "rgba(255, 180, 110, 0.36)"; // warm amber
+  return "rgba(255, 140, 80, 0.42)"; // hot
+}
+
 /**
- * Horizontal row of tappable emojis. The selected one pops & scales up;
- * the others stay calm. A subtle bounce + haptic plays on tap.
+ * Horizontal row of tappable emojis with a soft radial glow behind
+ * the selected one. Scale (native driver) and color/opacity (JS driver)
+ * live on separate Animated nodes to avoid mixed-driver crashes.
  */
 export function EmojiRating({ options, value, onChange, testID }: Props) {
   return (
@@ -28,6 +39,7 @@ export function EmojiRating({ options, value, onChange, testID }: Props) {
         <EmojiBubble
           key={o.value}
           option={o}
+          totalOptions={options.length}
           selected={value === o.value}
           onPress={() => {
             onChange(o.value);
@@ -39,15 +51,12 @@ export function EmojiRating({ options, value, onChange, testID }: Props) {
   );
 }
 
-function EmojiBubble({ option, selected, onPress }: { option: Option; selected: boolean; onPress: () => void }) {
-  // CRITICAL: scale (native driver) and backgroundColor/borderColor (JS
-  // driver) MUST live on different Animated nodes, otherwise React Native
-  // throws "Attempting to run JS driven animation on animated node that
-  // has been moved to native" on mount. We split them across two nested
-  // Animated.Views: the outer one owns the transform, the inner one owns
-  // the color interpolation.
+function EmojiBubble({ option, selected, onPress, totalOptions }: { option: Option; selected: boolean; onPress: () => void; totalOptions: number }) {
+  // CRITICAL: keep transforms (native) and color/opacity (JS) on
+  // separate Animated nodes — see prior crash history on this file.
   const scale = useRef(new Animated.Value(selected ? 1.15 : 1)).current;
   const bg = useRef(new Animated.Value(selected ? 1 : 0)).current;
+  const glow = useRef(new Animated.Value(selected ? 1 : 0)).current;
 
   useEffect(() => {
     Animated.spring(scale, {
@@ -61,26 +70,29 @@ function EmojiBubble({ option, selected, onPress }: { option: Option; selected: 
       duration: 200,
       useNativeDriver: false,
     }).start();
-  }, [selected, scale, bg]);
+    Animated.timing(glow, {
+      toValue: selected ? 1 : 0,
+      duration: 260,
+      useNativeDriver: false,
+    }).start();
+  }, [selected, scale, bg, glow]);
 
-  const bgColor = bg.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#ffffff", "#0a0a0a"],
-  });
-  const borderColor = bg.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#ececec", "#0a0a0a"],
-  });
+  const bgColor = bg.interpolate({ inputRange: [0, 1], outputRange: ["#ffffff", "#0a0a0a"] });
+  const borderColor = bg.interpolate({ inputRange: [0, 1], outputRange: ["#ececec", "#0a0a0a"] });
+  const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+  const glowColor = glowColorFor(option.value, totalOptions);
 
   return (
     <Pressable onPress={onPress} hitSlop={6} style={styles.bubbleWrap}>
-      <Animated.View style={[styles.bubbleScale, { transform: [{ scale }] }]}>
-        <Animated.View
-          style={[styles.bubble, { backgroundColor: bgColor, borderColor }]}
-        >
-          <Text style={styles.emoji}>{option.emoji}</Text>
+      <View style={styles.glowWrap} pointerEvents="none">
+        <Animated.View style={[styles.glowOuter, { backgroundColor: glowColor, opacity: glowOpacity }]} />
+        <Animated.View style={[styles.glowInner, { backgroundColor: glowColor, opacity: glowOpacity }]} />
+        <Animated.View style={[styles.bubbleScale, { transform: [{ scale }] }]}>
+          <Animated.View style={[styles.bubble, { backgroundColor: bgColor, borderColor }]}>
+            <Text style={styles.emoji}>{option.emoji}</Text>
+          </Animated.View>
         </Animated.View>
-      </Animated.View>
+      </View>
       <Text style={[styles.label, selected && styles.labelSelected]} numberOfLines={1}>
         {option.label}
       </Text>
@@ -90,7 +102,10 @@ function EmojiBubble({ option, selected, onPress }: { option: Option; selected: 
 
 const styles = StyleSheet.create({
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 6 },
-  bubbleWrap: { alignItems: "center", flex: 1, gap: 8 },
+  bubbleWrap: { alignItems: "center", flex: 1, gap: 10 },
+  glowWrap: { width: 96, height: 96, alignItems: "center", justifyContent: "center" },
+  glowOuter: { position: "absolute", width: 96, height: 96, borderRadius: 48 },
+  glowInner: { position: "absolute", width: 72, height: 72, borderRadius: 36 },
   bubbleScale: { alignItems: "center", justifyContent: "center" },
   bubble: {
     width: 56,

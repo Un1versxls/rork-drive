@@ -11,6 +11,9 @@ import { NameBadge } from "@/components/NameBadge";
 import { RatePrompt } from "@/components/RatePrompt";
 import { StreakEffect } from "@/components/StreakEffect";
 import { TaskDetailPanel } from "@/components/TaskDetailPanel";
+import { WhatsNewModal } from "@/components/WhatsNewModal";
+import { currentShowcase } from "@/constants/showcase-updates";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Colors } from "@/constants/colors";
 import { getStreakTier } from "@/constants/streak-tiers";
 import { CATEGORY_META } from "@/constants/task-pool";
@@ -27,8 +30,12 @@ function greeting(): string {
   return "Late night,";
 }
 
+const SHOWCASE_LAUNCH_KEY = "drive.showcase.dashboardLaunchSeen";
+
 export default function TasksScreen() {
-  const { state, today, currentPlan, completeTask, skipTask, undoTask, setProfileField, pendingBadges, dismissPendingBadge } = useApp();
+  const { state, today, currentPlan, completeTask, skipTask, undoTask, setProfileField, pendingBadges, dismissPendingBadge, dismissCurrentShowcase } = useApp();
+  const [showcaseVisible, setShowcaseVisible] = useState<boolean>(false);
+  const showcaseRef = useRef<boolean>(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const firstTaskHint = useRef(new Animated.Value(0)).current;
   const [celebrate, setCelebrate] = useState<boolean>(false);
@@ -60,6 +67,33 @@ export default function TasksScreen() {
   const pending = useMemo(() => today.list.filter((t) => t.status === "pending"), [today.list]);
   const done = useMemo(() => today.list.filter((t) => t.status !== "pending"), [today.list]);
   const tier = getStreakTier(state.streak);
+
+  // "What's New" showcase: only on second+ dashboard launch (skip first
+  // session after sign-up / tutorial). Marks current showcase as seen
+  // once dismissed, then never re-shows unless we ship a new id.
+  useEffect(() => {
+    if (!state.onboarded) return;
+    if (!state.profile.firstTourSeen) return;
+    if (showcaseRef.current) return;
+    const showcase = currentShowcase();
+    if (!showcase) return;
+    if (state.profile.lastShowcaseSeen === showcase.id) return;
+    showcaseRef.current = true;
+    (async () => {
+      try {
+        const flag = await AsyncStorage.getItem(SHOWCASE_LAUNCH_KEY);
+        if (!flag) {
+          // First dashboard visit on this device — defer to next launch.
+          await AsyncStorage.setItem(SHOWCASE_LAUNCH_KEY, "1");
+          return;
+        }
+        // Small delay so dashboard renders first.
+        setTimeout(() => setShowcaseVisible(true), 700);
+      } catch (e) {
+        console.log("[tasks] showcase check failed", e);
+      }
+    })();
+  }, [state.onboarded, state.profile.firstTourSeen, state.profile.lastShowcaseSeen]);
 
   // Coachmark: after the 5-step tour ends, give the first pending task card a
   // soft wiggle so users learn they can tap into it. Only fires once.
@@ -199,6 +233,16 @@ export default function TasksScreen() {
         visible={!state.profile.firstTourSeen && state.onboarded}
         hapticsEnabled={state.profile.hapticsEnabled}
         onComplete={() => setProfileField("firstTourSeen", true)}
+      />
+
+      <WhatsNewModal
+        visible={showcaseVisible}
+        update={currentShowcase()}
+        hapticsEnabled={state.profile.hapticsEnabled}
+        onDismiss={() => {
+          setShowcaseVisible(false);
+          dismissCurrentShowcase();
+        }}
       />
     </View>
   );

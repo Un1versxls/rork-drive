@@ -1,5 +1,6 @@
 import { supabase, supabaseReady } from "@/lib/supabase";
 import type { AppState, BillingCycle, BusinessIdea, PlanId, Subscription, UserProfile } from "@/types";
+import { userCodeFor } from "@/lib/userCode";
 
 export interface AppUserUpsertInput {
   userId?: string | null;
@@ -48,6 +49,10 @@ export interface AppUserUpsertInput {
     market: string | null;
     capital: string | null;
   } | null;
+  userCode?: string | null;
+  lastShowcaseSeen?: string | null;
+  businessSwitchMonth?: string | null;
+  businessSwitchCount?: number | null;
   touchLastSeen?: boolean;
 }
 
@@ -139,6 +144,11 @@ function buildPayload(input: AppUserUpsertInput): Record<string, unknown> {
     payload.day_trading_capital = input.dayTrading.capital;
   }
 
+  if (input.userCode !== undefined && input.userCode !== null) payload.user_code = input.userCode;
+  if (input.lastShowcaseSeen !== undefined) payload.last_showcase_seen = input.lastShowcaseSeen;
+  if (input.businessSwitchMonth !== undefined) payload.business_switch_month = input.businessSwitchMonth;
+  if (input.businessSwitchCount !== undefined) payload.business_switch_count = input.businessSwitchCount;
+
   return payload;
 }
 
@@ -185,9 +195,13 @@ export interface AppUserRow {
   day_trading_capital: string | null;
   business_switch_bonus: number | null;
   premium_switch_bonus_granted: boolean | null;
+  user_code: string | null;
+  last_showcase_seen: string | null;
+  business_switch_month: string | null;
+  business_switch_count: number | null;
 }
 
-const APP_USER_COLUMNS = "id, user_id, apple_user_id, email, name, auth_provider, subscription_plan, subscription_cycle, subscription_active, subscription_trial, subscription_source, subscription_started_at, subscription_expires_at, trial_ends_at, goal, skill_topic, experience, time_commitment, priority, industry, budget, obstacle, source, decline_reason, business_id, business_name, business_tagline, onboarded, points, streak, best_streak, last_active_date, state_blob, day_trading_mode, day_trading_market, day_trading_capital, business_switch_bonus, premium_switch_bonus_granted";
+const APP_USER_COLUMNS = "id, user_id, apple_user_id, email, name, auth_provider, subscription_plan, subscription_cycle, subscription_active, subscription_trial, subscription_source, subscription_started_at, subscription_expires_at, trial_ends_at, goal, skill_topic, experience, time_commitment, priority, industry, budget, obstacle, source, decline_reason, business_id, business_name, business_tagline, onboarded, points, streak, best_streak, last_active_date, state_blob, day_trading_mode, day_trading_market, day_trading_capital, business_switch_bonus, premium_switch_bonus_granted, user_code, last_showcase_seen, business_switch_month, business_switch_count";
 
 /**
  * True if the cloud row points to an active paid plan or trial right now.
@@ -277,6 +291,10 @@ const OPTIONAL_COLUMNS = [
   "subtask_hint_seen",
   "app_version",
   "platform",
+  "user_code",
+  "last_showcase_seen",
+  "business_switch_month",
+  "business_switch_count",
 ];
 
 function stripMissingColumn(payload: Record<string, unknown>, errMsg: string): Record<string, unknown> | null {
@@ -504,6 +522,10 @@ export function buildSyncFromAppState(
       market: p.dayTradingMarket,
       capital: p.dayTradingCapital,
     },
+    userCode: p.userCode ?? userCodeFor({ userId: authUserId, appleUserId: p.appleUserId, email: authEmail || p.email || null }),
+    lastShowcaseSeen: p.lastShowcaseSeen ?? null,
+    businessSwitchMonth: p.businessSwitchMonth ?? null,
+    businessSwitchCount: p.businessSwitchCount ?? 0,
     touchLastSeen: opts?.touchLastSeen ?? false,
   };
 }

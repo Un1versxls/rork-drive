@@ -98,7 +98,9 @@ export default function ExperienceScreen() {
       }
     >
       <View style={styles.body}>
-        <EmojiRating options={[...OPTIONS]} value={value} onChange={setValue} testID="emoji-experience" />
+        <View style={styles.centered}>
+          <EmojiRating options={[...OPTIONS]} value={value} onChange={setValue} testID="emoji-experience" />
+        </View>
 
         <Animated.View style={[styles.card, { opacity: cardFade }]}>
           {copy ? (
@@ -116,7 +118,8 @@ export default function ExperienceScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { flex: 1, paddingTop: 12, gap: 28 },
+  body: { flex: 1, paddingTop: 12, gap: 28, justifyContent: "center" },
+  centered: { paddingVertical: 8 },
   card: {
     padding: 18,
     borderRadius: 18,

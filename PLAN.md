@@ -1,37 +1,51 @@
-# Rebuild the age slider from scratch with a crash-proof design
+# User IDs, "What's New" showcase, paywall back animation & onboarding polish
 
-## The problem
+## What you'll get
 
-The current age slider is the source of the launch crash. It mixes a hand-rolled finger-tracking gesture, a looping auto-demo animation, and several animated effects (shadows, pulsing hint pill, knob glow) all sharing values across JS and native animation drivers. Even after two rounds of patching, the moment the cold-start redirect lands the user back on this screen, the tear-down + re-init race fires and the app dies before anything renders.
+### 1. Personal user ID on Profile
 
-## What I'll build instead
+- Every user gets a short, readable code like `**DRIVE-A4F2K9**` generated deterministically from their account (so it's stable across devices and sign-ins).
+- Shown right under the email on the Profile screen with a small "tap to copy" feel.
+- Mirrored to Supabase so support can look people up by it.
 
-A brand-new age slider built on the standard, battle-tested gesture library that the rest of the app already uses — no PanResponder, no auto-demo loop, no mixed animation drivers.
+### 2. Business swap counter syncs correctly
 
-**Feel & interaction**
+- The "x3 swaps remaining" badge will read straight from the cloud and self-correct if it drifts (e.g. if Supabase says they should have 2 but the device shows 3, it'll quietly fix itself to the right number on next sign-in / app open).
+- The cap (3 free / 5 premium) is enforced on both sides so users can't get extra swaps by reinstalling.
 
-- A clean horizontal track with a single round knob you drag left and right.
-- Big age number that updates live as you drag (e.g. "24 years old").
-- Subtle haptic tick every time the number changes.
-- A small static "Slide to set your age" hint underneath the track on first view — no pulsing, no looping animation.
-- Min 13, max 65+, same as today.
-- Tap anywhere on the track to jump the knob there instantly.
+### 3. Paywall "go back" animation matches what you see going forward
 
-**Visuals**
+- When opening the paywall from the Profile plan-expand area, the page slides in with a smooth transition.
+- Pressing back will now play the **exact same transition in reverse** — same easing, same duration, same direction — instead of the current mismatched jump. Feels symmetrical every time.
 
-- Same black-and-white aesthetic as the rest of onboarding.
-- Filled portion of the track in solid black; unfilled in light grey.
-- White knob with a black border and a soft static shadow (no animated shadow).
-- A small descriptive card below ("Builder", "Early-career", etc.) that fades between states with a single safe opacity transition.
+### 4. "What's New" dashboard showcase (reusable template)
 
-**Behavior**
+- A soft, rounded-square card overlays the dashboard the next time the user opens the app.
+- **First update card:**
+  - Headline: **"Ask AI anything"**
+  - Body: **"New in this update: tap the AI button to get instant business guidance."**
+- **Behavior:**
+  - Only shows on the **dashboard** (never during onboarding or the first-time tutorial).
+  - **Skipped** the very first session after sign-up / after the tutorial closes — it'll appear the *next* time they open the app.
+  - User **cannot dismiss it for the first 4 seconds** (close button is greyed out, then activates with a soft pulse).
+  - Once dismissed, **never shows again** unless you (admin) manually re-trigger it.
+  - Last-seen showcase ID is stored both locally (instant) and on Supabase (`last_showcase_seen` column) so it follows the user across devices.
+- **Reusable template:** future updates are a one-liner — give me an `id`, headline, and body, and the same card system handles it. Old IDs stay marked seen; only new IDs trigger the popup.
 
-- Continue button saves the age and moves to the next screen exactly like before.
-- No auto-demo, no looping shimmer, no pulsing pill — these were the crash surface and aren't needed for usability.
-- Safe against being navigated back to from any previous screen.
+### 5. Onboarding emoji rating — less empty
 
-## Result
+- The emoji rating block is **vertically centered** on its screen instead of floating near the top.
+- A **soft radial glow** sits behind the currently selected emoji — subtle, just enough to give the screen presence without being loud. Glow color matches the emoji's mood (warm for high ratings, cool for low).
 
-Same question, same data captured, same look-and-feel direction — but with all the fragile animation machinery removed. The launch crash goes away because the screen no longer contains the code path that triggers it.
+### 6. TestFlight push
 
-Then ship it straight to TestFlight.
+- After all the above is in, I'll cut a new build (v1.9.5, build 35) and upload it to TestFlight. Invite arrives in 5–30 minutes per usual.
+
+---
+
+## Out of scope (not changing)
+
+- Nightly 5pm sync (already shipped previously).
+- Sign-in routing for active/expired subs (already shipped previously).
+- Age slider / EmojiRating crash fixes (already shipped previously).
+

@@ -187,6 +187,10 @@ export interface UserProfile {
   earlyBirdAchieved: boolean;
   fullDayAchieved: boolean;
   redeemedCodeOnce: boolean;
+  /** Stable short code shown on profile (DRIVE-XXXXXX). */
+  userCode: string | null;
+  /** Id of the last "What's New" showcase the user dismissed. */
+  lastShowcaseSeen: string | null;
   pendingProPick: BusinessIdea | null;
   pendingProPickPool: TaskSeed[];
   pendingFreeAlt: BusinessIdea | null;

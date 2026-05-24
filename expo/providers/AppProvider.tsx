@@ -10,6 +10,8 @@ import { generateDailyTasks } from "@/constants/task-pool";
 import { triggerHaptic } from "@/lib/haptics";
 import { upsertAppUser, buildSyncFromAppState, type AppUserRow } from "@/lib/appUserTracking";
 import { supabase } from "@/lib/supabase";
+import { userCodeFor } from "@/lib/userCode";
+import { currentShowcase } from "@/constants/showcase-updates";
 import type {
   AppState,
   BillingCycle,
@@ -122,6 +124,8 @@ const DEFAULT_PROFILE: UserProfile = {
   earlyBirdAchieved: false,
   fullDayAchieved: false,
   redeemedCodeOnce: false,
+  userCode: null,
+  lastShowcaseSeen: null,
 };
 
 const DEFAULT_STATE: AppState = {
@@ -167,6 +171,8 @@ async function loadState(): Promise<AppState> {
         earlyBirdAchieved: parsed.profile?.earlyBirdAchieved ?? false,
         fullDayAchieved: parsed.profile?.fullDayAchieved ?? false,
         redeemedCodeOnce: parsed.profile?.redeemedCodeOnce ?? false,
+        userCode: parsed.profile?.userCode ?? null,
+        lastShowcaseSeen: parsed.profile?.lastShowcaseSeen ?? null,
       },
     };
   } catch (e) {
@@ -782,6 +788,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
           earlyBirdAchieved: blob.profile?.earlyBirdAchieved ?? false,
           fullDayAchieved: blob.profile?.fullDayAchieved ?? false,
           redeemedCodeOnce: blob.profile?.redeemedCodeOnce ?? false,
+          userCode: blob.profile?.userCode ?? null,
+          lastShowcaseSeen: blob.profile?.lastShowcaseSeen ?? null,
         },
         tasks: Array.isArray(blob.tasks) ? blob.tasks : [],
         history: blob.history ?? {},
@@ -797,6 +805,26 @@ export const [AppProvider, useApp] = createContextHook(() => {
       }
       if (typeof row.premium_switch_bonus_granted === "boolean") {
         merged = { ...merged, profile: { ...merged.profile, premiumSwitchBonusGranted: row.premium_switch_bonus_granted || (merged.profile.premiumSwitchBonusGranted ?? false) } };
+      }
+      // Cloud-authoritative business switch counter: if the row has
+      // higher usage for the current month than what's in the blob,
+      // adopt the cloud value so reinstalls can't recover swaps.
+      if (typeof row.business_switch_count === "number" && row.business_switch_month) {
+        const monthKey = (() => { const d = new Date(); const m = String(d.getMonth() + 1).padStart(2, "0"); const day = String(d.getDate()).padStart(2, "0"); return `${d.getFullYear()}-${m}-${day}`.slice(0, 7); })();
+        const cloudMonth = row.business_switch_month;
+        const cloudCount = row.business_switch_count;
+        if (cloudMonth === monthKey) {
+          const localSameMonth = merged.profile.businessSwitchMonth === monthKey ? merged.profile.businessSwitchCount : 0;
+          if (cloudCount > localSameMonth) {
+            merged = { ...merged, profile: { ...merged.profile, businessSwitchMonth: cloudMonth, businessSwitchCount: cloudCount } };
+          }
+        }
+      }
+      if (row.user_code && !merged.profile.userCode) {
+        merged = { ...merged, profile: { ...merged.profile, userCode: row.user_code } };
+      }
+      if (row.last_showcase_seen && !merged.profile.lastShowcaseSeen) {
+        merged = { ...merged, profile: { ...merged.profile, lastShowcaseSeen: row.last_showcase_seen } };
       }
       // Ensure today's tasks exist immediately so the dashboard never shows
       // "0 tasks" right after sign-in. If the cloud blob has stale or empty
@@ -846,6 +874,23 @@ export const [AppProvider, useApp] = createContextHook(() => {
         ? Math.max(current.profile.businessSwitchBonus ?? 0, row.business_switch_bonus)
         : current.profile.businessSwitchBonus ?? 0,
       premiumSwitchBonusGranted: row.premium_switch_bonus_granted ?? current.profile.premiumSwitchBonusGranted ?? false,
+      businessSwitchMonth: (() => {
+        const monthKey = todayKey().slice(0, 7);
+        if (row.business_switch_month === monthKey && typeof row.business_switch_count === "number") {
+          return monthKey;
+        }
+        return current.profile.businessSwitchMonth;
+      })(),
+      businessSwitchCount: (() => {
+        const monthKey = todayKey().slice(0, 7);
+        if (row.business_switch_month === monthKey && typeof row.business_switch_count === "number") {
+          const localSameMonth = current.profile.businessSwitchMonth === monthKey ? current.profile.businessSwitchCount : 0;
+          return Math.max(localSameMonth, row.business_switch_count);
+        }
+        return current.profile.businessSwitchCount;
+      })(),
+      userCode: row.user_code ?? current.profile.userCode ?? null,
+      lastShowcaseSeen: row.last_showcase_seen ?? current.profile.lastShowcaseSeen ?? null,
     };
     const onboarded = row.onboarded === true || current.onboarded;
     let next: AppState = {
@@ -879,6 +924,34 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const dismissPendingBadge = useCallback((id: string) => {
     setPendingBadges((prev) => prev.filter((x) => x !== id));
   }, []);
+
+  // Backfill userCode locally once we know any identifier for the user.
+  useEffect(() => {
+    if (!hydrated) return;
+    const p = stateRef.current.profile;
+    if (p.userCode) return;
+    if (!supabase) return;
+    let cancelled = false;
+    supabase.auth.getUser().then(({ data }) => {
+      if (cancelled) return;
+      const uid = data.user?.id ?? null;
+      const email = data.user?.email ?? p.email ?? null;
+      const code = userCodeFor({ userId: uid, appleUserId: p.appleUserId, email });
+      if (!code) return;
+      const prev = stateRef.current;
+      if (prev.profile.userCode) return;
+      commit({ ...prev, profile: { ...prev.profile, userCode: code } });
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [hydrated, commit]);
+
+  const dismissCurrentShowcase = useCallback(() => {
+    const showcase = currentShowcase();
+    if (!showcase) return;
+    const prev = stateRef.current;
+    if (prev.profile.lastShowcaseSeen === showcase.id) return;
+    commit({ ...prev, profile: { ...prev.profile, lastShowcaseSeen: showcase.id } });
+  }, [commit]);
 
   const today = useMemo(() => {
     const key = todayKey();
@@ -979,5 +1052,6 @@ export const [AppProvider, useApp] = createContextHook(() => {
     hydrateFromAppUser,
     dismissPendingAchievement,
     dismissPendingBadge,
-  }), [hydrated, state, today, weeklyActivity, totalCompleted, totalSkipped, level, levelProgress, currentPlan, isPremium, hasActiveSubscription, customBuildsThisMonth, customBuildsRemaining, customBuildLimit, businessSwitchesThisMonth, businessSwitchesRemaining, businessSwitchLimit, pendingAchievements, pendingBadges, setAnswers, setOnboardingStep, startSubscription, grantPremiumViaCode, cancelSubscription, setDeclineReason, markRated, markRatePromptSeen, setBusiness, setProfileField, setNotificationPrefs, equipEffect, completeOnboarding, completeTask, skipTask, undoTask, resetOnboarding, hydrateFromAppUser, dismissPendingAchievement, dismissPendingBadge]);
+    dismissCurrentShowcase,
+  }), [hydrated, state, today, weeklyActivity, totalCompleted, totalSkipped, level, levelProgress, currentPlan, isPremium, hasActiveSubscription, customBuildsThisMonth, customBuildsRemaining, customBuildLimit, businessSwitchesThisMonth, businessSwitchesRemaining, businessSwitchLimit, pendingAchievements, pendingBadges, setAnswers, setOnboardingStep, startSubscription, grantPremiumViaCode, cancelSubscription, setDeclineReason, markRated, markRatePromptSeen, setBusiness, setProfileField, setNotificationPrefs, equipEffect, completeOnboarding, completeTask, skipTask, undoTask, resetOnboarding, hydrateFromAppUser, dismissPendingAchievement, dismissPendingBadge, dismissCurrentShowcase]);
 });
