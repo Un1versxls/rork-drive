@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { Animated, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Award } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 
 import { Colors } from "@/constants/colors";
 import { BADGES } from "@/constants/badges";
@@ -19,6 +20,7 @@ interface Props {
  */
 export function BadgeToast({ badgeId, hapticsEnabled, onHide }: Props) {
   const slide = useRef(new Animated.Value(-120)).current;
+  const router = useRouter();
 
   useEffect(() => {
     if (!badgeId) return;
@@ -39,7 +41,12 @@ export function BadgeToast({ badgeId, hapticsEnabled, onHide }: Props) {
   if (!badge) return null;
 
   const onPress = () => {
-    Animated.timing(slide, { toValue: -140, duration: 200, useNativeDriver: true }).start(() => onHide());
+    Animated.timing(slide, { toValue: -140, duration: 200, useNativeDriver: true }).start(() => {
+      onHide();
+      // Tapping a badge notification jumps straight to the Badge Room
+      // so users can savor the unlock + see the limited-time offer.
+      try { router.push("/badges"); } catch (e) { console.log("[BadgeToast] route failed", e); }
+    });
   };
 
   return (

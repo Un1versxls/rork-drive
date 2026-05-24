@@ -1,32 +1,80 @@
 /**
- * "What's New" dashboard showcase template.
+ * "What's New" showcase template.
  *
- * Add a new entry to the array and bump the id when shipping a feature
- * you want users to see one time on next app open. The dashboard reads
- * the LAST entry as the current showcase. Old ids are remembered as
- * "seen" via Supabase + AsyncStorage so users won't get re-prompted
- * with prior updates after this one rolls out.
+ * Each release adds a new entry to SHOWCASE_UPDATES. The dashboard
+ * surfaces only the LAST entry — older ids are kept around so we can
+ * remember which ones a given user already dismissed.
+ *
+ * To roll a new update card (e.g. "Update 2.1"):
+ *   1. Copy the most recent entry below.
+ *   2. Bump `id`, `eyebrow`, and the first page headline/body to the
+ *      most prominent new feature. The first page MUST have a visual
+ *      `variant` (animation) so the card opens with motion.
+ *   3. Append more `pages` for other recent features (promos, tips, …).
+ *   4. Keep `holdMs` at 5000 unless the page is exceptionally short.
+ *   5. Set `showOnFirstLaunch: true` for major releases you want every
+ *      user to see immediately on their next app open.
  */
-export interface ShowcaseUpdate {
-  /** Stable id, e.g. "ask-ai-v1". Bump for each new update card. */
-  id: string;
-  /** Big headline shown on the card. */
+
+export type ShowcaseVariant =
+  /** AI "Ask the Coach" phone-mockup animation (default for AI updates). */
+  | "ai-coach"
+  /** Limited-time badge promotion — trophy + badge shower. */
+  | "badge-promo";
+
+export interface ShowcasePage {
+  /** Visual animation rendered between the headline and the CTA. */
+  variant: ShowcaseVariant;
+  /** Small pill text above the headline (e.g. "UPDATE 2.5", "LIMITED OFFER"). */
+  eyebrow: string;
   headline: string;
-  /** Body copy under the headline. Keep short — 1–2 lines. */
   body: string;
-  /** Optional accent color for the icon ring. Defaults to gold. */
-  accent?: string;
-  /** Optional emoji shown above the headline. */
-  emoji?: string;
+  /** Button label shown once the hold completes. */
+  cta: string;
+  /** Override the per-page hold in ms. Defaults to 5000. */
+  holdMs?: number;
+}
+
+export interface ShowcaseUpdate {
+  /** Stable id, e.g. "update-2.5". Bump for each new update card. */
+  id: string;
+  /** Pages displayed in order. Each must be held the full holdMs before advancing. */
+  pages: ShowcasePage[];
+  /**
+   * When true, the card shows on the FIRST dashboard launch after onboarding
+   * (instead of being deferred to the next session). Use for major releases.
+   */
+  showOnFirstLaunch?: boolean;
+  /**
+   * Path to navigate to when the last page is dismissed. Optional —
+   * defaults to staying on the dashboard.
+   */
+  finalRoute?: "/badges" | null;
 }
 
 export const SHOWCASE_UPDATES: ShowcaseUpdate[] = [
   {
-    id: "ask-ai-v3",
-    headline: "Ask AI anything",
-    body: "New in this update — tap the AI button on any task for instant, personalized business guidance.",
-    accent: "#d4af37",
-    emoji: "🤖",
+    id: "update-2.5",
+    showOnFirstLaunch: true,
+    finalRoute: "/badges",
+    pages: [
+      {
+        variant: "ai-coach",
+        eyebrow: "UPDATE 2.5",
+        headline: "Ask the Coach, on every task",
+        body:
+          "Tap any task and hit Ask the Coach — instant, personalized guidance trained on your business.",
+        cta: "What else is new",
+      },
+      {
+        variant: "badge-promo",
+        eyebrow: "LIMITED TIME",
+        headline: "Collect every badge → 1 month of Premium, free",
+        body:
+          "Earn every non-membership badge in the Badge Room and we'll credit you a free month of Premium. Limited time.",
+        cta: "View badges",
+      },
+    ],
   },
 ];
 

@@ -1,46 +1,47 @@
-# Smarter sign-in routing + AI "What's New" card with animated progress button
+# Update 2.5 — multi-page "What's New" + limited-time badge promo
 
-## Sign-in routing changes
+## Multi-page showcase template
 
-**Early sign-in (from the "What's your goal?" screen — the one right after age):**
+- ShowcaseUpdate now supports `pages: ShowcasePage[]` with per-page variant
+  (`ai-coach` or `badge-promo`), headline, body, eyebrow ("UPDATE 2.5"), and
+  CTA copy.
+- Each page enforces a **5-second hold** before the user can advance.
+  Visualized as a progress fill inside the CTA button (left-to-right).
+- Page 1 (`ai-coach`) reuses the existing Ask-the-Coach phone-mockup
+  animation. Page 2 (`badge-promo`) shows an animated trophy / badge
+  shower preview of the limited-time offer.
+- On the final page the CTA dismisses and routes to `/badges` so the user
+  lands on the offer screen.
 
-- If the account has an **active subscription** → skip everything and go straight to the dashboard. No business chooser, no paywall.
-- If the account's subscription **expired** → go to the paywall with the existing "Your account's subscription has expired." banner.
-- If no subscription history → continue normal onboarding.
+## Limited-time offer (badges page)
 
-**Late sign-in (after the user has already picked a business in onboarding):**
+- Banner pinned at the top of the Badge Room: "Collect every badge
+  (except Membership) by ⌛ → 1 free month of Premium."
+- Gold gradient with countdown pill and trophy icon.
 
-**Also show the user their id below their name on profile page but just simple text no copy and paste or anything just so they can tell me for customer support.**
+## Notification queue
 
+- Only one overlay at a time. RatePrompt is gated while the current
+  showcase has not been dismissed (`profile.lastShowcaseSeen !==
+  currentShowcase.id`) and while the BadgeToast is on screen.
+- `BadgeToast` only triggers for badges flagged `important: true`. The
+  rest still unlock silently in state and show up on the badges page.
+- Tapping a BadgeToast routes to `/badges`.
 
+## Update 2.5 first-launch behavior
 
-**And when I go back from the payment page take me to the animation right before it and keep me there and if I close and reopen the app while on any of the paywall pages then send me back to the create account or sign in oage**
+- The 2.5 showcase shows on the **first** dashboard open after the
+  tutorial (no longer deferred to the second launch). Subsequent
+  releases can opt into either behavior via `showOnFirstLaunch`.
 
-- Show a small business-chooser screen **only when** the cloud account has a *different* saved business/path than the one they just picked. If they match (or cloud has nothing saved), skip the chooser.
-- After choosing (or auto-skipping):
-  - Active subscription → straight to the dashboard.
-  - Expired subscription → paywall with the expired banner.
-  - No subscription history → normal paywall.
+## Reusable template
 
-This applies to both email sign-in and Apple sign-in.
-
-## "What's New" card redesign (AI feature)
-
-Reuse the existing showcase template (so future updates just need a new entry) and upgrade the visual to match the paywall's automation/AI feel:
-
-- **Brand-new AI-themed animation** sitting right below the headline + description, styled like the paywall feature card — soft rounded square with a subtle glow, animated AI elements (pulsing nodes, flowing connection lines, gentle sparkle) so it feels alive instead of just an emoji.
-- **Forced 4-second wait** before the user can dismiss — the wait is shown as a **progress bar that slowly lights up the inside of the "Got it" button from left to right**. When it fills completely the button becomes tappable and gives a soft haptic confirmation. No countdown number — pure visual fill.
-- Tapping outside or the small X does nothing during the wait, same as today.
-- Once dismissed, the id is remembered locally and synced to Supabase (`last_showcase_seen`), so it never shows again unless a new showcase id is added.
-- Still skipped on the very first dashboard open after sign-up/tutorial — shows on the next launch.
-
-The card stays a reusable template: shipping the next "What's New" just means adding a new entry to the showcase list with id, headline, body, and (optional) animation variant.
+When the user asks for "create an update 2.1" (or similar), copy the
+2.5 entry, bump the id + eyebrow + headline, swap the first page's
+content to the most prominent new feature (always with at least one
+animation variant), and append additional pages for other recent
+features.
 
 ## Delivery
 
-Push the new build to TestFlight automatically once everything compiles.
-
-## Out of scope (already shipped, leaving as-is)
-
-- Nightly 5pm sync, business-switch sync — already live in previous builds.
-
+- Bump app to **2.5.0** and push to TestFlight.

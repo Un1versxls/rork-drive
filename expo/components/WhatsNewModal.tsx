@@ -1,43 +1,53 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import { BrainCircuit, ChevronDown, Sparkles, X } from "lucide-react-native";
+import {
+  Award,
+  BrainCircuit,
+  ChevronDown,
+  ChevronRight,
+  Crown,
+  Flame,
+  Gem,
+  Sparkles,
+  Star,
+  Target,
+  Trophy,
+  X,
+  Zap,
+} from "lucide-react-native";
 
 import { Colors } from "@/constants/colors";
-import type { ShowcaseUpdate } from "@/constants/showcase-updates";
+import type { ShowcasePage, ShowcaseUpdate } from "@/constants/showcase-updates";
 import { triggerHaptic } from "@/lib/haptics";
 
-const HOLD_MS = 4000;
+const DEFAULT_HOLD_MS = 5000;
 
 interface Props {
   visible: boolean;
   update: ShowcaseUpdate | null;
   hapticsEnabled: boolean;
-  onDismiss: () => void;
+  onDismiss: (finalRoute: ShowcaseUpdate["finalRoute"]) => void;
 }
 
 /**
- * "What's New" overlay — styled like the onboarding try-free animation
- * (gold pill badge, bold headline, subtitle, phone mockup, fat CTA).
- *
- * The phone mockup mirrors the real in-app flow:
- *   1. Tasks list with a pulse on the first card
- *   2. Task detail panel slides up showing numbered subtask steps
- *   3. "Ask the Coach" button sits below the steps (same place as in-app)
- *   4. Tap → chat bubbles appear inside the panel, then it loops
- *
- * The 4-second hold is visualized as a progress fill that lights the
- * inside of the "Got it" button from left to right. Once full, the
- * button becomes tappable and fires a haptic.
- *
- * Reusable template — drop a new entry into SHOWCASE_UPDATES with a
- * new id, headline, and body to ship the next update card.
+ * Paged "What's New" overlay. Each page enforces a 5-second hold
+ * visualized inside the CTA button's progress fill. The first page
+ * always carries a visual animation (variant). The CTA on the final
+ * page dismisses and can route to a follow-up screen (e.g. /badges).
  */
 export function WhatsNewModal({ visible, update, hapticsEnabled, onDismiss }: Props) {
   const fade = useRef(new Animated.Value(0)).current;
   const lift = useRef(new Animated.Value(28)).current;
   const fill = useRef(new Animated.Value(0)).current;
   const ready = useRef(new Animated.Value(0)).current;
+  const pageSlide = useRef(new Animated.Value(0)).current;
   const [armed, setArmed] = useState<boolean>(false);
+  const [pageIndex, setPageIndex] = useState<number>(0);
+
+  const pages = update?.pages ?? [];
+  const page: ShowcasePage | null = pages[pageIndex] ?? null;
+  const isLast = page !== null && pageIndex >= pages.length - 1;
+  const holdMs = page?.holdMs ?? DEFAULT_HOLD_MS;
 
   useEffect(() => {
     if (!visible) {
@@ -45,19 +55,30 @@ export function WhatsNewModal({ visible, update, hapticsEnabled, onDismiss }: Pr
       lift.setValue(28);
       fill.setValue(0);
       ready.setValue(0);
+      pageSlide.setValue(0);
       setArmed(false);
+      setPageIndex(0);
       return;
     }
-    setArmed(false);
     Animated.parallel([
       Animated.timing(fade, { toValue: 1, duration: 280, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.spring(lift, { toValue: 0, friction: 8, tension: 70, useNativeDriver: true }),
     ]).start();
     if (hapticsEnabled && Platform.OS !== "web") triggerHaptic("light", true);
+  }, [visible, fade, lift, fill, ready, pageSlide, hapticsEnabled]);
+
+  // Per-page 5-second hold timer + entrance.
+  useEffect(() => {
+    if (!visible || !page) return;
+    fill.setValue(0);
+    ready.setValue(0);
+    setArmed(false);
+    pageSlide.setValue(20);
+    Animated.timing(pageSlide, { toValue: 0, duration: 300, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
 
     Animated.timing(fill, {
       toValue: 1,
-      duration: HOLD_MS,
+      duration: holdMs,
       easing: Easing.inOut(Easing.quad),
       useNativeDriver: false,
     }).start();
@@ -66,40 +87,49 @@ export function WhatsNewModal({ visible, update, hapticsEnabled, onDismiss }: Pr
       setArmed(true);
       Animated.spring(ready, { toValue: 1, friction: 6, tension: 90, useNativeDriver: true }).start();
       if (hapticsEnabled && Platform.OS !== "web") triggerHaptic("success", true);
-    }, HOLD_MS);
+    }, holdMs);
     return () => clearTimeout(t);
-  }, [visible, fade, lift, fill, ready, hapticsEnabled]);
+  }, [visible, pageIndex, page, holdMs, fill, ready, pageSlide, hapticsEnabled]);
 
-  if (!visible || !update) return null;
+  if (!visible || !update || !page) return null;
 
   const fillWidth = fill.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] });
   const readyScale = ready.interpolate({ inputRange: [0, 1], outputRange: [1, 1.02] });
 
-  const dismiss = () => {
+  const advance = () => {
     if (!armed) return;
     triggerHaptic("light", hapticsEnabled);
-    Animated.parallel([
-      Animated.timing(fade, { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.timing(lift, { toValue: 16, duration: 200, useNativeDriver: true }),
-    ]).start(() => onDismiss());
+    if (isLast) {
+      Animated.parallel([
+        Animated.timing(fade, { toValue: 0, duration: 200, useNativeDriver: true }),
+        Animated.timing(lift, { toValue: 16, duration: 200, useNativeDriver: true }),
+      ]).start(() => onDismiss(update.finalRoute ?? null));
+      return;
+    }
+    setPageIndex((i) => i + 1);
   };
+
+  const totalPages = pages.length;
 
   return (
     <Animated.View pointerEvents="auto" style={[styles.backdrop, { opacity: fade }]}>
       <Pressable style={StyleSheet.absoluteFill} onPress={() => { /* tap outside is a no-op */ }} />
       <Animated.View style={[styles.card, { transform: [{ translateY: lift }] }]}>
-        <View style={styles.eyebrowPill}>
-          <Sparkles size={11} color={Colors.accentGold} />
-          <Text style={styles.eyebrowText}>WHAT&apos;S NEW</Text>
-        </View>
-        <Text style={styles.headline}>{update.headline}</Text>
-        <Text style={styles.body}>{update.body}</Text>
+        <Animated.View style={{ width: "100%", alignItems: "center", transform: [{ translateY: pageSlide }] }}>
+          <View style={styles.eyebrowPill}>
+            <Sparkles size={11} color={Colors.accentGold} />
+            <Text style={styles.eyebrowText}>{page.eyebrow}</Text>
+          </View>
+          <Text style={styles.headline}>{page.headline}</Text>
+          <Text style={styles.body}>{page.body}</Text>
 
-        <PhoneCoachShowcase />
+          {page.variant === "ai-coach" ? <PhoneCoachShowcase /> : null}
+          {page.variant === "badge-promo" ? <BadgePromoShowcase /> : null}
+        </Animated.View>
 
         <Animated.View style={{ transform: [{ scale: readyScale }], width: "100%", alignItems: "stretch" }}>
           <Pressable
-            onPress={dismiss}
+            onPress={advance}
             disabled={!armed}
             style={styles.cta}
             testID="whats-new-dismiss"
@@ -112,15 +142,31 @@ export function WhatsNewModal({ visible, update, hapticsEnabled, onDismiss }: Pr
               ]}
             />
             <View style={styles.ctaBorder} pointerEvents="none" />
-            <Text style={[styles.ctaText, { color: armed ? "#ffffff" : "#cfcfcf" }]}>
-              {armed ? "Got it" : "Hold on…"}
-            </Text>
+            <View style={styles.ctaContent} pointerEvents="none">
+              <Text style={[styles.ctaText, { color: armed ? "#ffffff" : "#cfcfcf" }]}>
+                {armed ? page.cta : "Hold on…"}
+              </Text>
+              {armed && !isLast ? (
+                <ChevronRight color="#ffffff" size={16} strokeWidth={3} />
+              ) : null}
+            </View>
           </Pressable>
         </Animated.View>
 
+        {totalPages > 1 ? (
+          <View style={styles.dots} pointerEvents="none">
+            {pages.map((_, i) => (
+              <View
+                key={i}
+                style={[styles.dot, i === pageIndex ? styles.dotActive : null]}
+              />
+            ))}
+          </View>
+        ) : null}
+
         <View style={styles.closeRow} pointerEvents={armed ? "auto" : "none"}>
           <Pressable
-            onPress={dismiss}
+            onPress={advance}
             hitSlop={12}
             style={({ pressed }) => [styles.close, { opacity: armed ? (pressed ? 0.5 : 1) : 0.3 }]}
             testID="whats-new-close"
@@ -192,7 +238,6 @@ function PhoneCoachShowcase() {
     const runLoop = async () => {
       while (!cancelled) {
         reset();
-        // phone enter
         await new Promise<void>((resolve) => {
           Animated.sequence([
             Animated.delay(120),
@@ -209,7 +254,6 @@ function PhoneCoachShowcase() {
         await new Promise<void>((r) => setTimeout(r, 520));
         if (cancelled) return;
 
-        // tap task card
         Animated.parallel([
           Animated.timing(stepValue, { toValue: STEP.TAP_TASK, duration: 240, useNativeDriver: false }),
           Animated.sequence([
@@ -221,13 +265,11 @@ function PhoneCoachShowcase() {
         await new Promise<void>((r) => setTimeout(r, 740));
         if (cancelled) return;
 
-        // detail panel slides up showing steps
         Animated.parallel([
           Animated.timing(stepValue, { toValue: STEP.DETAIL, duration: 280, useNativeDriver: false }),
           Animated.spring(detailPanel, { toValue: 1, friction: 8, tension: 60, useNativeDriver: true }),
         ]).start();
 
-        // tick each step one by one
         await new Promise<void>((r) => setTimeout(r, 700));
         if (cancelled) return;
         Animated.timing(stepChecks[0], { toValue: 1, duration: 260, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
@@ -237,7 +279,6 @@ function PhoneCoachShowcase() {
         await new Promise<void>((r) => setTimeout(r, 600));
         if (cancelled) return;
 
-        // tap "Ask the Coach" button
         Animated.parallel([
           Animated.timing(stepValue, { toValue: STEP.ASK, duration: 200, useNativeDriver: false }),
           Animated.sequence([
@@ -249,7 +290,6 @@ function PhoneCoachShowcase() {
         await new Promise<void>((r) => setTimeout(r, 600));
         if (cancelled) return;
 
-        // chat opens
         Animated.parallel([
           Animated.timing(stepValue, { toValue: STEP.CHAT, duration: 260, useNativeDriver: false }),
           Animated.timing(chatFade, { toValue: 1, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
@@ -265,7 +305,6 @@ function PhoneCoachShowcase() {
         await new Promise<void>((r) => setTimeout(r, 1900));
         if (cancelled) return;
 
-        // reset chat & detail
         Animated.parallel([
           Animated.timing(detailPanel, { toValue: 0, duration: 360, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
           Animated.timing(chatFade, { toValue: 0, duration: 260, useNativeDriver: true }),
@@ -275,7 +314,6 @@ function PhoneCoachShowcase() {
         await new Promise<void>((r) => setTimeout(r, 420));
         if (cancelled) return;
 
-        // phone tilts out
         await new Promise<void>((resolve) => {
           Animated.timing(entry, { toValue: 2, duration: 480, easing: Easing.in(Easing.cubic), useNativeDriver: true }).start(() => resolve());
         });
@@ -300,8 +338,6 @@ function PhoneCoachShowcase() {
 
   const detailTranslate = detailPanel.interpolate({ inputRange: [0, 1], outputRange: [180, 0] });
 
-  // Highlight the task card the instant we tap it, then hold the
-  // highlight while the detail panel is up.
   const taskBg = stepValue.interpolate({ inputRange: [0, 1, 2, 3, 4], outputRange: ["#ffffff", "#fff8e1", "#fff8e1", "#fff8e1", "#fff8e1"] });
   const taskBorder = stepValue.interpolate({ inputRange: [0, 1, 2, 3, 4], outputRange: ["#eeeeee", Colors.accentGold, Colors.accentGold, Colors.accentGold, Colors.accentGold] });
 
@@ -375,7 +411,6 @@ function PhoneCoachShowcase() {
               <Text style={styles.taskTitleDim}>Write 3 offer bullets</Text>
             </View>
 
-            {/* Task Detail Panel — slides up from the bottom */}
             <Animated.View
               pointerEvents="none"
               style={[
@@ -412,7 +447,6 @@ function PhoneCoachShowcase() {
                 })}
               </View>
 
-              {/* "Ask the Coach" button — same place as in-app */}
               <View style={styles.coachBtn}>
                 <View style={styles.coachIcon}>
                   <BrainCircuit size={9} color={Colors.accentDeep} />
@@ -429,7 +463,6 @@ function PhoneCoachShowcase() {
                 </View>
               </View>
 
-              {/* Chat overlay — appears once Ask the Coach is tapped */}
               <Animated.View
                 pointerEvents="none"
                 style={[styles.chatOverlay, { opacity: chatFade }]}
@@ -469,6 +502,182 @@ function PhoneCoachShowcase() {
             </Animated.View>
           </View>
         </View>
+      </Animated.View>
+    </View>
+  );
+}
+
+/**
+ * Limited-time badge promo animation. Big trophy in center with a ring
+ * of badge icons orbiting and pulsing in, plus a "FREE MONTH" tag and
+ * confetti sparkles. Communicates the offer without text repetition.
+ */
+function BadgePromoShowcase() {
+  const trophyPulse = useRef(new Animated.Value(0)).current;
+  const trophyEntry = useRef(new Animated.Value(0)).current;
+  const orbit = useRef(new Animated.Value(0)).current;
+  const sparkleA = useRef(new Animated.Value(0)).current;
+  const sparkleB = useRef(new Animated.Value(0)).current;
+  const tagWiggle = useRef(new Animated.Value(0)).current;
+  const beam = useRef(new Animated.Value(0)).current;
+  const badgeAnims = useRef(
+    Array.from({ length: 6 }, () => new Animated.Value(0)),
+  ).current;
+
+  useEffect(() => {
+    Animated.spring(trophyEntry, { toValue: 1, friction: 6, tension: 90, useNativeDriver: true }).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(trophyPulse, { toValue: 1, duration: 1100, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(trophyPulse, { toValue: 0, duration: 1100, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ]),
+    ).start();
+
+    Animated.loop(
+      Animated.timing(orbit, { toValue: 1, duration: 9000, easing: Easing.linear, useNativeDriver: true }),
+    ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(sparkleA, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(sparkleA, { toValue: 0.2, duration: 900, useNativeDriver: true }),
+      ]),
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.delay(450),
+        Animated.timing(sparkleB, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(sparkleB, { toValue: 0.2, duration: 900, useNativeDriver: true }),
+      ]),
+    ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(tagWiggle, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(tagWiggle, { toValue: 0, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ]),
+    ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(beam, { toValue: 1, duration: 2200, easing: Easing.linear, useNativeDriver: true }),
+        Animated.delay(400),
+      ]),
+    ).start();
+
+    // Stagger badge unlocks in sequence then keep them on.
+    badgeAnims.forEach((a, i) => {
+      Animated.sequence([
+        Animated.delay(280 + i * 180),
+        Animated.spring(a, { toValue: 1, friction: 5, tension: 100, useNativeDriver: true }),
+      ]).start();
+    });
+  }, [trophyEntry, trophyPulse, orbit, sparkleA, sparkleB, tagWiggle, beam, badgeAnims]);
+
+  // Badge ring layout — 6 slots around the trophy.
+  const RADIUS = 92;
+  const badges = useMemo(
+    () => [
+      { Icon: Flame, color: "#ef4444" },
+      { Icon: Star, color: "#f59e0b" },
+      { Icon: Zap, color: "#d4af37" },
+      { Icon: Target, color: "#10b981" },
+      { Icon: Gem, color: "#6366f1" },
+      { Icon: Crown, color: "#a855f7" },
+    ],
+    [],
+  );
+
+  const orbitRotate = orbit.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
+  const orbitCounter = orbit.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "-360deg"] });
+
+  const trophyScale = Animated.add(
+    trophyEntry.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }),
+    trophyPulse.interpolate({ inputRange: [0, 1], outputRange: [0, 0.08] }),
+  );
+  const trophyGlowOpacity = trophyPulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.7] });
+  const trophyGlowScale = trophyPulse.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.15] });
+
+  const tagRotate = tagWiggle.interpolate({ inputRange: [0, 1], outputRange: ["-6deg", "6deg"] });
+  const tagBounce = tagWiggle.interpolate({ inputRange: [0, 1], outputRange: [0, -3] });
+
+  const beamTranslate = beam.interpolate({ inputRange: [0, 1], outputRange: [-260, 260] });
+
+  return (
+    <View style={styles.promoWrap}>
+      {/* Diagonal sweep beam */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.promoBeam,
+          { transform: [{ translateX: beamTranslate }, { rotate: "20deg" }] },
+        ]}
+      />
+
+      {/* Glow under trophy */}
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.promoGlow, { opacity: trophyGlowOpacity, transform: [{ scale: trophyGlowScale }] }]}
+      />
+
+      {/* Sparkles */}
+      <Animated.View pointerEvents="none" style={[styles.spark, styles.sparkTL, { opacity: sparkleA }]}>
+        <Sparkles size={14} color="#d4af37" />
+      </Animated.View>
+      <Animated.View pointerEvents="none" style={[styles.spark, styles.sparkTR, { opacity: sparkleB }]}>
+        <Sparkles size={10} color="#fde68a" />
+      </Animated.View>
+      <Animated.View pointerEvents="none" style={[styles.spark, styles.sparkBL, { opacity: sparkleB }]}>
+        <Sparkles size={12} color="#fde68a" />
+      </Animated.View>
+      <Animated.View pointerEvents="none" style={[styles.spark, styles.sparkBR, { opacity: sparkleA }]}>
+        <Sparkles size={9} color="#d4af37" />
+      </Animated.View>
+
+      {/* Orbiting badge ring */}
+      <Animated.View pointerEvents="none" style={[styles.orbitRing, { transform: [{ rotate: orbitRotate }] }]}>
+        {badges.map(({ Icon, color }, i) => {
+          const angle = (i / badges.length) * Math.PI * 2;
+          const x = Math.cos(angle) * RADIUS;
+          const y = Math.sin(angle) * RADIUS;
+          const anim = badgeAnims[i];
+          const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+          const opacity = anim;
+          return (
+            <Animated.View
+              key={i}
+              style={[
+                styles.badgeChip,
+                {
+                  transform: [{ translateX: x }, { translateY: y }, { scale }],
+                  opacity,
+                },
+              ]}
+            >
+              {/* Counter-rotate so icons stay upright. */}
+              <Animated.View style={{ transform: [{ rotate: orbitCounter }] }}>
+                <Icon color="#ffffff" size={16} strokeWidth={2.4} />
+              </Animated.View>
+            </Animated.View>
+          );
+        })}
+      </Animated.View>
+
+      {/* Trophy hero */}
+      <Animated.View style={[styles.trophyCircle, { transform: [{ scale: trophyScale }] }]}>
+        <Trophy color="#ffffff" size={42} strokeWidth={2.2} />
+      </Animated.View>
+
+      {/* FREE MONTH tag */}
+      <Animated.View
+        style={[
+          styles.freeTag,
+          { transform: [{ rotate: tagRotate }, { translateY: tagBounce }] },
+        ]}
+      >
+        <Award color="#ffffff" size={11} strokeWidth={3} />
+        <Text style={styles.freeTagText}>1 MONTH FREE</Text>
       </Animated.View>
     </View>
   );
@@ -530,7 +739,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
 
-  // Phone-mockup showcase
+  // Coach showcase
   showcase: {
     width: "100%",
     height: 300,
@@ -661,7 +870,6 @@ const styles = StyleSheet.create({
     gap: 5,
   },
 
-  // Detail panel (mirrors TaskDetailPanel layout)
   detailPanel: {
     position: "absolute",
     left: 4,
@@ -715,7 +923,6 @@ const styles = StyleSheet.create({
   stepCheckMark: { position: "absolute", color: "#ffffff", fontSize: 8, fontWeight: "900", lineHeight: 9 },
   stepLabel: { color: Colors.text, fontSize: 7, fontWeight: "600", flex: 1 },
 
-  // Ask the Coach button (mirrors in-app coachToggle)
   coachBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -757,7 +964,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(212,175,55,0.25)",
   },
 
-  // Chat overlay (fills the detail panel once Ask the Coach is tapped)
   chatOverlay: {
     position: "absolute",
     left: 6,
@@ -808,6 +1014,91 @@ const styles = StyleSheet.create({
   },
   coachAnswer: { color: "#e0e0e0", fontSize: 7, lineHeight: 9, fontWeight: "500" },
 
+  // Badge promo showcase
+  promoWrap: {
+    width: "100%",
+    height: 260,
+    borderRadius: 22,
+    backgroundColor: "#0b0b10",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.35)",
+    marginBottom: 18,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  promoBeam: {
+    position: "absolute",
+    width: 80,
+    height: 600,
+    backgroundColor: "rgba(212,175,55,0.10)",
+  },
+  promoGlow: {
+    position: "absolute",
+    width: 200,
+    height: 200,
+    borderRadius: 999,
+    backgroundColor: "rgba(212,175,55,0.45)",
+  },
+  spark: { position: "absolute" },
+  sparkTL: { top: 20, left: 26 },
+  sparkTR: { top: 30, right: 28 },
+  sparkBL: { bottom: 26, left: 30 },
+  sparkBR: { bottom: 22, right: 26 },
+
+  orbitRing: {
+    position: "absolute",
+    width: 200,
+    height: 200,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeChip: {
+    position: "absolute",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(212,175,55,0.95)",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#d4af37",
+    shadowOpacity: 0.7,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  trophyCircle: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    backgroundColor: Colors.accentGold,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#d4af37",
+    shadowOpacity: 0.8,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 6 },
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  freeTag: {
+    position: "absolute",
+    bottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: "#ef4444",
+    shadowColor: "#ef4444",
+    shadowOpacity: 0.7,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  freeTagText: { color: "#ffffff", fontSize: 11, fontWeight: "900", letterSpacing: 1.2 },
+
   // CTA with progress fill
   cta: {
     height: 52,
@@ -830,12 +1121,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.08)",
   },
+  ctaContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    zIndex: 2,
+  },
   ctaText: {
     fontWeight: "900",
     fontSize: 15,
     letterSpacing: 0.3,
-    zIndex: 2,
   },
+
+  dots: { flexDirection: "row", gap: 6, marginTop: 12 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#e5e5e5" },
+  dotActive: { backgroundColor: Colors.text, width: 18 },
 
   closeRow: { position: "absolute", top: 12, right: 12 },
   close: {

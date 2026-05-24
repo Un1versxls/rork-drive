@@ -3,16 +3,25 @@ import { Modal, Pressable, StyleSheet, Text, View, Linking } from "react-native"
 import { Star } from "lucide-react-native";
 
 import { Colors } from "@/constants/colors";
+import { currentShowcase } from "@/constants/showcase-updates";
 import { useApp } from "@/providers/AppProvider";
 
 const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
 const APP_STORE_URL = "https://apps.apple.com/app/id0000000000";
 
 export function RatePrompt() {
-  const { state, markRated, markRatePromptSeen, hasActiveSubscription } = useApp();
+  const { state, markRated, markRatePromptSeen, hasActiveSubscription, pendingBadges } = useApp();
   const [visible, setVisible] = useState<boolean>(false);
 
+  // Single-notification policy: never compete with the "What's New"
+  // showcase or an active BadgeToast. Wait for those to clear first.
+  const showcase = currentShowcase();
+  const showcasePending = !!showcase && state.profile.lastShowcaseSeen !== showcase.id;
+  const badgeToastActive = pendingBadges.length > 0;
+  const blocked = showcasePending || badgeToastActive;
+
   useEffect(() => {
+    if (blocked) return;
     if (!hasActiveSubscription) return;
     if (state.profile.hasRated) return;
     const last = state.profile.lastRatePromptAt;
@@ -26,7 +35,7 @@ export function RatePrompt() {
       const t = setTimeout(() => setVisible(true), 4000);
       return () => clearTimeout(t);
     }
-  }, [hasActiveSubscription, state.profile.hasRated, state.profile.lastRatePromptAt]);
+  }, [blocked, hasActiveSubscription, state.profile.hasRated, state.profile.lastRatePromptAt]);
 
   const onRate = () => {
     setVisible(false);

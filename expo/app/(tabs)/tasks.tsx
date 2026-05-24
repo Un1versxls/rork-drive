@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { Check, Flame, RotateCcw, X } from "lucide-react-native";
 
 import { BadgeToast } from "@/components/BadgeToast";
@@ -33,6 +34,7 @@ function greeting(): string {
 const SHOWCASE_LAUNCH_KEY = "drive.showcase.dashboardLaunchSeen";
 
 export default function TasksScreen() {
+  const router = useRouter();
   const { state, today, currentPlan, completeTask, skipTask, undoTask, setProfileField, pendingBadges, dismissPendingBadge, dismissCurrentShowcase } = useApp();
   const [showcaseVisible, setShowcaseVisible] = useState<boolean>(false);
   const showcaseRef = useRef<boolean>(false);
@@ -68,9 +70,14 @@ export default function TasksScreen() {
   const done = useMemo(() => today.list.filter((t) => t.status !== "pending"), [today.list]);
   const tier = getStreakTier(state.streak);
 
-  // "What's New" showcase: only on second+ dashboard launch (skip first
-  // session after sign-up / tutorial). Marks current showcase as seen
-  // once dismissed, then never re-shows unless we ship a new id.
+  // "What's New" showcase.
+  //
+  // - `showOnFirstLaunch` showcases (major releases) appear on the very
+  //   first dashboard open after onboarding.
+  // - Otherwise we defer to the SECOND dashboard launch so the first
+  //   post-onboarding session stays clean.
+  // Marks current showcase as seen once dismissed; never re-shows on the
+  // same id afterwards.
   useEffect(() => {
     if (!state.onboarded) return;
     if (!state.profile.firstTourSeen) return;
@@ -81,13 +88,13 @@ export default function TasksScreen() {
     showcaseRef.current = true;
     (async () => {
       try {
-        const flag = await AsyncStorage.getItem(SHOWCASE_LAUNCH_KEY);
-        if (!flag) {
-          // First dashboard visit on this device — defer to next launch.
-          await AsyncStorage.setItem(SHOWCASE_LAUNCH_KEY, "1");
-          return;
+        if (!showcase.showOnFirstLaunch) {
+          const flag = await AsyncStorage.getItem(SHOWCASE_LAUNCH_KEY);
+          if (!flag) {
+            await AsyncStorage.setItem(SHOWCASE_LAUNCH_KEY, "1");
+            return;
+          }
         }
-        // Small delay so dashboard renders first.
         setTimeout(() => setShowcaseVisible(true), 700);
       } catch (e) {
         console.log("[tasks] showcase check failed", e);
@@ -239,9 +246,12 @@ export default function TasksScreen() {
         visible={showcaseVisible}
         update={currentShowcase()}
         hapticsEnabled={state.profile.hapticsEnabled}
-        onDismiss={() => {
+        onDismiss={(finalRoute) => {
           setShowcaseVisible(false);
           dismissCurrentShowcase();
+          if (finalRoute) {
+            try { router.push(finalRoute); } catch (e) { console.log("[tasks] showcase route failed", e); }
+          }
         }}
       />
     </View>

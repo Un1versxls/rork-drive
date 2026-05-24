@@ -9,12 +9,14 @@ import {
   Check,
   CheckCircle2,
   ChevronLeft,
+  Clock,
   Compass,
   Cpu,
   Crown,
   Diamond,
   Flame,
   Gem,
+  Gift,
   Lock,
   Medal,
   Rocket,
@@ -150,6 +152,12 @@ export default function BadgesScreen() {
   const unlockedBadges = new Set(state.unlockedBadges);
   const totalUnlocked = unlockedBadges.size;
 
+  // Limited-time offer: collect every non-membership badge -> free month of Premium.
+  const offerBadges = useMemo(() => BADGES.filter((b) => (b.category ?? "tasks") !== "premium"), []);
+  const offerEarned = offerBadges.filter((b) => unlockedBadges.has(b.id)).length;
+  const offerRemaining = Math.max(0, offerBadges.length - offerEarned);
+  const offerComplete = offerRemaining === 0;
+
   const grouped = useMemo(() => {
     return CATEGORY_ORDER.map((cat) => {
       const items = BADGES.filter((b) => (b.category ?? "tasks") === cat.key);
@@ -197,6 +205,39 @@ export default function BadgesScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <View style={styles.offerBanner}>
+            <View style={styles.offerShine} pointerEvents="none" />
+            <View style={styles.offerHeader}>
+              <View style={styles.offerIcon}>
+                <Gift color="#ffffff" size={20} strokeWidth={2.4} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={styles.offerEyebrowRow}>
+                  <View style={styles.offerEyebrow}>
+                    <Clock color="#ffffff" size={10} strokeWidth={3} />
+                    <Text style={styles.offerEyebrowText}>LIMITED TIME</Text>
+                  </View>
+                </View>
+                <Text style={styles.offerTitle}>1 Month of Premium, free</Text>
+                <Text style={styles.offerSub}>
+                  {offerComplete
+                    ? "You did it! Tap to redeem your free month."
+                    : `Collect every non-membership badge — ${offerEarned} of ${offerBadges.length} earned.`}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.offerBarTrack}>
+              <View style={[styles.offerBarFill, { width: `${Math.round((offerEarned / offerBadges.length) * 100)}%` }]} />
+            </View>
+            <View style={styles.offerFootRow}>
+              <Text style={styles.offerMeta}>{offerComplete ? "Reward unlocked" : `${offerRemaining} to go`}</Text>
+              <View style={styles.offerChip}>
+                <Trophy color={Colors.accentDeep} size={11} />
+                <Text style={styles.offerChipText}>{offerEarned}/{offerBadges.length}</Text>
+              </View>
+            </View>
+          </View>
+
           <View style={styles.previewCard}>
             <Text style={styles.previewLabel}>EQUIPPED EFFECT</Text>
             <NameBadge name={previewName} effect={state.profile.equippedEffect} size={28} />
@@ -323,6 +364,59 @@ const styles = StyleSheet.create({
   totalPill: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: "#fffbe6", borderWidth: 1, borderColor: "#f1e2a4" },
   totalPillText: { color: Colors.accentDeep, fontWeight: "900", fontSize: 12 },
   scroll: { paddingHorizontal: 16, paddingBottom: Platform.OS === "ios" ? 60 : 40 },
+
+  offerBanner: {
+    borderRadius: 20,
+    padding: 16,
+    marginTop: 4,
+    marginBottom: 16,
+    backgroundColor: "#1a1410",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.5)",
+    overflow: "hidden",
+    shadowColor: "#d4af37",
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+  },
+  offerShine: {
+    position: "absolute",
+    top: -40, left: -60,
+    width: 140, height: 200,
+    backgroundColor: "rgba(255,215,120,0.10)",
+    transform: [{ rotate: "20deg" }],
+  },
+  offerHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
+  offerIcon: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: Colors.accentGold,
+    alignItems: "center", justifyContent: "center",
+    shadowColor: "#d4af37", shadowOpacity: 0.7, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
+  },
+  offerEyebrowRow: { flexDirection: "row" },
+  offerEyebrow: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999,
+    backgroundColor: "#ef4444",
+    marginBottom: 4,
+  },
+  offerEyebrowText: { color: "#ffffff", fontSize: 9, fontWeight: "900", letterSpacing: 1.2 },
+  offerTitle: { color: "#ffffff", fontSize: 16, fontWeight: "900", letterSpacing: -0.3 },
+  offerSub: { color: "#cfc6b1", fontSize: 12, marginTop: 2, lineHeight: 16 },
+  offerBarTrack: {
+    height: 6, borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.10)",
+    marginTop: 14, overflow: "hidden",
+  },
+  offerBarFill: { height: "100%", backgroundColor: Colors.accentGold, borderRadius: 3 },
+  offerFootRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 10 },
+  offerMeta: { color: "#cfc6b1", fontSize: 11, fontWeight: "700" },
+  offerChip: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
+    backgroundColor: "#fffbe6",
+  },
+  offerChipText: { color: Colors.accentDeep, fontSize: 11, fontWeight: "900" },
 
   previewCard: {
     padding: 18, borderRadius: 20, backgroundColor: "#fafafa",

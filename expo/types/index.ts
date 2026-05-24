@@ -236,6 +236,8 @@ export interface Badge {
   threshold: number;
   metric: BadgeMetric;
   category?: "tasks" | "streak" | "points" | "explorer" | "premium";
+  /** When true, unlocking this badge surfaces a top-of-screen BadgeToast. Otherwise the unlock is silent and only visible on the Badges page. */
+  important?: boolean;
 }
 
 export interface AppState {

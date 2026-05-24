@@ -4,6 +4,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { BADGES } from "@/constants/badges";
+
+const IMPORTANT_BADGE_IDS: ReadonlySet<string> = new Set(
+  BADGES.filter((b) => b.important === true).map((b) => b.id),
+);
+/** Should this freshly-unlocked badge surface a top-of-screen toast? */
+function isImportantBadgeId(id: string): boolean {
+  return IMPORTANT_BADGE_IDS.has(id);
+}
 import { ACHIEVEMENTS } from "@/constants/achievements";
 import { getPlan, PLANS } from "@/constants/plans";
 import { generateDailyTasks } from "@/constants/task-pool";
@@ -512,7 +520,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       setPendingAchievements((p) => [...p, ...ach.newlyUnlocked]);
     }
     if (badge.newlyUnlocked.length > 0) {
-      setPendingBadges((p) => [...p, ...badge.newlyUnlocked]);
+      setPendingBadges((p) => [...p, ...badge.newlyUnlocked.filter(isImportantBadgeId)]);
     }
   }, [commit, syncToSupabase]);
 
@@ -549,7 +557,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     commit(next);
     syncToSupabase(next);
     if (ach.newlyUnlocked.length > 0) setPendingAchievements((p) => [...p, ...ach.newlyUnlocked]);
-    if (badge.newlyUnlocked.length > 0) setPendingBadges((p) => [...p, ...badge.newlyUnlocked]);
+    if (badge.newlyUnlocked.length > 0) setPendingBadges((p) => [...p, ...badge.newlyUnlocked.filter(isImportantBadgeId)]);
   }, [commit, syncToSupabase]);
 
   const cancelSubscription = useCallback(() => {
@@ -708,7 +716,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       }, 350);
     }
     if (badge.newlyUnlocked.length > 0) {
-      setPendingBadges((p) => [...p, ...badge.newlyUnlocked]);
+      setPendingBadges((p) => [...p, ...badge.newlyUnlocked.filter(isImportantBadgeId)]);
     }
   }, [commit]);
 
