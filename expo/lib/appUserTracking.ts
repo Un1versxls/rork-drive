@@ -210,17 +210,17 @@ const APP_USER_COLUMNS = "id, user_id, apple_user_id, email, name, auth_provider
  * stale `active=true` row with an expired date is not counted as active.
  */
 export function isSubscriptionActiveFromRow(row: AppUserRow): boolean {
+  // Treat the `subscription_active` flag as the source of truth — if the
+  // cloud row says the user is active (manual grants, RevenueCat sync,
+  // promo codes, etc.), trust it even when expiry dates are missing or
+  // look stale. Falls back to date checks only when active is not true.
+  if (row.subscription_active === true) return true;
   const now = Date.now();
   const trialEnds = row.trial_ends_at ? new Date(row.trial_ends_at).getTime() : 0;
   const subEnds = row.subscription_expires_at ? new Date(row.subscription_expires_at).getTime() : 0;
   if (trialEnds && trialEnds > now) return true;
   if (subEnds && subEnds > now) return true;
-  if ((trialEnds && trialEnds <= now) || (subEnds && subEnds <= now)) {
-    // Dates exist and are all in the past → expired regardless of the
-    // active flag (covers cases where RC has already moved on).
-    return false;
-  }
-  return row.subscription_active === true;
+  return false;
 }
 
 /** True if there's any past subscription record on this row. */

@@ -172,10 +172,11 @@ export default function PaywallScreen() {
       return;
     }
     // Outside of in-app upgrade flow, the screen immediately before the
-    // paywall is the try-free animation. Always send the user back there
-    // so the experience is consistent whether we got here via push, replace,
-    // or the expired-subscription redirect (which loses history).
-    router.replace("/onboarding/try-free");
+    // paywall is the feature-preview animation (the phone mockup that
+    // showcases tasks / ask coach / streaks / badges). Always send the
+    // user back there so the experience is consistent whether we got
+    // here via push, replace, or the expired-subscription redirect.
+    router.replace("/onboarding/feature-preview");
   };
 
   const loadingPkgs = Platform.OS !== "web" && offeringsQuery.isLoading;

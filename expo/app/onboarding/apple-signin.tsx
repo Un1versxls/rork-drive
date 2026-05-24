@@ -27,22 +27,21 @@ export default function AppleSignInScreen() {
     submitSurveyResponse(state.profile, finalEmail, user?.id ?? null).catch((e) =>
       console.log("[apple] survey", e),
     );
-    upsertAppUser({
-      appleUserId: appleUserId ?? state.profile.appleUserId ?? null,
-      email: finalEmail || null,
-      name: finalName,
-      subscription: {
-        plan: state.profile.subscription.plan,
-        cycle: state.profile.subscription.cycle,
-        active: state.profile.subscription.active,
-        trial: state.profile.subscription.trial,
-        source: state.profile.subscription.source,
-        startedAt: state.profile.subscription.startedAt,
-      },
-    }).catch((e) => console.log("[apple] app_users", e));
+
+    // Fetch FIRST so we can detect an existing active subscription before
+    // any write clobbers the cloud row's `subscription_active` flag with
+    // the freshly-onboarding device's (still inactive) local state.
     const row = await fetchAppUser({ userId: supabaseUserId, email: finalEmail || null });
     if (row) {
       const ready = hydrateFromAppUser(row);
+      // Identity update only — do NOT touch subscription fields here.
+      upsertAppUser({
+        userId: supabaseUserId,
+        appleUserId: appleUserId ?? state.profile.appleUserId ?? null,
+        email: finalEmail || null,
+        name: finalName,
+        authProvider: "apple",
+      }).catch((e) => console.log("[apple] app_users identity", e));
       if (ready) {
         if (isSubscriptionActiveFromRow(row)) {
           console.log("[apple] existing user — active sub, going to dashboard");
@@ -57,7 +56,25 @@ export default function AppleSignInScreen() {
         router.replace("/onboarding/paywall");
         return;
       }
+    } else {
+      // Brand-new account — safe to write local subscription state.
+      upsertAppUser({
+        userId: supabaseUserId,
+        appleUserId: appleUserId ?? state.profile.appleUserId ?? null,
+        email: finalEmail || null,
+        name: finalName,
+        authProvider: "apple",
+        subscription: {
+          plan: state.profile.subscription.plan,
+          cycle: state.profile.subscription.cycle,
+          active: state.profile.subscription.active,
+          trial: state.profile.subscription.trial,
+          source: state.profile.subscription.source,
+          startedAt: state.profile.subscription.startedAt,
+        },
+      }).catch((e) => console.log("[apple] app_users new", e));
     }
+
     if (state.profile.goal === "grow_business") {
       if (state.profile.business) {
         router.replace("/onboarding/plan-summary");

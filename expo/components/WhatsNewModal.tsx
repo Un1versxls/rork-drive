@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import { X, Sparkles } from "lucide-react-native";
+import { BrainCircuit, ChevronDown, Sparkles, X } from "lucide-react-native";
 
 import { Colors } from "@/constants/colors";
 import type { ShowcaseUpdate } from "@/constants/showcase-updates";
@@ -18,8 +18,12 @@ interface Props {
 /**
  * "What's New" overlay — styled like the onboarding try-free animation
  * (gold pill badge, bold headline, subtitle, phone mockup, fat CTA).
- * The phone mockup loops a mini AI showcase: tap a task → AI panel
- * slides up with a chat bubble + sparkle effects.
+ *
+ * The phone mockup mirrors the real in-app flow:
+ *   1. Tasks list with a pulse on the first card
+ *   2. Task detail panel slides up showing numbered subtask steps
+ *   3. "Ask the Coach" button sits below the steps (same place as in-app)
+ *   4. Tap → chat bubbles appear inside the panel, then it loops
  *
  * The 4-second hold is visualized as a progress fill that lights the
  * inside of the "Got it" button from left to right. Once full, the
@@ -91,7 +95,7 @@ export function WhatsNewModal({ visible, update, hapticsEnabled, onDismiss }: Pr
         <Text style={styles.headline}>{update.headline}</Text>
         <Text style={styles.body}>{update.body}</Text>
 
-        <PhoneAIShowcase />
+        <PhoneCoachShowcase />
 
         <Animated.View style={{ transform: [{ scale: readyScale }], width: "100%", alignItems: "stretch" }}>
           <Pressable
@@ -129,23 +133,27 @@ export function WhatsNewModal({ visible, update, hapticsEnabled, onDismiss }: Pr
   );
 }
 
-const STEP = { IDLE: 0, TAP: 1, AI: 2, DONE: 3 } as const;
+const STEP = { IDLE: 0, TAP_TASK: 1, DETAIL: 2, ASK: 3, CHAT: 4 } as const;
 
 /**
- * Mini phone-mockup loop showcasing the AI feature. Mirrors the
- * onboarding try-free animation: phone enters with a tilt, a task
- * is tapped, the AI panel slides up with a chat bubble and sparkles,
- * then it loops back. Lives entirely inside the showcase card.
+ * Mini phone-mockup loop showcasing the Ask the Coach flow. Mirrors the
+ * real in-app journey: tasks list → tap a task → detail panel with
+ * numbered steps → tap "Ask the Coach" → chat appears with messages.
  */
-function PhoneAIShowcase() {
+function PhoneCoachShowcase() {
   const entry = useRef(new Animated.Value(0)).current;
   const bounce = useRef(new Animated.Value(0)).current;
   const tap = useRef(new Animated.Value(0)).current;
-  const aiPanel = useRef(new Animated.Value(0)).current;
+  const detailPanel = useRef(new Animated.Value(0)).current;
+  const coachTap = useRef(new Animated.Value(0)).current;
+  const chatFade = useRef(new Animated.Value(0)).current;
+  const userBubble = useRef(new Animated.Value(0)).current;
+  const coachBubble = useRef(new Animated.Value(0)).current;
+  const stepChecks = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
   const sparkle = useRef(new Animated.Value(0)).current;
-  const step = useRef(new Animated.Value(0)).current;
   const glow = useRef(new Animated.Value(0)).current;
   const orb = useRef(new Animated.Value(0)).current;
+  const stepValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     let cancelled = false;
@@ -165,21 +173,30 @@ function PhoneAIShowcase() {
     ).start();
 
     Animated.loop(
-      Animated.timing(orb, { toValue: 1, duration: 2600, easing: Easing.linear, useNativeDriver: true }),
+      Animated.timing(orb, { toValue: 1, duration: 2800, easing: Easing.linear, useNativeDriver: true }),
     ).start();
+
+    const reset = () => {
+      entry.setValue(0);
+      bounce.setValue(0);
+      tap.setValue(0);
+      detailPanel.setValue(0);
+      coachTap.setValue(0);
+      chatFade.setValue(0);
+      userBubble.setValue(0);
+      coachBubble.setValue(0);
+      stepChecks.forEach((v) => v.setValue(0));
+      stepValue.setValue(STEP.IDLE);
+    };
 
     const runLoop = async () => {
       while (!cancelled) {
-        entry.setValue(0);
-        bounce.setValue(0);
-        tap.setValue(0);
-        aiPanel.setValue(0);
-        step.setValue(STEP.IDLE);
-
+        reset();
+        // phone enter
         await new Promise<void>((resolve) => {
           Animated.sequence([
             Animated.delay(120),
-            Animated.timing(entry, { toValue: 1, duration: 540, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+            Animated.timing(entry, { toValue: 1, duration: 560, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
             Animated.sequence([
               Animated.timing(bounce, { toValue: 1, duration: 140, useNativeDriver: true }),
               Animated.timing(bounce, { toValue: 0.3, duration: 180, useNativeDriver: true }),
@@ -189,40 +206,76 @@ function PhoneAIShowcase() {
         });
         if (cancelled) return;
 
-        await new Promise<void>((r) => setTimeout(r, 600));
+        await new Promise<void>((r) => setTimeout(r, 520));
         if (cancelled) return;
 
-        // Tap pulse on task
+        // tap task card
         Animated.parallel([
-          Animated.timing(step, { toValue: STEP.TAP, duration: 280, useNativeDriver: false }),
+          Animated.timing(stepValue, { toValue: STEP.TAP_TASK, duration: 240, useNativeDriver: false }),
           Animated.sequence([
-            Animated.timing(tap, { toValue: 1, duration: 380, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-            Animated.timing(tap, { toValue: 0, duration: 320, useNativeDriver: true }),
+            Animated.timing(tap, { toValue: 1, duration: 360, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+            Animated.timing(tap, { toValue: 0, duration: 300, useNativeDriver: true }),
           ]),
         ]).start();
 
-        await new Promise<void>((r) => setTimeout(r, 900));
+        await new Promise<void>((r) => setTimeout(r, 740));
         if (cancelled) return;
 
-        // AI panel slides up
+        // detail panel slides up showing steps
         Animated.parallel([
-          Animated.timing(step, { toValue: STEP.AI, duration: 280, useNativeDriver: false }),
-          Animated.spring(aiPanel, { toValue: 1, friction: 7, tension: 70, useNativeDriver: true }),
+          Animated.timing(stepValue, { toValue: STEP.DETAIL, duration: 280, useNativeDriver: false }),
+          Animated.spring(detailPanel, { toValue: 1, friction: 8, tension: 60, useNativeDriver: true }),
         ]).start();
 
-        await new Promise<void>((r) => setTimeout(r, 2400));
+        // tick each step one by one
+        await new Promise<void>((r) => setTimeout(r, 700));
+        if (cancelled) return;
+        Animated.timing(stepChecks[0], { toValue: 1, duration: 260, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+        await new Promise<void>((r) => setTimeout(r, 340));
+        if (cancelled) return;
+        Animated.timing(stepChecks[1], { toValue: 1, duration: 260, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+        await new Promise<void>((r) => setTimeout(r, 600));
         if (cancelled) return;
 
-        // Reset
+        // tap "Ask the Coach" button
         Animated.parallel([
-          Animated.timing(aiPanel, { toValue: 0, duration: 360, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
-          Animated.timing(step, { toValue: STEP.IDLE, duration: 280, useNativeDriver: false }),
+          Animated.timing(stepValue, { toValue: STEP.ASK, duration: 200, useNativeDriver: false }),
+          Animated.sequence([
+            Animated.timing(coachTap, { toValue: 1, duration: 320, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+            Animated.timing(coachTap, { toValue: 0, duration: 300, useNativeDriver: true }),
+          ]),
         ]).start();
 
-        await new Promise<void>((r) => setTimeout(r, 500));
+        await new Promise<void>((r) => setTimeout(r, 600));
         if (cancelled) return;
 
-        // Phone tilts out
+        // chat opens
+        Animated.parallel([
+          Animated.timing(stepValue, { toValue: STEP.CHAT, duration: 260, useNativeDriver: false }),
+          Animated.timing(chatFade, { toValue: 1, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        ]).start();
+
+        await new Promise<void>((r) => setTimeout(r, 360));
+        if (cancelled) return;
+        Animated.spring(userBubble, { toValue: 1, friction: 7, tension: 70, useNativeDriver: true }).start();
+        await new Promise<void>((r) => setTimeout(r, 620));
+        if (cancelled) return;
+        Animated.spring(coachBubble, { toValue: 1, friction: 7, tension: 70, useNativeDriver: true }).start();
+
+        await new Promise<void>((r) => setTimeout(r, 1900));
+        if (cancelled) return;
+
+        // reset chat & detail
+        Animated.parallel([
+          Animated.timing(detailPanel, { toValue: 0, duration: 360, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+          Animated.timing(chatFade, { toValue: 0, duration: 260, useNativeDriver: true }),
+          Animated.timing(stepValue, { toValue: STEP.IDLE, duration: 260, useNativeDriver: false }),
+        ]).start();
+
+        await new Promise<void>((r) => setTimeout(r, 420));
+        if (cancelled) return;
+
+        // phone tilts out
         await new Promise<void>((resolve) => {
           Animated.timing(entry, { toValue: 2, duration: 480, easing: Easing.in(Easing.cubic), useNativeDriver: true }).start(() => resolve());
         });
@@ -232,9 +285,9 @@ function PhoneAIShowcase() {
     runLoop();
 
     return () => { cancelled = true; };
-  }, [entry, bounce, tap, aiPanel, sparkle, step, glow, orb]);
+  }, [entry, bounce, tap, detailPanel, coachTap, chatFade, userBubble, coachBubble, stepChecks, sparkle, glow, orb, stepValue]);
 
-  const enterY = entry.interpolate({ inputRange: [0, 1, 2], outputRange: [-220, 0, 220] });
+  const enterY = entry.interpolate({ inputRange: [0, 1, 2], outputRange: [-240, 0, 240] });
   const enterRotate = entry.interpolate({ inputRange: [0, 1, 2], outputRange: ["-22deg", "-3deg", "14deg"] });
   const enterScale = entry.interpolate({ inputRange: [0, 1, 2], outputRange: [0.82, 1, 0.95] });
   const bounceY = bounce.interpolate({ inputRange: [0, 1], outputRange: [0, -10] });
@@ -242,10 +295,15 @@ function PhoneAIShowcase() {
   const tapScale = tap.interpolate({ inputRange: [0, 1], outputRange: [0.4, 2.2] });
   const tapOpacity = tap.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0, 0.7, 0] });
 
-  const aiTranslate = aiPanel.interpolate({ inputRange: [0, 1], outputRange: [120, 0] });
+  const coachTapScale = coachTap.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1.8] });
+  const coachTapOpacity = coachTap.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0, 0.8, 0] });
 
-  const taskBg = step.interpolate({ inputRange: [0, 1, 2, 3], outputRange: ["#ffffff", "#fff8e1", "#fff8e1", "#fff8e1"] });
-  const taskBorder = step.interpolate({ inputRange: [0, 1, 2, 3], outputRange: ["#eeeeee", Colors.accentGold, Colors.accentGold, Colors.accentGold] });
+  const detailTranslate = detailPanel.interpolate({ inputRange: [0, 1], outputRange: [180, 0] });
+
+  // Highlight the task card the instant we tap it, then hold the
+  // highlight while the detail panel is up.
+  const taskBg = stepValue.interpolate({ inputRange: [0, 1, 2, 3, 4], outputRange: ["#ffffff", "#fff8e1", "#fff8e1", "#fff8e1", "#fff8e1"] });
+  const taskBorder = stepValue.interpolate({ inputRange: [0, 1, 2, 3, 4], outputRange: ["#eeeeee", Colors.accentGold, Colors.accentGold, Colors.accentGold, Colors.accentGold] });
 
   const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.55] });
   const glowScale = glow.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.12] });
@@ -262,7 +320,6 @@ function PhoneAIShowcase() {
         ]}
       />
 
-      {/* Orbiting sparkle ring */}
       <Animated.View pointerEvents="none" style={[styles.orbitWrap, { transform: [{ rotate: orbAngle }] }]}>
         <View style={[styles.orbDot, styles.orbDotTL]} />
         <View style={[styles.orbDot, styles.orbDotTR]} />
@@ -295,16 +352,12 @@ function PhoneAIShowcase() {
             </View>
 
             <Text style={styles.phoneHeader}>Today</Text>
-            <Text style={styles.phoneSub}>Tap any task for AI help</Text>
+            <Text style={styles.phoneSub}>3 tasks · tap one to dive in</Text>
 
             <Animated.View style={[styles.taskCardActive, { backgroundColor: taskBg, borderColor: taskBorder }]}>
               <View style={styles.taskHead}>
                 <View style={styles.taskRadio} />
                 <Text style={styles.taskTitle} numberOfLines={1}>Pitch 5 local shops</Text>
-                <View style={styles.aiBtn}>
-                  <Sparkles size={8} color="#ffffff" />
-                  <Text style={styles.aiBtnText}>AI</Text>
-                </View>
               </View>
               <View style={styles.tapWrap} pointerEvents="none">
                 <Animated.View
@@ -317,35 +370,102 @@ function PhoneAIShowcase() {
               <View style={styles.taskRadioDim} />
               <Text style={styles.taskTitleDim}>Build a 1-page site</Text>
             </View>
+            <View style={styles.taskCardDim}>
+              <View style={styles.taskRadioDim} />
+              <Text style={styles.taskTitleDim}>Write 3 offer bullets</Text>
+            </View>
 
+            {/* Task Detail Panel — slides up from the bottom */}
             <Animated.View
               pointerEvents="none"
               style={[
-                styles.aiPanel,
-                { transform: [{ translateY: aiTranslate }], opacity: aiPanel },
+                styles.detailPanel,
+                { transform: [{ translateY: detailTranslate }], opacity: detailPanel },
               ]}
             >
-              <View style={styles.aiHandle} />
-              <View style={styles.aiHeadRow}>
-                <View style={styles.aiAvatar}>
-                  <Sparkles size={9} color="#ffffff" />
+              <View style={styles.detailHandle} />
+              <Text style={styles.detailTitle} numberOfLines={1}>Pitch 5 local shops</Text>
+              <Text style={styles.detailMeta}>3 steps · 25 min</Text>
+
+              <View style={styles.stepsWrap}>
+                {[
+                  { label: "List 5 shops near you", anim: stepChecks[0] },
+                  { label: "Draft a 2-line DM", anim: stepChecks[1] },
+                  { label: "Send & log replies", anim: stepChecks[2] },
+                ].map((s, i) => {
+                  const checkScale = s.anim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+                  const bg = s.anim.interpolate({ inputRange: [0, 1], outputRange: ["#ffffff", Colors.accentGold] });
+                  const border = s.anim.interpolate({ inputRange: [0, 1], outputRange: ["#dddddd", Colors.accentGold] });
+                  return (
+                    <View key={i} style={styles.stepRow}>
+                      <Animated.View style={[styles.stepCheck, { backgroundColor: bg, borderColor: border }]}>
+                        <Animated.Text style={[styles.stepNum, { opacity: s.anim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }]}>
+                          {i + 1}
+                        </Animated.Text>
+                        <Animated.Text style={[styles.stepCheckMark, { opacity: checkScale, transform: [{ scale: checkScale }] }]}>
+                          ✓
+                        </Animated.Text>
+                      </Animated.View>
+                      <Text style={styles.stepLabel}>{s.label}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+
+              {/* "Ask the Coach" button — same place as in-app */}
+              <View style={styles.coachBtn}>
+                <View style={styles.coachIcon}>
+                  <BrainCircuit size={9} color={Colors.accentDeep} />
                 </View>
-                <Text style={styles.aiTitle}>Ask DRIVE AI</Text>
-                <View style={styles.aiLiveDot} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.coachTitle}>Ask the Coach</Text>
+                  <Text style={styles.coachSub}>Answers questions about this task</Text>
+                </View>
+                <ChevronDown size={9} color={Colors.textDim} />
+                <View style={styles.coachTapWrap} pointerEvents="none">
+                  <Animated.View
+                    style={[styles.coachTapRing, { transform: [{ scale: coachTapScale }], opacity: coachTapOpacity }]}
+                  />
+                </View>
               </View>
-              <View style={styles.userBubble}>
-                <Text style={styles.userBubbleText}>How do I pitch?</Text>
-              </View>
-              <View style={styles.aiBubble}>
-                <Text style={styles.aiAnswer}>
-                  Try this DM:{`\n`}&ldquo;Hi — I&apos;d redo your bio + 1 reel free. Game?&rdquo;
-                </Text>
-              </View>
-              <View style={styles.aiTyping}>
-                <View style={styles.typingDot} />
-                <View style={[styles.typingDot, styles.typingDot2]} />
-                <View style={[styles.typingDot, styles.typingDot3]} />
-              </View>
+
+              {/* Chat overlay — appears once Ask the Coach is tapped */}
+              <Animated.View
+                pointerEvents="none"
+                style={[styles.chatOverlay, { opacity: chatFade }]}
+              >
+                <View style={styles.chatHead}>
+                  <View style={styles.coachIconDark}>
+                    <BrainCircuit size={9} color={Colors.accentGold} />
+                  </View>
+                  <Text style={styles.chatTitle}>Ask the Coach</Text>
+                  <View style={styles.chatLiveDot} />
+                </View>
+                <Animated.View
+                  style={[
+                    styles.userBubble,
+                    {
+                      opacity: userBubble,
+                      transform: [{ translateY: userBubble.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) }],
+                    },
+                  ]}
+                >
+                  <Text style={styles.userBubbleText}>What does &ldquo;pitch&rdquo; mean here?</Text>
+                </Animated.View>
+                <Animated.View
+                  style={[
+                    styles.coachBubble,
+                    {
+                      opacity: coachBubble,
+                      transform: [{ translateY: coachBubble.interpolate({ inputRange: [0, 1], outputRange: [6, 0] }) }],
+                    },
+                  ]}
+                >
+                  <Text style={styles.coachAnswer}>
+                    A pitch is a short, friendly intro — what you offer and why it helps them. What part feels stuck?
+                  </Text>
+                </Animated.View>
+              </Animated.View>
             </Animated.View>
           </View>
         </View>
@@ -413,7 +533,7 @@ const styles = StyleSheet.create({
   // Phone-mockup showcase
   showcase: {
     width: "100%",
-    height: 268,
+    height: 300,
     borderRadius: 22,
     backgroundColor: "#fafafa",
     borderWidth: 1,
@@ -425,15 +545,15 @@ const styles = StyleSheet.create({
   },
   showcaseGlow: {
     position: "absolute",
-    width: 240,
-    height: 240,
+    width: 260,
+    height: 260,
     borderRadius: 999,
     backgroundColor: "rgba(212,175,55,0.22)",
   },
   orbitWrap: {
     position: "absolute",
-    width: 280,
-    height: 280,
+    width: 300,
+    height: 300,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -448,15 +568,15 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 0 },
   },
-  orbDotTL: { top: 20, left: 60 },
-  orbDotTR: { top: 40, right: 30 },
-  orbDotBR: { bottom: 30, right: 50 },
-  orbDotBL: { bottom: 50, left: 30 },
+  orbDotTL: { top: 22, left: 60 },
+  orbDotTR: { top: 42, right: 34 },
+  orbDotBR: { bottom: 32, right: 52 },
+  orbDotBL: { bottom: 54, left: 32 },
 
   phone: {
-    width: 130,
-    height: 248,
-    borderRadius: 28,
+    width: 144,
+    height: 282,
+    borderRadius: 30,
     padding: 3,
     backgroundColor: "#1c1c1e",
     shadowColor: "#000",
@@ -469,7 +589,7 @@ const styles = StyleSheet.create({
   },
   phoneFrameInner: {
     flex: 1,
-    borderRadius: 25,
+    borderRadius: 27,
     padding: 3,
     backgroundColor: "#050505",
   },
@@ -477,7 +597,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 6,
     alignSelf: "center",
-    width: 50,
+    width: 54,
     height: 14,
     borderRadius: 999,
     backgroundColor: "#000000",
@@ -485,9 +605,9 @@ const styles = StyleSheet.create({
   },
   phoneScreen: {
     flex: 1,
-    borderRadius: 22,
+    borderRadius: 24,
     backgroundColor: "#ffffff",
-    padding: 8,
+    padding: 7,
     paddingTop: 26,
     overflow: "hidden",
   },
@@ -496,35 +616,25 @@ const styles = StyleSheet.create({
   phoneDots: { flexDirection: "row", gap: 2 },
   dotSm: { width: 2.5, height: 2.5, borderRadius: 2, backgroundColor: Colors.text },
 
-  phoneHeader: { color: Colors.text, fontSize: 12, fontWeight: "900", letterSpacing: -0.3 },
+  phoneHeader: { color: Colors.text, fontSize: 13, fontWeight: "900", letterSpacing: -0.3 },
   phoneSub: { color: Colors.textDim, fontSize: 7, fontWeight: "600", marginTop: 1 },
 
   taskCardActive: {
-    marginTop: 8,
+    marginTop: 7,
     padding: 6,
     borderRadius: 8,
     borderWidth: 1,
     overflow: "hidden",
   },
   taskHead: { flexDirection: "row", alignItems: "center", gap: 5 },
-  taskRadio: { width: 10, height: 10, borderRadius: 5, borderWidth: 1.2, borderColor: Colors.accentGold },
-  taskRadioDim: { width: 10, height: 10, borderRadius: 5, borderWidth: 1, borderColor: "#dddddd" },
+  taskRadio: { width: 9, height: 9, borderRadius: 5, borderWidth: 1.2, borderColor: Colors.accentGold },
+  taskRadioDim: { width: 9, height: 9, borderRadius: 5, borderWidth: 1, borderColor: "#dddddd" },
   taskTitle: { color: Colors.text, fontSize: 8, fontWeight: "800", flex: 1 },
   taskTitleDim: { color: Colors.textDim, fontSize: 8, fontWeight: "700", flex: 1 },
-  aiBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 999,
-    backgroundColor: Colors.accentGold,
-  },
-  aiBtnText: { color: "#ffffff", fontSize: 6.5, fontWeight: "900", letterSpacing: 0.4 },
   tapWrap: {
     position: "absolute",
     right: 6,
-    top: 4,
+    top: 6,
     width: 18,
     height: 18,
     alignItems: "center",
@@ -551,62 +661,152 @@ const styles = StyleSheet.create({
     gap: 5,
   },
 
-  aiPanel: {
+  // Detail panel (mirrors TaskDetailPanel layout)
+  detailPanel: {
     position: "absolute",
     left: 4,
     right: 4,
+    bottom: 4,
+    top: 36,
+    backgroundColor: "#ffffff",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#eeeeee",
+    padding: 8,
+    paddingTop: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: -4 },
+    overflow: "hidden",
+  },
+  detailHandle: {
+    position: "absolute",
+    top: 4,
+    alignSelf: "center",
+    width: 22,
+    height: 2.5,
+    borderRadius: 2,
+    backgroundColor: "#e5e5e5",
+  },
+  detailTitle: { color: Colors.text, fontSize: 9, fontWeight: "900", letterSpacing: -0.2 },
+  detailMeta: { color: Colors.textMuted, fontSize: 6.5, fontWeight: "700", marginTop: 1, marginBottom: 6 },
+
+  stepsWrap: { gap: 5, marginBottom: 7 },
+  stepRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 5,
+    borderRadius: 6,
+    backgroundColor: "#fafafa",
+  },
+  stepCheck: {
+    width: 13,
+    height: 13,
+    borderRadius: 7,
+    borderWidth: 1.2,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  stepNum: { position: "absolute", color: Colors.textDim, fontSize: 7, fontWeight: "900" },
+  stepCheckMark: { position: "absolute", color: "#ffffff", fontSize: 8, fontWeight: "900", lineHeight: 9 },
+  stepLabel: { color: Colors.text, fontSize: 7, fontWeight: "600", flex: 1 },
+
+  // Ask the Coach button (mirrors in-app coachToggle)
+  coachBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: "rgba(212,175,55,0.10)",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.35)",
+    position: "relative",
+    overflow: "visible",
+  },
+  coachIcon: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "rgba(212,175,55,0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  coachTitle: { color: Colors.text, fontSize: 7.5, fontWeight: "900" },
+  coachSub: { color: Colors.textDim, fontSize: 6, fontWeight: "600", marginTop: 0.5 },
+  coachTapWrap: {
+    position: "absolute",
+    right: 4,
+    top: 4,
+    width: 18,
+    height: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  coachTapRing: {
+    position: "absolute",
+    width: 22,
+    height: 22,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: Colors.accentGold,
+    backgroundColor: "rgba(212,175,55,0.25)",
+  },
+
+  // Chat overlay (fills the detail panel once Ask the Coach is tapped)
+  chatOverlay: {
+    position: "absolute",
+    left: 6,
+    right: 6,
+    top: 26,
     bottom: 6,
     backgroundColor: "#0a0a0a",
-    padding: 6,
-    paddingTop: 9,
-    borderRadius: 12,
+    borderRadius: 10,
+    padding: 7,
     borderWidth: 1,
     borderColor: "rgba(212,175,55,0.3)",
   },
-  aiHandle: {
-    position: "absolute",
-    top: 3,
-    alignSelf: "center",
-    width: 20,
-    height: 2,
-    borderRadius: 2,
-    backgroundColor: "rgba(255,255,255,0.3)",
+  chatHead: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 6 },
+  coachIconDark: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "rgba(212,175,55,0.18)",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  aiHeadRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 5 },
-  aiAvatar: {
-    width: 12, height: 12, borderRadius: 6,
-    backgroundColor: Colors.accentGold,
-    alignItems: "center", justifyContent: "center",
-  },
-  aiTitle: { color: "#ffffff", fontSize: 7, fontWeight: "900" },
-  aiLiveDot: { width: 4, height: 4, borderRadius: 999, backgroundColor: "#22c55e", marginLeft: 2 },
+  chatTitle: { color: "#ffffff", fontSize: 7.5, fontWeight: "900" },
+  chatLiveDot: { width: 4, height: 4, borderRadius: 999, backgroundColor: "#22c55e", marginLeft: 2 },
+
   userBubble: {
     alignSelf: "flex-end",
     backgroundColor: "#1f1f24",
     paddingHorizontal: 6,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 8,
     borderBottomRightRadius: 2,
-    marginBottom: 3,
+    marginBottom: 4,
     maxWidth: "85%",
   },
   userBubbleText: { color: "#ffffff", fontSize: 7, fontWeight: "600" },
-  aiBubble: {
+  coachBubble: {
     alignSelf: "flex-start",
     backgroundColor: "rgba(212,175,55,0.14)",
     borderWidth: 1,
     borderColor: "rgba(212,175,55,0.35)",
     paddingHorizontal: 6,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 8,
     borderBottomLeftRadius: 2,
     maxWidth: "92%",
   },
-  aiAnswer: { color: "#e0e0e0", fontSize: 7, lineHeight: 9, fontWeight: "500" },
-  aiTyping: { flexDirection: "row", gap: 3, marginTop: 5 },
-  typingDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: Colors.accentGold, opacity: 0.5 },
-  typingDot2: { opacity: 0.75 },
-  typingDot3: { opacity: 1 },
+  coachAnswer: { color: "#e0e0e0", fontSize: 7, lineHeight: 9, fontWeight: "500" },
 
   // CTA with progress fill
   cta: {
