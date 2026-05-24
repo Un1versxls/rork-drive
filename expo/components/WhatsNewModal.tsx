@@ -16,18 +16,21 @@ interface Props {
 }
 
 /**
- * Reusable "What's New" overlay. Sits above the dashboard, can't be
- * dismissed for the first 4 seconds. The wait is visualized as a
- * progress bar that slowly fills the inside of the "Got it" button
- * from left to right. Once full, the button becomes tappable.
+ * "What's New" overlay — styled like the onboarding try-free animation
+ * (gold pill badge, bold headline, subtitle, phone mockup, fat CTA).
+ * The phone mockup loops a mini AI showcase: tap a task → AI panel
+ * slides up with a chat bubble + sparkle effects.
  *
- * The visual showcase below the headline is a soft rounded square,
- * matched to the paywall's automation/AI feel: a glowing card with
- * pulsing AI nodes, flowing connection lines, and a sparkle.
+ * The 4-second hold is visualized as a progress fill that lights the
+ * inside of the "Got it" button from left to right. Once full, the
+ * button becomes tappable and fires a haptic.
+ *
+ * Reusable template — drop a new entry into SHOWCASE_UPDATES with a
+ * new id, headline, and body to ship the next update card.
  */
 export function WhatsNewModal({ visible, update, hapticsEnabled, onDismiss }: Props) {
   const fade = useRef(new Animated.Value(0)).current;
-  const lift = useRef(new Animated.Value(20)).current;
+  const lift = useRef(new Animated.Value(28)).current;
   const fill = useRef(new Animated.Value(0)).current;
   const ready = useRef(new Animated.Value(0)).current;
   const [armed, setArmed] = useState<boolean>(false);
@@ -35,7 +38,7 @@ export function WhatsNewModal({ visible, update, hapticsEnabled, onDismiss }: Pr
   useEffect(() => {
     if (!visible) {
       fade.setValue(0);
-      lift.setValue(20);
+      lift.setValue(28);
       fill.setValue(0);
       ready.setValue(0);
       setArmed(false);
@@ -43,12 +46,11 @@ export function WhatsNewModal({ visible, update, hapticsEnabled, onDismiss }: Pr
     }
     setArmed(false);
     Animated.parallel([
-      Animated.timing(fade, { toValue: 1, duration: 260, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-      Animated.timing(lift, { toValue: 0, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(fade, { toValue: 1, duration: 280, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.spring(lift, { toValue: 0, friction: 8, tension: 70, useNativeDriver: true }),
     ]).start();
     if (hapticsEnabled && Platform.OS !== "web") triggerHaptic("light", true);
 
-    // Progress bar inside the CTA slowly fills over the hold window.
     Animated.timing(fill, {
       toValue: 1,
       duration: HOLD_MS,
@@ -66,7 +68,6 @@ export function WhatsNewModal({ visible, update, hapticsEnabled, onDismiss }: Pr
 
   if (!visible || !update) return null;
 
-  const accent = update.accent ?? "#d4af37";
   const fillWidth = fill.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] });
   const readyScale = ready.interpolate({ inputRange: [0, 1], outputRange: [1, 1.02] });
 
@@ -75,7 +76,7 @@ export function WhatsNewModal({ visible, update, hapticsEnabled, onDismiss }: Pr
     triggerHaptic("light", hapticsEnabled);
     Animated.parallel([
       Animated.timing(fade, { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.timing(lift, { toValue: 12, duration: 200, useNativeDriver: true }),
+      Animated.timing(lift, { toValue: 16, duration: 200, useNativeDriver: true }),
     ]).start(() => onDismiss());
   };
 
@@ -83,11 +84,14 @@ export function WhatsNewModal({ visible, update, hapticsEnabled, onDismiss }: Pr
     <Animated.View pointerEvents="auto" style={[styles.backdrop, { opacity: fade }]}>
       <Pressable style={StyleSheet.absoluteFill} onPress={() => { /* tap outside is a no-op */ }} />
       <Animated.View style={[styles.card, { transform: [{ translateY: lift }] }]}>
-        <Text style={styles.badge}>WHAT&apos;S NEW</Text>
+        <View style={styles.eyebrowPill}>
+          <Sparkles size={11} color={Colors.accentGold} />
+          <Text style={styles.eyebrowText}>WHAT&apos;S NEW</Text>
+        </View>
         <Text style={styles.headline}>{update.headline}</Text>
         <Text style={styles.body}>{update.body}</Text>
 
-        <AIShowcase accent={accent} />
+        <PhoneAIShowcase />
 
         <Animated.View style={{ transform: [{ scale: readyScale }], width: "100%", alignItems: "stretch" }}>
           <Pressable
@@ -96,7 +100,6 @@ export function WhatsNewModal({ visible, update, hapticsEnabled, onDismiss }: Pr
             style={styles.cta}
             testID="whats-new-dismiss"
           >
-            {/* Filling progress layer */}
             <Animated.View
               pointerEvents="none"
               style={[
@@ -126,59 +129,128 @@ export function WhatsNewModal({ visible, update, hapticsEnabled, onDismiss }: Pr
   );
 }
 
+const STEP = { IDLE: 0, TAP: 1, AI: 2, DONE: 3 } as const;
+
 /**
- * Soft rounded square showcase visual, mirroring the paywall's "AI"
- * feature card. Pulsing AI nodes, flowing connection line, and a
- * gentle sparkle so the card feels alive instead of being a flat emoji.
+ * Mini phone-mockup loop showcasing the AI feature. Mirrors the
+ * onboarding try-free animation: phone enters with a tilt, a task
+ * is tapped, the AI panel slides up with a chat bubble and sparkles,
+ * then it loops back. Lives entirely inside the showcase card.
  */
-function AIShowcase({ accent }: { accent: string }) {
-  const pulseA = useRef(new Animated.Value(0)).current;
-  const pulseB = useRef(new Animated.Value(0)).current;
-  const pulseC = useRef(new Animated.Value(0)).current;
-  const flow = useRef(new Animated.Value(0)).current;
+function PhoneAIShowcase() {
+  const entry = useRef(new Animated.Value(0)).current;
+  const bounce = useRef(new Animated.Value(0)).current;
+  const tap = useRef(new Animated.Value(0)).current;
+  const aiPanel = useRef(new Animated.Value(0)).current;
+  const sparkle = useRef(new Animated.Value(0)).current;
+  const step = useRef(new Animated.Value(0)).current;
   const glow = useRef(new Animated.Value(0)).current;
-  const sparkleRot = useRef(new Animated.Value(0)).current;
+  const orb = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const loopNode = (val: Animated.Value, delay: number) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(val, { toValue: 1, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-          Animated.timing(val, { toValue: 0, duration: 900, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
-        ])
-      );
-
-    loopNode(pulseA, 0).start();
-    loopNode(pulseB, 280).start();
-    loopNode(pulseC, 560).start();
-
-    Animated.loop(
-      Animated.timing(flow, { toValue: 1, duration: 2200, easing: Easing.linear, useNativeDriver: true }),
-    ).start();
+    let cancelled = false;
 
     Animated.loop(
       Animated.sequence([
-        Animated.timing(glow, { toValue: 1, duration: 1400, useNativeDriver: true }),
-        Animated.timing(glow, { toValue: 0, duration: 1400, useNativeDriver: true }),
+        Animated.timing(sparkle, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        Animated.timing(sparkle, { toValue: 0.4, duration: 1200, useNativeDriver: true }),
       ]),
     ).start();
 
     Animated.loop(
-      Animated.timing(sparkleRot, { toValue: 1, duration: 5200, easing: Easing.linear, useNativeDriver: true }),
+      Animated.sequence([
+        Animated.timing(glow, { toValue: 1, duration: 1800, useNativeDriver: true }),
+        Animated.timing(glow, { toValue: 0, duration: 1800, useNativeDriver: true }),
+      ]),
     ).start();
-  }, [pulseA, pulseB, pulseC, flow, glow, sparkleRot]);
 
-  const nodeScale = (v: Animated.Value) => v.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.15] });
-  const nodeOpacity = (v: Animated.Value) => v.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1] });
+    Animated.loop(
+      Animated.timing(orb, { toValue: 1, duration: 2600, easing: Easing.linear, useNativeDriver: true }),
+    ).start();
 
-  const dotTranslate = flow.interpolate({ inputRange: [0, 1], outputRange: [-60, 60] });
-  const dotOpacity = flow.interpolate({ inputRange: [0, 0.15, 0.85, 1], outputRange: [0, 1, 1, 0] });
-  const dotTranslate2 = flow.interpolate({ inputRange: [0, 1], outputRange: [60, -60] });
+    const runLoop = async () => {
+      while (!cancelled) {
+        entry.setValue(0);
+        bounce.setValue(0);
+        tap.setValue(0);
+        aiPanel.setValue(0);
+        step.setValue(STEP.IDLE);
 
-  const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.7] });
-  const glowScale = glow.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.05] });
-  const sparkleSpin = sparkleRot.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
+        await new Promise<void>((resolve) => {
+          Animated.sequence([
+            Animated.delay(120),
+            Animated.timing(entry, { toValue: 1, duration: 540, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+            Animated.sequence([
+              Animated.timing(bounce, { toValue: 1, duration: 140, useNativeDriver: true }),
+              Animated.timing(bounce, { toValue: 0.3, duration: 180, useNativeDriver: true }),
+              Animated.timing(bounce, { toValue: 0, duration: 200, useNativeDriver: true }),
+            ]),
+          ]).start(() => resolve());
+        });
+        if (cancelled) return;
+
+        await new Promise<void>((r) => setTimeout(r, 600));
+        if (cancelled) return;
+
+        // Tap pulse on task
+        Animated.parallel([
+          Animated.timing(step, { toValue: STEP.TAP, duration: 280, useNativeDriver: false }),
+          Animated.sequence([
+            Animated.timing(tap, { toValue: 1, duration: 380, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+            Animated.timing(tap, { toValue: 0, duration: 320, useNativeDriver: true }),
+          ]),
+        ]).start();
+
+        await new Promise<void>((r) => setTimeout(r, 900));
+        if (cancelled) return;
+
+        // AI panel slides up
+        Animated.parallel([
+          Animated.timing(step, { toValue: STEP.AI, duration: 280, useNativeDriver: false }),
+          Animated.spring(aiPanel, { toValue: 1, friction: 7, tension: 70, useNativeDriver: true }),
+        ]).start();
+
+        await new Promise<void>((r) => setTimeout(r, 2400));
+        if (cancelled) return;
+
+        // Reset
+        Animated.parallel([
+          Animated.timing(aiPanel, { toValue: 0, duration: 360, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+          Animated.timing(step, { toValue: STEP.IDLE, duration: 280, useNativeDriver: false }),
+        ]).start();
+
+        await new Promise<void>((r) => setTimeout(r, 500));
+        if (cancelled) return;
+
+        // Phone tilts out
+        await new Promise<void>((resolve) => {
+          Animated.timing(entry, { toValue: 2, duration: 480, easing: Easing.in(Easing.cubic), useNativeDriver: true }).start(() => resolve());
+        });
+        if (cancelled) return;
+      }
+    };
+    runLoop();
+
+    return () => { cancelled = true; };
+  }, [entry, bounce, tap, aiPanel, sparkle, step, glow, orb]);
+
+  const enterY = entry.interpolate({ inputRange: [0, 1, 2], outputRange: [-220, 0, 220] });
+  const enterRotate = entry.interpolate({ inputRange: [0, 1, 2], outputRange: ["-22deg", "-3deg", "14deg"] });
+  const enterScale = entry.interpolate({ inputRange: [0, 1, 2], outputRange: [0.82, 1, 0.95] });
+  const bounceY = bounce.interpolate({ inputRange: [0, 1], outputRange: [0, -10] });
+
+  const tapScale = tap.interpolate({ inputRange: [0, 1], outputRange: [0.4, 2.2] });
+  const tapOpacity = tap.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0, 0.7, 0] });
+
+  const aiTranslate = aiPanel.interpolate({ inputRange: [0, 1], outputRange: [120, 0] });
+
+  const taskBg = step.interpolate({ inputRange: [0, 1, 2, 3], outputRange: ["#ffffff", "#fff8e1", "#fff8e1", "#fff8e1"] });
+  const taskBorder = step.interpolate({ inputRange: [0, 1, 2, 3], outputRange: ["#eeeeee", Colors.accentGold, Colors.accentGold, Colors.accentGold] });
+
+  const glowOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.55] });
+  const glowScale = glow.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.12] });
+
+  const orbAngle = orb.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
 
   return (
     <View style={styles.showcase}>
@@ -186,71 +258,97 @@ function AIShowcase({ accent }: { accent: string }) {
         pointerEvents="none"
         style={[
           styles.showcaseGlow,
-          { backgroundColor: accent + "33", opacity: glowOpacity, transform: [{ scale: glowScale }] },
+          { opacity: glowOpacity, transform: [{ scale: glowScale }] },
         ]}
       />
 
-      {/* Connection lines */}
-      <View pointerEvents="none" style={[styles.line, styles.lineTop]} />
-      <View pointerEvents="none" style={[styles.line, styles.lineBottom]} />
-
-      {/* Flowing data dots on top + bottom lines */}
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.flowDot,
-          styles.flowDotTop,
-          { backgroundColor: accent, opacity: dotOpacity, transform: [{ translateX: dotTranslate }] },
-        ]}
-      />
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.flowDot,
-          styles.flowDotBottom,
-          { backgroundColor: accent, opacity: dotOpacity, transform: [{ translateX: dotTranslate2 }] },
-        ]}
-      />
-
-      {/* Left node */}
-      <Animated.View
-        style={[
-          styles.node,
-          styles.nodeLeft,
-          { borderColor: accent, transform: [{ scale: nodeScale(pulseA) }], opacity: nodeOpacity(pulseA) },
-        ]}
-      >
-        <View style={[styles.nodeCore, { backgroundColor: accent }]} />
+      {/* Orbiting sparkle ring */}
+      <Animated.View pointerEvents="none" style={[styles.orbitWrap, { transform: [{ rotate: orbAngle }] }]}>
+        <View style={[styles.orbDot, styles.orbDotTL]} />
+        <View style={[styles.orbDot, styles.orbDotTR]} />
+        <View style={[styles.orbDot, styles.orbDotBR]} />
+        <View style={[styles.orbDot, styles.orbDotBL]} />
       </Animated.View>
 
-      {/* Right node */}
       <Animated.View
         style={[
-          styles.node,
-          styles.nodeRight,
-          { borderColor: accent, transform: [{ scale: nodeScale(pulseC) }], opacity: nodeOpacity(pulseC) },
+          styles.phone,
+          {
+            transform: [
+              { translateY: Animated.add(enterY, bounceY) },
+              { rotate: enterRotate },
+              { scale: enterScale },
+            ],
+          },
         ]}
       >
-        <View style={[styles.nodeCore, { backgroundColor: accent }]} />
-      </Animated.View>
+        <View style={styles.phoneFrameInner}>
+          <View style={styles.dynamicIsland} />
+          <View style={styles.phoneScreen}>
+            <View style={styles.phoneStatus}>
+              <Text style={styles.phoneTime}>9:41</Text>
+              <View style={styles.phoneDots}>
+                <View style={styles.dotSm} />
+                <View style={styles.dotSm} />
+                <View style={styles.dotSm} />
+              </View>
+            </View>
 
-      {/* Center "AI" hub */}
-      <Animated.View
-        style={[
-          styles.hub,
-          { borderColor: accent, transform: [{ scale: nodeScale(pulseB) }] },
-        ]}
-      >
-        <Text style={[styles.hubText, { color: accent }]}>AI</Text>
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.hubSparkle,
-            { transform: [{ rotate: sparkleSpin }] },
-          ]}
-        >
-          <Sparkles size={11} color={accent} strokeWidth={2.5} />
-        </Animated.View>
+            <Text style={styles.phoneHeader}>Today</Text>
+            <Text style={styles.phoneSub}>Tap any task for AI help</Text>
+
+            <Animated.View style={[styles.taskCardActive, { backgroundColor: taskBg, borderColor: taskBorder }]}>
+              <View style={styles.taskHead}>
+                <View style={styles.taskRadio} />
+                <Text style={styles.taskTitle} numberOfLines={1}>Pitch 5 local shops</Text>
+                <View style={styles.aiBtn}>
+                  <Sparkles size={8} color="#ffffff" />
+                  <Text style={styles.aiBtnText}>AI</Text>
+                </View>
+              </View>
+              <View style={styles.tapWrap} pointerEvents="none">
+                <Animated.View
+                  style={[styles.tapRing, { transform: [{ scale: tapScale }], opacity: tapOpacity }]}
+                />
+              </View>
+            </Animated.View>
+
+            <View style={styles.taskCardDim}>
+              <View style={styles.taskRadioDim} />
+              <Text style={styles.taskTitleDim}>Build a 1-page site</Text>
+            </View>
+
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.aiPanel,
+                { transform: [{ translateY: aiTranslate }], opacity: aiPanel },
+              ]}
+            >
+              <View style={styles.aiHandle} />
+              <View style={styles.aiHeadRow}>
+                <View style={styles.aiAvatar}>
+                  <Sparkles size={9} color="#ffffff" />
+                </View>
+                <Text style={styles.aiTitle}>Ask DRIVE AI</Text>
+                <View style={styles.aiLiveDot} />
+              </View>
+              <View style={styles.userBubble}>
+                <Text style={styles.userBubbleText}>How do I pitch?</Text>
+              </View>
+              <View style={styles.aiBubble}>
+                <Text style={styles.aiAnswer}>
+                  Try this DM:{`\n`}&ldquo;Hi — I&apos;d redo your bio + 1 reel free. Game?&rdquo;
+                </Text>
+              </View>
+              <View style={styles.aiTyping}>
+                <View style={styles.typingDot} />
+                <View style={[styles.typingDot, styles.typingDot2]} />
+                <View style={[styles.typingDot, styles.typingDot3]} />
+              </View>
+            </Animated.View>
+          </View>
+        </View>
       </Animated.View>
     </View>
   );
@@ -259,40 +357,49 @@ function AIShowcase({ accent }: { accent: string }) {
 const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.45)",
+    backgroundColor: "rgba(0,0,0,0.55)",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 28,
+    paddingHorizontal: 22,
     zIndex: 1000,
   },
   card: {
     width: "100%",
     maxWidth: 380,
-    borderRadius: 24,
+    borderRadius: 26,
     backgroundColor: "#ffffff",
-    paddingVertical: 26,
-    paddingHorizontal: 22,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
     alignItems: "center",
     shadowColor: "#000",
-    shadowOpacity: 0.18,
-    shadowRadius: 32,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 12,
+    shadowOpacity: 0.22,
+    shadowRadius: 36,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 14,
   },
-  badge: {
-    color: Colors.textDim,
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 1.6,
-    marginBottom: 6,
+
+  eyebrowPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: "rgba(212,175,55,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.4)",
+    marginBottom: 12,
   },
+  eyebrowText: { color: Colors.accentDeep, fontSize: 10, fontWeight: "900", letterSpacing: 1.5 },
   headline: {
     color: Colors.text,
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: "900",
-    letterSpacing: -0.4,
+    letterSpacing: -0.6,
     textAlign: "center",
+    lineHeight: 30,
     marginBottom: 8,
+    paddingHorizontal: 4,
   },
   body: {
     color: Colors.textDim,
@@ -300,89 +407,210 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     textAlign: "center",
     marginBottom: 18,
-    paddingHorizontal: 4,
+    paddingHorizontal: 6,
   },
 
-  // Showcase visual
+  // Phone-mockup showcase
   showcase: {
     width: "100%",
-    height: 132,
-    borderRadius: 20,
-    backgroundColor: "#0b0b0c",
+    height: 268,
+    borderRadius: 22,
+    backgroundColor: "#fafafa",
     borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.28)",
-    marginBottom: 22,
+    borderColor: "#eeeeee",
+    marginBottom: 18,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
   },
   showcaseGlow: {
     position: "absolute",
-    width: "70%",
-    height: "70%",
+    width: 240,
+    height: 240,
     borderRadius: 999,
+    backgroundColor: "rgba(212,175,55,0.22)",
   },
-  line: {
+  orbitWrap: {
     position: "absolute",
-    left: "18%",
-    right: "18%",
-    height: 1,
-    backgroundColor: "rgba(212,175,55,0.35)",
+    width: 280,
+    height: 280,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  lineTop: { top: "38%" },
-  lineBottom: { bottom: "38%" },
-  flowDot: {
+  orbDot: {
     position: "absolute",
-    width: 5,
-    height: 5,
+    width: 4,
+    height: 4,
     borderRadius: 999,
+    backgroundColor: Colors.accentGold,
     shadowColor: "#d4af37",
     shadowOpacity: 0.9,
-    shadowRadius: 6,
+    shadowRadius: 4,
     shadowOffset: { width: 0, height: 0 },
   },
-  flowDotTop: { top: "37%", alignSelf: "center" },
-  flowDotBottom: { bottom: "37%", alignSelf: "center" },
-  node: {
+  orbDotTL: { top: 20, left: 60 },
+  orbDotTR: { top: 40, right: 30 },
+  orbDotBR: { bottom: 30, right: 50 },
+  orbDotBL: { bottom: 50, left: 30 },
+
+  phone: {
+    width: 130,
+    height: 248,
+    borderRadius: 28,
+    padding: 3,
+    backgroundColor: "#1c1c1e",
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 18,
+    borderWidth: 1,
+    borderColor: "#2a2a2c",
+  },
+  phoneFrameInner: {
+    flex: 1,
+    borderRadius: 25,
+    padding: 3,
+    backgroundColor: "#050505",
+  },
+  dynamicIsland: {
     position: "absolute",
-    width: 22,
-    height: 22,
+    top: 6,
+    alignSelf: "center",
+    width: 50,
+    height: 14,
     borderRadius: 999,
-    borderWidth: 1.5,
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "#000000",
+    zIndex: 5,
+  },
+  phoneScreen: {
+    flex: 1,
+    borderRadius: 22,
+    backgroundColor: "#ffffff",
+    padding: 8,
+    paddingTop: 26,
+    overflow: "hidden",
+  },
+  phoneStatus: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+  phoneTime: { color: Colors.text, fontSize: 7, fontWeight: "900" },
+  phoneDots: { flexDirection: "row", gap: 2 },
+  dotSm: { width: 2.5, height: 2.5, borderRadius: 2, backgroundColor: Colors.text },
+
+  phoneHeader: { color: Colors.text, fontSize: 12, fontWeight: "900", letterSpacing: -0.3 },
+  phoneSub: { color: Colors.textDim, fontSize: 7, fontWeight: "600", marginTop: 1 },
+
+  taskCardActive: {
+    marginTop: 8,
+    padding: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  taskHead: { flexDirection: "row", alignItems: "center", gap: 5 },
+  taskRadio: { width: 10, height: 10, borderRadius: 5, borderWidth: 1.2, borderColor: Colors.accentGold },
+  taskRadioDim: { width: 10, height: 10, borderRadius: 5, borderWidth: 1, borderColor: "#dddddd" },
+  taskTitle: { color: Colors.text, fontSize: 8, fontWeight: "800", flex: 1 },
+  taskTitleDim: { color: Colors.textDim, fontSize: 8, fontWeight: "700", flex: 1 },
+  aiBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: Colors.accentGold,
+  },
+  aiBtnText: { color: "#ffffff", fontSize: 6.5, fontWeight: "900", letterSpacing: 0.4 },
+  tapWrap: {
+    position: "absolute",
+    right: 6,
+    top: 4,
+    width: 18,
+    height: 18,
     alignItems: "center",
     justifyContent: "center",
   },
-  nodeLeft: { left: "12%" },
-  nodeRight: { right: "12%" },
-  nodeCore: {
-    width: 8,
-    height: 8,
-    borderRadius: 999,
-  },
-  hub: {
-    width: 54,
-    height: 54,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    backgroundColor: "rgba(212,175,55,0.10)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  hubText: {
-    fontSize: 18,
-    fontWeight: "900",
-    letterSpacing: 0.5,
-  },
-  hubSparkle: {
+  tapRing: {
     position: "absolute",
-    top: -8,
-    right: -8,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: Colors.accentGold,
+    backgroundColor: "rgba(212,175,55,0.25)",
   },
+  taskCardDim: {
+    marginTop: 4,
+    padding: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#eeeeee",
+    backgroundColor: "#fafafa",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+
+  aiPanel: {
+    position: "absolute",
+    left: 4,
+    right: 4,
+    bottom: 6,
+    backgroundColor: "#0a0a0a",
+    padding: 6,
+    paddingTop: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.3)",
+  },
+  aiHandle: {
+    position: "absolute",
+    top: 3,
+    alignSelf: "center",
+    width: 20,
+    height: 2,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.3)",
+  },
+  aiHeadRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 5 },
+  aiAvatar: {
+    width: 12, height: 12, borderRadius: 6,
+    backgroundColor: Colors.accentGold,
+    alignItems: "center", justifyContent: "center",
+  },
+  aiTitle: { color: "#ffffff", fontSize: 7, fontWeight: "900" },
+  aiLiveDot: { width: 4, height: 4, borderRadius: 999, backgroundColor: "#22c55e", marginLeft: 2 },
+  userBubble: {
+    alignSelf: "flex-end",
+    backgroundColor: "#1f1f24",
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderBottomRightRadius: 2,
+    marginBottom: 3,
+    maxWidth: "85%",
+  },
+  userBubbleText: { color: "#ffffff", fontSize: 7, fontWeight: "600" },
+  aiBubble: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(212,175,55,0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.35)",
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderBottomLeftRadius: 2,
+    maxWidth: "92%",
+  },
+  aiAnswer: { color: "#e0e0e0", fontSize: 7, lineHeight: 9, fontWeight: "500" },
+  aiTyping: { flexDirection: "row", gap: 3, marginTop: 5 },
+  typingDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: Colors.accentGold, opacity: 0.5 },
+  typingDot2: { opacity: 0.75 },
+  typingDot3: { opacity: 1 },
 
   // CTA with progress fill
   cta: {
-    height: 48,
+    height: 52,
     borderRadius: 999,
     overflow: "hidden",
     alignItems: "center",
@@ -404,7 +632,7 @@ const styles = StyleSheet.create({
   },
   ctaText: {
     fontWeight: "900",
-    fontSize: 14,
+    fontSize: 15,
     letterSpacing: 0.3,
     zIndex: 2,
   },
