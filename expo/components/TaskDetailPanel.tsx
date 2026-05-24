@@ -3,6 +3,7 @@ import {
   Animated,
   Easing,
   Keyboard,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -215,7 +216,12 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, subta
         <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
       </Animated.View>
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-        <Animated.View style={[styles.sheet, { bottom: keyboardHeight, transform: [{ translateY }] }]}>
+        <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={{ flex: 1 }}
+            keyboardVerticalOffset={0}
+          >
           <SafeAreaView edges={["bottom"]} style={{ flex: 1 }}>
             <View style={styles.grabber} />
             <View style={styles.sheetHeader}>
@@ -384,6 +390,7 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, subta
               </View>
             )}
           </SafeAreaView>
+          </KeyboardAvoidingView>
         </Animated.View>
       </View>
     </Modal>
