@@ -3,10 +3,9 @@ import { Alert, Animated, Easing, KeyboardAvoidingView, LayoutAnimation, Platfor
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Award, Check, ChevronDown, ChevronRight, Cloud, CloudOff, Copy, Crown, Gift, LogIn, LogOut, Pencil, RefreshCw, Shield, Sparkles, Star, Vibrate } from "lucide-react-native";
+import { Award, ChevronDown, ChevronRight, Cloud, CloudOff, Crown, Gift, LogIn, LogOut, Pencil, RefreshCw, Shield, Sparkles, Star, Vibrate } from "lucide-react-native";
 import { buildSyncFromAppState, upsertAppUser } from "@/lib/appUserTracking";
 import { supabase } from "@/lib/supabase";
-import { userCodeFor } from "@/lib/userCode";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -209,10 +208,6 @@ export default function ProfileScreen() {
             {user ? (
               <Text style={styles.userEmail}>{user.email}</Text>
             ) : null}
-            <UserCodePill
-              code={state.profile.userCode ?? userCodeFor({ userId: user?.id ?? null, appleUserId: state.profile.appleUserId, email: user?.email ?? state.profile.email })}
-              onCopied={() => triggerHaptic("success", state.profile.hapticsEnabled)}
-            />
             {!user ? (
               <Pressable onPress={() => router.push("/auth")} style={styles.signInRow}>
                 <LogIn color={Colors.text} size={14} />
@@ -399,42 +394,6 @@ export default function ProfileScreen() {
   );
 }
 
-function UserCodePill({ code, onCopied }: { code: string | null; onCopied: () => void }) {
-  const [copied, setCopied] = useState<boolean>(false);
-  if (!code) return null;
-  const onPress = async () => {
-    try {
-      // Defensive dynamic import so a missing/mismatched native module
-      // (e.g. expo-clipboard not autolinked for this SDK) can't crash the screen.
-      try {
-        const mod: { setStringAsync?: (s: string) => Promise<void> } = require("expo-clipboard");
-        if (mod && typeof mod.setStringAsync === "function") {
-          await mod.setStringAsync(code);
-        } else if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.clipboard) {
-          await navigator.clipboard.writeText(code);
-        }
-      } catch {
-        if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.clipboard) {
-          try { await navigator.clipboard.writeText(code); } catch {}
-        }
-      }
-      setCopied(true);
-      onCopied();
-      setTimeout(() => setCopied(false), 1400);
-    } catch {}
-  };
-  return (
-    <Pressable onPress={onPress} style={styles.userCodePill} testID="user-code-pill">
-      <Text style={styles.userCodeText}>{code}</Text>
-      {copied ? (
-        <Check color={"#0a7f3f"} size={12} />
-      ) : (
-        <Copy color={Colors.textMuted} size={12} />
-      )}
-    </Pressable>
-  );
-}
-
 function MenuRow({ Icon, label, onPress }: { Icon: React.ComponentType<{ color: string; size: number }>; label: string; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.menuRow, pressed && { opacity: 0.75 }]}>
@@ -521,6 +480,4 @@ const styles = StyleSheet.create({
   resetBtn: { alignSelf: "center", marginTop: 16 },
   resetText: { color: Colors.danger, fontSize: 12, fontWeight: "700" },
   footer: { color: Colors.textMuted, textAlign: "center", fontSize: 11, marginTop: 22 },
-  userCodePill: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", marginTop: 8, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: "#ffffff", borderWidth: 1, borderColor: "#eeeeee" },
-  userCodeText: { color: Colors.textDim, fontSize: 11, fontWeight: "800", letterSpacing: 0.8 },
 });
