@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Award, ChevronDown, ChevronRight, Cloud, CloudOff, Crown, Gift, LogIn, LogOut, Pencil, RefreshCw, Shield, Sparkles, Star, Vibrate } from "lucide-react-native";
 import { buildSyncFromAppState, upsertAppUser } from "@/lib/appUserTracking";
 import { supabase } from "@/lib/supabase";
+import { userCodeFor } from "@/lib/userCode";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -208,6 +209,14 @@ export default function ProfileScreen() {
             {user ? (
               <Text style={styles.userEmail}>{user.email}</Text>
             ) : null}
+            {(() => {
+              const code = userCodeFor({
+                userId: user?.id ?? null,
+                appleUserId: state.profile.appleUserId,
+                email: user?.email ?? state.profile.email ?? null,
+              });
+              return code ? <Text style={styles.userId}>ID: {code}</Text> : null;
+            })()}
             {!user ? (
               <Pressable onPress={() => router.push("/auth")} style={styles.signInRow}>
                 <LogIn color={Colors.text} size={14} />

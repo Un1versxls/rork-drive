@@ -1,51 +1,46 @@
-# User IDs, "What's New" showcase, paywall back animation & onboarding polish
+# Smarter sign-in routing + AI "What's New" card with animated progress button
 
-## What you'll get
+## Sign-in routing changes
 
-### 1. Personal user ID on Profile
+**Early sign-in (from the "What's your goal?" screen — the one right after age):**
 
-- Every user gets a short, readable code like `**DRIVE-A4F2K9**` generated deterministically from their account (so it's stable across devices and sign-ins).
-- Shown right under the email on the Profile screen with a small "tap to copy" feel.
-- Mirrored to Supabase so support can look people up by it.
+- If the account has an **active subscription** → skip everything and go straight to the dashboard. No business chooser, no paywall.
+- If the account's subscription **expired** → go to the paywall with the existing "Your account's subscription has expired." banner.
+- If no subscription history → continue normal onboarding.
 
-### 2. Business swap counter syncs correctly
+**Late sign-in (after the user has already picked a business in onboarding):**
 
-- The "x3 swaps remaining" badge will read straight from the cloud and self-correct if it drifts (e.g. if Supabase says they should have 2 but the device shows 3, it'll quietly fix itself to the right number on next sign-in / app open).
-- The cap (3 free / 5 premium) is enforced on both sides so users can't get extra swaps by reinstalling.
+**Also show the user their id below their name on profile page but just simple text no copy and paste or anything just so they can tell me for customer support.**
 
-### 3. Paywall "go back" animation matches what you see going forward
 
-- When opening the paywall from the Profile plan-expand area, the page slides in with a smooth transition.
-- Pressing back will now play the **exact same transition in reverse** — same easing, same duration, same direction — instead of the current mismatched jump. Feels symmetrical every time.
 
-### 4. "What's New" dashboard showcase (reusable template)
+**And when I go back from the payment page take me to the animation right before it and keep me there and if I close and reopen the app while on any of the paywall pages then send me back to the create account or sign in oage**
 
-- A soft, rounded-square card overlays the dashboard the next time the user opens the app.
-- **First update card:**
-  - Headline: **"Ask AI anything"**
-  - Body: **"New in this update: tap the AI button to get instant business guidance."**
-- **Behavior:**
-  - Only shows on the **dashboard** (never during onboarding or the first-time tutorial).
-  - **Skipped** the very first session after sign-up / after the tutorial closes — it'll appear the *next* time they open the app.
-  - User **cannot dismiss it for the first 4 seconds** (close button is greyed out, then activates with a soft pulse).
-  - Once dismissed, **never shows again** unless you (admin) manually re-trigger it.
-  - Last-seen showcase ID is stored both locally (instant) and on Supabase (`last_showcase_seen` column) so it follows the user across devices.
-- **Reusable template:** future updates are a one-liner — give me an `id`, headline, and body, and the same card system handles it. Old IDs stay marked seen; only new IDs trigger the popup.
+- Show a small business-chooser screen **only when** the cloud account has a *different* saved business/path than the one they just picked. If they match (or cloud has nothing saved), skip the chooser.
+- After choosing (or auto-skipping):
+  - Active subscription → straight to the dashboard.
+  - Expired subscription → paywall with the expired banner.
+  - No subscription history → normal paywall.
 
-### 5. Onboarding emoji rating — less empty
+This applies to both email sign-in and Apple sign-in.
 
-- The emoji rating block is **vertically centered** on its screen instead of floating near the top.
-- A **soft radial glow** sits behind the currently selected emoji — subtle, just enough to give the screen presence without being loud. Glow color matches the emoji's mood (warm for high ratings, cool for low).
+## "What's New" card redesign (AI feature)
 
-### 6. TestFlight push
+Reuse the existing showcase template (so future updates just need a new entry) and upgrade the visual to match the paywall's automation/AI feel:
 
-- After all the above is in, I'll cut a new build (v1.9.5, build 35) and upload it to TestFlight. Invite arrives in 5–30 minutes per usual.
+- **Brand-new AI-themed animation** sitting right below the headline + description, styled like the paywall feature card — soft rounded square with a subtle glow, animated AI elements (pulsing nodes, flowing connection lines, gentle sparkle) so it feels alive instead of just an emoji.
+- **Forced 4-second wait** before the user can dismiss — the wait is shown as a **progress bar that slowly lights up the inside of the "Got it" button from left to right**. When it fills completely the button becomes tappable and gives a soft haptic confirmation. No countdown number — pure visual fill.
+- Tapping outside or the small X does nothing during the wait, same as today.
+- Once dismissed, the id is remembered locally and synced to Supabase (`last_showcase_seen`), so it never shows again unless a new showcase id is added.
+- Still skipped on the very first dashboard open after sign-up/tutorial — shows on the next launch.
 
----
+The card stays a reusable template: shipping the next "What's New" just means adding a new entry to the showcase list with id, headline, body, and (optional) animation variant.
 
-## Out of scope (not changing)
+## Delivery
 
-- Nightly 5pm sync (already shipped previously).
-- Sign-in routing for active/expired subs (already shipped previously).
-- Age slider / EmojiRating crash fixes (already shipped previously).
+Push the new build to TestFlight automatically once everything compiles.
+
+## Out of scope (already shipped, leaving as-is)
+
+- Nightly 5pm sync, business-switch sync — already live in previous builds.
 

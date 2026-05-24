@@ -22,9 +22,9 @@ export interface ShowcaseUpdate {
 
 export const SHOWCASE_UPDATES: ShowcaseUpdate[] = [
   {
-    id: "ask-ai-v1",
+    id: "ask-ai-v2",
     headline: "Ask AI anything",
-    body: "New in this update: tap the AI button to get instant business guidance.",
+    body: "New in this update — tap the AI button on any task for instant, personalized business guidance.",
     accent: "#d4af37",
     emoji: "🤖",
   },

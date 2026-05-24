@@ -121,8 +121,11 @@ export default function Index() {
     const step = state.profile.onboardingStep;
     // If the user closed the app on the unclosable trial pages, send them back
     // to the plan summary (their last "safe" page with the Start my plan button).
+    // If the user closed the app on the unclosable trial / paywall pages,
+    // send them back to the create-account / sign-in screen so they always
+    // re-enter through Apple/email auth before reaching the paywall again.
     if (step === "/onboarding/try-free" || step === "/onboarding/paywall") {
-      return <Redirect href="/onboarding/plan-summary" />;
+      return <Redirect href="/onboarding/apple-signin" />;
     }
     // Only resume into a step we recognise. A stale path from an older
     // build (or a typo'd value) would crash expo-router on cold start.

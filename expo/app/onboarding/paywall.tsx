@@ -171,8 +171,11 @@ export default function PaywallScreen() {
       else router.replace("/(tabs)/tasks");
       return;
     }
-    if (router.canGoBack()) router.back();
-    else router.replace("/onboarding/try-free");
+    // Outside of in-app upgrade flow, the screen immediately before the
+    // paywall is the try-free animation. Always send the user back there
+    // so the experience is consistent whether we got here via push, replace,
+    // or the expired-subscription redirect (which loses history).
+    router.replace("/onboarding/try-free");
   };
 
   const loadingPkgs = Platform.OS !== "web" && offeringsQuery.isLoading;
