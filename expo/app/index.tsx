@@ -124,7 +124,14 @@ export default function Index() {
     // If the user closed the app on the unclosable trial / paywall pages,
     // send them back to the create-account / sign-in screen so they always
     // re-enter through Apple/email auth before reaching the paywall again.
-    if (step === "/onboarding/try-free" || step === "/onboarding/paywall") {
+    if (
+      step === "/onboarding/try-free" ||
+      step === "/onboarding/paywall" ||
+      step === "/onboarding/feature-preview" ||
+      step === "/onboarding/plan-summary" ||
+      step === "/onboarding/notifications" ||
+      step === "/onboarding/decline"
+    ) {
       return <Redirect href="/onboarding/apple-signin" />;
     }
     // Only resume into a step we recognise. A stale path from an older
