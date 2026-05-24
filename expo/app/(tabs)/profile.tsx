@@ -3,7 +3,6 @@ import { Alert, Animated, Easing, KeyboardAvoidingView, LayoutAnimation, Platfor
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import * as Clipboard from "expo-clipboard";
 import { Award, Check, ChevronDown, ChevronRight, Cloud, CloudOff, Copy, Crown, Gift, LogIn, LogOut, Pencil, RefreshCw, Shield, Sparkles, Star, Vibrate } from "lucide-react-native";
 import { buildSyncFromAppState, upsertAppUser } from "@/lib/appUserTracking";
 import { supabase } from "@/lib/supabase";
@@ -405,7 +404,20 @@ function UserCodePill({ code, onCopied }: { code: string | null; onCopied: () =>
   if (!code) return null;
   const onPress = async () => {
     try {
-      await Clipboard.setStringAsync(code);
+      // Defensive dynamic import so a missing/mismatched native module
+      // (e.g. expo-clipboard not autolinked for this SDK) can't crash the screen.
+      try {
+        const mod: { setStringAsync?: (s: string) => Promise<void> } = require("expo-clipboard");
+        if (mod && typeof mod.setStringAsync === "function") {
+          await mod.setStringAsync(code);
+        } else if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.clipboard) {
+          await navigator.clipboard.writeText(code);
+        }
+      } catch {
+        if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.clipboard) {
+          try { await navigator.clipboard.writeText(code); } catch {}
+        }
+      }
       setCopied(true);
       onCopied();
       setTimeout(() => setCopied(false), 1400);
