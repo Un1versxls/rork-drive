@@ -54,7 +54,7 @@ export interface ShowcaseUpdate {
 
 export const SHOWCASE_UPDATES: ShowcaseUpdate[] = [
   {
-    id: "update-2.5",
+    id: "update-2.5.1",
     showOnFirstLaunch: true,
     finalRoute: "/badges",
     pages: [

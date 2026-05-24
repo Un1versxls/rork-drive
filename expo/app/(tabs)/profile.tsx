@@ -3,7 +3,7 @@ import { Alert, Animated, Easing, KeyboardAvoidingView, LayoutAnimation, Platfor
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Award, ChevronDown, ChevronRight, Cloud, CloudOff, Crown, Gift, LogIn, LogOut, Pencil, RefreshCw, Shield, Sparkles, Star, Vibrate } from "lucide-react-native";
+import { Award, Check, ChevronDown, ChevronRight, Cloud, CloudOff, Crown, Gift, LogIn, LogOut, Pencil, RefreshCw, Shield, Sparkles, Star, Vibrate } from "lucide-react-native";
 import { buildSyncFromAppState, upsertAppUser } from "@/lib/appUserTracking";
 import { supabase } from "@/lib/supabase";
 import { userCodeFor } from "@/lib/userCode";
