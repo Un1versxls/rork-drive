@@ -388,6 +388,7 @@ function RoadmapCard({ goal, time, businessName, totalCompleted }: { goal: strin
         youProgress={completionRatio}
         selected={selected}
         onSelect={setSelected}
+        large
       />
 
       <Text style={styles.roadEstimateNote}>

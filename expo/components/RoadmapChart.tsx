@@ -44,6 +44,8 @@ interface Props {
   youProgress?: number;
   selected: number | null;
   onSelect: (i: number | null) => void;
+  /** Larger variant used on the Progress tab — taller chart, deeper fades. */
+  large?: boolean;
 }
 
 /**
@@ -60,6 +62,7 @@ export function RoadmapChart({
   youProgress = 0,
   selected,
   onSelect,
+  large = false,
 }: Props) {
   const [wrapW, setWrapW] = useState<number>(W);
   const wrapH = wrapW * (H / W);
@@ -124,7 +127,7 @@ export function RoadmapChart({
 
   return (
     <Pressable onPress={() => onSelect(null)}>
-      <View style={styles.svgWrap} onLayout={onLayout}>
+      <View style={[styles.svgWrap, large && styles.svgWrapLarge]} onLayout={onLayout}>
         <Svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet">
           <Defs>
             <SvgLinearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
@@ -263,16 +266,18 @@ export function RoadmapChart({
           <Text style={styles.finalFlagDay}>· Day {finalDay}</Text>
         </Animated.View>
 
-        {/* Top + bottom fade overlays so the chart blends into the page */}
+        {/* Top + bottom fade overlays — multi-stop gradients give a deeper, atmospheric blend into the page. */}
         <LinearGradient
           pointerEvents="none"
-          colors={["#ffffff", "rgba(255,255,255,0)"]}
-          style={styles.fadeTop}
+          colors={["#ffffff", "rgba(255,255,255,0.92)", "rgba(255,255,255,0.55)", "rgba(255,255,255,0)"]}
+          locations={[0, 0.35, 0.7, 1]}
+          style={[styles.fadeTop, large && styles.fadeTopLarge]}
         />
         <LinearGradient
           pointerEvents="none"
-          colors={["rgba(255,255,255,0)", "#ffffff"]}
-          style={styles.fadeBottom}
+          colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.55)", "rgba(255,255,255,0.92)", "#ffffff"]}
+          locations={[0, 0.3, 0.65, 1]}
+          style={[styles.fadeBottom, large && styles.fadeBottomLarge]}
         />
       </View>
 
@@ -289,8 +294,11 @@ export function RoadmapChart({
 
 const styles = StyleSheet.create({
   svgWrap: { width: "100%", aspectRatio: 320 / 220, position: "relative", overflow: "hidden" },
-  fadeTop: { position: "absolute", left: 0, right: 0, top: 0, height: 32 },
-  fadeBottom: { position: "absolute", left: 0, right: 0, bottom: 0, height: 36 },
+  svgWrapLarge: { aspectRatio: 320 / 280 },
+  fadeTop: { position: "absolute", left: 0, right: 0, top: 0, height: 48 },
+  fadeBottom: { position: "absolute", left: 0, right: 0, bottom: 0, height: 54 },
+  fadeTopLarge: { height: 70 },
+  fadeBottomLarge: { height: 76 },
 
   todayWrap: {
     position: "absolute",
