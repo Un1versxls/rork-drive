@@ -105,15 +105,25 @@ export function RoadmapChart({
     ).start();
   }, [draw, dotAnims, finalAnim, todayPulse]);
 
-  // Smooth, responsive grow when selection changes.
+  // Snappy, responsive spring when selection changes — short duration so taps
+  // feel instant, spring on grow for a touch of life.
   useEffect(() => {
     selectAnims.forEach((v, i) => {
-      Animated.timing(v, {
-        toValue: selected === i ? 1 : 0,
-        duration: selected === i ? 340 : 220,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start();
+      if (selected === i) {
+        Animated.spring(v, {
+          toValue: 1,
+          friction: 6,
+          tension: 160,
+          useNativeDriver: true,
+        }).start();
+      } else {
+        Animated.timing(v, {
+          toValue: 0,
+          duration: 140,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }).start();
+      }
     });
   }, [selected, selectAnims]);
 
@@ -126,7 +136,7 @@ export function RoadmapChart({
   const onLayout = (e: LayoutChangeEvent) => setWrapW(e.nativeEvent.layout.width);
 
   return (
-    <Pressable onPress={() => onSelect(null)}>
+    <Pressable onPress={() => onSelect(null)} style={large ? styles.outerLarge : undefined}>
       <View style={[styles.svgWrap, large && styles.svgWrapLarge]} onLayout={onLayout}>
         <Svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet">
           <Defs>
@@ -203,7 +213,7 @@ export function RoadmapChart({
                   e.stopPropagation();
                   onSelect(isSelected ? null : i);
                 }}
-                hitSlop={14}
+                hitSlop={22}
                 style={[styles.dotHit, { left: `${cx * 100}%`, top: `${cy * 100}%` }]}
               >
                 <Animated.View
@@ -279,6 +289,13 @@ export function RoadmapChart({
           locations={[0, 0.3, 0.65, 1]}
           style={[styles.fadeBottom, large && styles.fadeBottomLarge]}
         />
+
+        {/* "You are here" tag — only on the larger Progress-tab variant. Anchors the user's current spot on the curve. */}
+        {large ? (
+          <View pointerEvents="none" style={[styles.youHere, { left: `${todayCx * 100}%`, top: `${todayCy * 100}%` }]}>
+            <Text style={styles.youHereText}>YOU ARE HERE</Text>
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.axisRow}>
@@ -293,12 +310,35 @@ export function RoadmapChart({
 }
 
 const styles = StyleSheet.create({
+  // The large variant lets the fades bleed past the chart bounds into the
+  // page atmosphere above and below, so we don't clip on that variant.
   svgWrap: { width: "100%", aspectRatio: 320 / 220, position: "relative", overflow: "hidden" },
-  svgWrapLarge: { aspectRatio: 320 / 280 },
+  svgWrapLarge: { aspectRatio: 320 / 280, overflow: "visible" },
+  outerLarge: { marginTop: -36, marginBottom: -18 },
   fadeTop: { position: "absolute", left: 0, right: 0, top: 0, height: 48 },
   fadeBottom: { position: "absolute", left: 0, right: 0, bottom: 0, height: 54 },
-  fadeTopLarge: { height: 70 },
-  fadeBottomLarge: { height: 76 },
+  // Much more prominent fades on the larger Progress-tab roadmap — they
+  // extend up past the chart frame (so the curve dissolves into the bar
+  // chart above) and a little past the bottom of the card.
+  fadeTopLarge: { height: 150, top: -52 },
+  fadeBottomLarge: { height: 130, bottom: -36 },
+
+  youHere: {
+    position: "absolute",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: "#fffaeb",
+    borderWidth: 1,
+    borderColor: "#f1e2a4",
+    marginLeft: -44,
+    marginTop: -28,
+    shadowColor: "#d4af37",
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  youHereText: { color: Colors.accentDeep, fontSize: 9, fontWeight: "900", letterSpacing: 1 },
 
   todayWrap: {
     position: "absolute",

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Animated, Easing, Platform, Pressable, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, ScrollView } from "react-native";
+import { ActivityIndicator, Animated, Easing, Platform, Pressable, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, ScrollView } from "react-native";
+import { RefreshCcw } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as AppleAuthentication from "expo-apple-authentication";
@@ -21,21 +22,44 @@ export default function AuthScreen() {
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<boolean>(false);
   const [syncLabel, setSyncLabel] = useState<string>("Syncing your account…");
+  const [syncPercent, setSyncPercent] = useState<number>(0);
+  const [syncDone, setSyncDone] = useState<boolean>(false);
 
   const busy = signInPending || signUpPending || signInWithApplePending;
 
   const syncAfterAuth = async (userId: string, userEmail: string | null) => {
-    setSyncLabel("Syncing your account…");
+    setSyncLabel("Connecting to your account…");
+    setSyncPercent(0);
+    setSyncDone(false);
     setSyncing(true);
     try {
+      // Animate progress in steps so the user sees real momentum.
+      const step = (to: number, label: string, ms: number) =>
+        new Promise<void>((resolve) => {
+          setSyncLabel(label);
+          const start = Date.now();
+          const from = to - 25;
+          const tick = () => {
+            const t = Math.min(1, (Date.now() - start) / ms);
+            const eased = 1 - Math.pow(1 - t, 2);
+            setSyncPercent(Math.round(from + (to - from) * eased));
+            if (t < 1) requestAnimationFrame(tick);
+            else resolve();
+          };
+          tick();
+        });
+
+      await step(25, "Connecting to your account…", 500);
       const row = await fetchAppUser({ userId, email: userEmail });
-      setSyncLabel("Loading your tasks…");
+      await step(60, "Loading your tasks…", 600);
       if (row) hydrateFromAppUser(row);
-      await new Promise((r) => setTimeout(r, 350));
+      await step(85, "Restoring streak & badges…", 600);
+      await step(100, "Almost there…", 500);
+      setSyncDone(true);
     } catch (e) {
       console.log("[auth] post-signin hydrate err", e);
-    } finally {
-      setSyncing(false);
+      setSyncPercent(100);
+      setSyncDone(true);
     }
   };
 
@@ -61,7 +85,8 @@ export default function AuthScreen() {
           await syncAfterAuth(res.user.id, res.user.email ?? email);
         }
       }
-      router.back();
+      // Note: we do NOT router.back() — the user must close & reopen the app
+      // so all providers re-hydrate cleanly. The sync overlay stays up.
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Something went wrong";
       setError(msg);
@@ -75,7 +100,6 @@ export default function AuthScreen() {
       if (appleEmail) setProfileField("email", appleEmail.toLowerCase());
       if (appleName) setProfileField("name", appleName);
       await syncAfterAuth(userId, appleEmail);
-      router.back();
     } catch (e: unknown) {
       const err = e as { code?: string; message?: string };
       if (err?.code === "ERR_REQUEST_CANCELED") return;
@@ -99,7 +123,7 @@ export default function AuthScreen() {
   }
 
   if (syncing) {
-    return <SyncOverlay label={syncLabel} />;
+    return <SyncOverlay label={syncLabel} percent={syncPercent} done={syncDone} />;
   }
 
   return (
@@ -188,27 +212,75 @@ export default function AuthScreen() {
   );
 }
 
-function SyncOverlay({ label }: { label: string }) {
+function SyncOverlay({ label, percent, done }: { label: string; percent: number; done: boolean }) {
   const spin = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(0)).current;
+  const barWidth = useRef(new Animated.Value(0)).current;
+  const donePulse = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     Animated.timing(fade, { toValue: 1, duration: 240, useNativeDriver: true }).start();
     Animated.loop(
       Animated.timing(spin, { toValue: 1, duration: 1400, easing: Easing.linear, useNativeDriver: true })
     ).start();
   }, [spin, fade]);
+
+  useEffect(() => {
+    Animated.timing(barWidth, {
+      toValue: percent,
+      duration: 240,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [percent, barWidth]);
+
+  useEffect(() => {
+    if (!done) return;
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(donePulse, { toValue: 1, duration: 1100, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(donePulse, { toValue: 0, duration: 1100, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ])
+    ).start();
+  }, [done, donePulse]);
+
   const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
+  const widthInterp = barWidth.interpolate({ inputRange: [0, 100], outputRange: ["0%", "100%"] });
+  const iconScale = donePulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
+
   return (
     <View style={overlay.root}>
-      <Animated.View style={[overlay.center, { opacity: fade }]}
-        testID="sync-overlay"
-      >
-        <View style={overlay.ringWrap}>
-          <Animated.View style={[overlay.ring, { transform: [{ rotate }] }]} />
-          <ActivityIndicator color={Colors.accentGold} size="small" style={overlay.spinner} />
-        </View>
-        <Text style={overlay.title}>{label}</Text>
-        <Text style={overlay.sub}>This takes a moment the first time.</Text>
+      <Animated.View style={[overlay.center, { opacity: fade }]} testID="sync-overlay">
+        {!done ? (
+          <>
+            <View style={overlay.ringWrap}>
+              <Animated.View style={[overlay.ring, { transform: [{ rotate }] }]} />
+              <ActivityIndicator color={Colors.accentGold} size="small" style={overlay.spinner} />
+            </View>
+            <Text style={overlay.title}>{label}</Text>
+            <View style={overlay.barWrap}>
+              <Animated.View style={[overlay.barFill, { width: widthInterp }]} />
+            </View>
+            <Text style={overlay.percent}>{percent}%</Text>
+            <Text style={overlay.sub}>Hang tight — pulling your latest progress.</Text>
+          </>
+        ) : (
+          <>
+            <Animated.View style={[overlay.doneIcon, { transform: [{ scale: iconScale }] }]}>
+              <RefreshCcw color={Colors.accentGold} size={30} strokeWidth={2.4} />
+            </Animated.View>
+            <Text style={overlay.title}>You&apos;re all synced.</Text>
+            <Text style={overlay.doneCopy}>
+              Please <Text style={overlay.bold}>close and reopen DRIVE</Text> to finish loading your updated profile.
+            </Text>
+            <View style={overlay.steps}>
+              <View style={overlay.stepRow}><Text style={overlay.stepDot}>1.</Text><Text style={overlay.stepText}>Swipe up to close DRIVE</Text></View>
+              <View style={overlay.stepRow}><Text style={overlay.stepDot}>2.</Text><Text style={overlay.stepText}>Reopen from your home screen</Text></View>
+              <View style={overlay.stepRow}><Text style={overlay.stepDot}>3.</Text><Text style={overlay.stepText}>Your tasks & streak will be there</Text></View>
+            </View>
+            <Text style={overlay.lock}>The app is locked until you reopen it.</Text>
+          </>
+        )}
       </Animated.View>
     </View>
   );
@@ -217,7 +289,7 @@ function SyncOverlay({ label }: { label: string }) {
 const overlay = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#ffffff" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 },
-  ringWrap: { width: 84, height: 84, alignItems: "center", justifyContent: "center", marginBottom: 28 },
+  ringWrap: { width: 84, height: 84, alignItems: "center", justifyContent: "center", marginBottom: 22 },
   ring: {
     position: "absolute",
     width: 84, height: 84, borderRadius: 42,
@@ -226,8 +298,33 @@ const overlay = StyleSheet.create({
     borderTopColor: Colors.accentGold,
   },
   spinner: { opacity: 0.6 },
-  title: { color: Colors.text, fontSize: 18, fontWeight: "900", letterSpacing: -0.2, textAlign: "center" },
-  sub: { color: Colors.textDim, fontSize: 13, marginTop: 8, textAlign: "center", fontWeight: "600" },
+  title: { color: Colors.text, fontSize: 19, fontWeight: "900", letterSpacing: -0.2, textAlign: "center" },
+  sub: { color: Colors.textDim, fontSize: 13, marginTop: 12, textAlign: "center", fontWeight: "600" },
+  barWrap: {
+    width: 240, height: 8, borderRadius: 6,
+    backgroundColor: "#f3eccc",
+    overflow: "hidden", marginTop: 18,
+  },
+  barFill: {
+    height: 8, borderRadius: 6,
+    backgroundColor: Colors.accentGold,
+  },
+  percent: { color: Colors.accentDeep, fontSize: 13, fontWeight: "900", letterSpacing: 0.6, marginTop: 10 },
+  doneIcon: {
+    width: 84, height: 84, borderRadius: 42,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: "#fffaeb",
+    borderWidth: 1.5, borderColor: "rgba(212,175,55,0.4)",
+    marginBottom: 22,
+    shadowColor: "#d4af37", shadowOpacity: 0.25, shadowRadius: 18, shadowOffset: { width: 0, height: 6 },
+  },
+  doneCopy: { color: Colors.textDim, fontSize: 14, lineHeight: 20, marginTop: 12, textAlign: "center", fontWeight: "600" },
+  bold: { color: Colors.text, fontWeight: "900" },
+  steps: { marginTop: 22, alignSelf: "stretch", gap: 10, paddingHorizontal: 12 },
+  stepRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  stepDot: { color: Colors.accentDeep, fontSize: 13, fontWeight: "900", width: 18 },
+  stepText: { color: Colors.text, fontSize: 13, fontWeight: "700", flex: 1 },
+  lock: { color: Colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase", marginTop: 26 },
 });
 
 const styles = StyleSheet.create({
