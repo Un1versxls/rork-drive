@@ -25,7 +25,7 @@ import type { BillingCycle, PlanId } from "@/types";
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { state, currentPlan, isPremium, hasActiveSubscription, setProfileField, resetOnboarding, cancelSubscription, grantPremiumViaCode, totalCompleted, level, businessSwitchesRemaining, businessSwitchLimit } = useApp();
+  const { state, currentPlan, isPremium, hasActiveSubscription, setProfileField, resetOnboarding, cancelSubscription, grantPremiumViaCode, totalCompleted, level, businessSwitchesRemaining, businessSwitchLimit, flushSync } = useApp();
   const { user, signOut } = useAuth();
 
   const [editing, setEditing] = useState<boolean>(false);
@@ -285,7 +285,15 @@ export default function ProfileScreen() {
             {user ? (
               <Pressable
                 onPress={() => {
-                  const run = () => signOut();
+                  const run = async () => {
+                    // Make sure today's task progress, streak, and badges
+                    // are persisted to the cloud BEFORE we tear down the
+                    // session. Otherwise the last few completes can be
+                    // lost on sign-out, and the user sees a fresh task
+                    // list on the next sign-in.
+                    try { await flushSync(); } catch (e) { console.log("[profile] flushSync before sign-out failed", e); }
+                    await signOut();
+                  };
                   if (Platform.OS === "web") {
                     if (typeof window !== "undefined" && window.confirm("Sign out?")) run();
                     return;

@@ -327,6 +327,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
     mutationFn: saveState,
   });
 
+  // Tracks the latest in-flight sync so callers (sign-out, app background)
+  // can await it and guarantee the cloud blob is current before tearing
+  // the session down. Without this the fire-and-forget upserts could be
+  // cancelled mid-flight when the user signed out right after completing
+  // a task — so re-signing in showed an older blob without those checks.
+  const pendingSyncRef = useRef<Promise<void> | null>(null);
+
   const syncToSupabase = useCallback((next: AppState, opts?: { force?: boolean }) => {
     if (!supabase) return;
     // Defer almost ALL syncing until onboarding is complete. During
@@ -337,13 +344,48 @@ export const [AppProvider, useApp] = createContextHook(() => {
     // need to push mid-onboarding (e.g. the moment we *finish* it) can
     // pass { force: true }.
     if (!opts?.force && !next.onboarded) return;
-    supabase.auth.getUser().then(({ data }) => {
-      const uid = data.user?.id ?? null;
-      const email = data.user?.email ?? next.profile.email ?? null;
-      if (!uid && !email && !next.profile.appleUserId) return;
-      upsertAppUser(buildSyncFromAppState(uid, email, next, { touchLastSeen: true }))
-        .catch((e) => console.log("[AppProvider] sync error", e));
-    }).catch((e) => console.log("[AppProvider] getUser error", e));
+    const sb = supabase;
+    const p = (async () => {
+      try {
+        const { data } = await sb.auth.getUser();
+        const uid = data.user?.id ?? null;
+        const email = data.user?.email ?? next.profile.email ?? null;
+        if (!uid && !email && !next.profile.appleUserId) return;
+        await upsertAppUser(buildSyncFromAppState(uid, email, next, { touchLastSeen: true }));
+      } catch (e) {
+        console.log("[AppProvider] sync error", e);
+      }
+    })();
+    pendingSyncRef.current = p;
+  }, []);
+
+  /**
+   * Force-push the very latest local state to Supabase and wait for the
+   * upsert to land. Called before sign-out so the cloud blob always
+   * reflects the user's most recent task completions / streak changes.
+   */
+  const flushSync = useCallback(async (): Promise<void> => {
+    if (!supabase) return;
+    // First, drain any in-flight sync started by a previous commit().
+    if (pendingSyncRef.current) {
+      try { await pendingSyncRef.current; } catch {}
+    }
+    const current = stateRef.current;
+    if (!current.onboarded) return;
+    const sb = supabase;
+    const p = (async () => {
+      try {
+        const { data } = await sb.auth.getUser();
+        const uid = data.user?.id ?? null;
+        const email = data.user?.email ?? current.profile.email ?? null;
+        if (!uid && !email && !current.profile.appleUserId) return;
+        await upsertAppUser(buildSyncFromAppState(uid, email, current, { touchLastSeen: true }));
+      } catch (e) {
+        console.log("[AppProvider] flushSync error", e);
+      }
+    })();
+    pendingSyncRef.current = p;
+    await p;
   }, []);
 
   const commit = useCallback((next: AppState) => {
@@ -1116,9 +1158,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
     skipTask,
     undoTask,
     resetOnboarding,
+    flushSync,
     hydrateFromAppUser,
     dismissPendingAchievement,
     dismissPendingBadge,
     dismissCurrentShowcase,
-  }), [hydrated, state, today, weeklyActivity, totalCompleted, totalSkipped, level, levelProgress, currentPlan, isPremium, hasActiveSubscription, customBuildsThisMonth, customBuildsRemaining, customBuildLimit, businessSwitchesThisMonth, businessSwitchesRemaining, businessSwitchLimit, pendingAchievements, pendingBadges, setAnswers, setOnboardingStep, startSubscription, grantPremiumViaCode, cancelSubscription, setDeclineReason, markRated, markRatePromptSeen, setBusiness, setProfileField, setNotificationPrefs, equipEffect, completeOnboarding, completeTask, skipTask, undoTask, resetOnboarding, hydrateFromAppUser, dismissPendingAchievement, dismissPendingBadge, dismissCurrentShowcase]);
+  }), [hydrated, state, today, weeklyActivity, totalCompleted, totalSkipped, level, levelProgress, currentPlan, isPremium, hasActiveSubscription, customBuildsThisMonth, customBuildsRemaining, customBuildLimit, businessSwitchesThisMonth, businessSwitchesRemaining, businessSwitchLimit, pendingAchievements, pendingBadges, setAnswers, setOnboardingStep, startSubscription, grantPremiumViaCode, cancelSubscription, setDeclineReason, markRated, markRatePromptSeen, setBusiness, setProfileField, setNotificationPrefs, equipEffect, completeOnboarding, completeTask, skipTask, undoTask, resetOnboarding, flushSync, hydrateFromAppUser, dismissPendingAchievement, dismissPendingBadge, dismissCurrentShowcase]);
 });
