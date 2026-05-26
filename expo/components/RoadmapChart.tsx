@@ -187,6 +187,10 @@ export function RoadmapChart({
           const dy = (wrapH / 2 - dotPxY) * 0.28;
           const isSelected = selected === i;
           const above = i % 2 === 0;
+          // 4-cycle vertical stagger so adjacent compact pills never sit at
+          // the same Y and visually overlap when milestones are close.
+          const stagger = i % 4;
+          const compactExtraY = stagger === 0 ? -18 : stagger === 1 ? 0 : stagger === 2 ? 0 : -18;
           const sa = selectAnims[i];
           const ringScale = sa.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1.9] });
           const ringOpacity = sa.interpolate({ inputRange: [0, 1], outputRange: [0, 0.85] });
@@ -242,8 +246,8 @@ export function RoadmapChart({
                   {
                     left: `${cx * 100}%`,
                     top: `${cy * 100}%`,
-                    marginLeft: -22,
-                    marginTop: above ? -34 : 14,
+                    marginLeft: -20,
+                    marginTop: (above ? -34 : 14) + (above ? compactExtraY : -compactExtraY),
                     opacity: compactOpacity,
                   },
                 ]}
@@ -325,7 +329,7 @@ export function RoadmapChart({
         {/* "You are here" tag — only on the larger Progress-tab variant. Anchors the user's current spot on the curve. */}
         {large ? (
           <View pointerEvents="none" style={[styles.youHere, { left: `${todayCx * 100}%`, top: `${todayCy * 100}%` }]}>
-            <Text style={styles.youHereText}>YOU ARE HERE</Text>
+            <Text style={styles.youHereText}>YOU</Text>
           </View>
         ) : null}
       </View>
@@ -380,7 +384,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fffaeb",
     borderWidth: 1,
     borderColor: "#f1e2a4",
-    marginLeft: -44,
+    marginLeft: -18,
     marginTop: -28,
     shadowColor: "#d4af37",
     shadowOpacity: 0.25,
@@ -448,10 +452,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
   },
 
-  compactWrap: { position: "absolute", width: 44, alignItems: "center" },
+  compactWrap: { position: "absolute", width: 40, alignItems: "center" },
   compactPill: {
-    paddingHorizontal: 7,
-    paddingVertical: 2.5,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 999,
     backgroundColor: "#fffaeb",
     borderWidth: 1,
