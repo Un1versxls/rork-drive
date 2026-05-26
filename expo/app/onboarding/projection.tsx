@@ -1,22 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { Flag, Sparkles } from "lucide-react-native";
-import Svg, { Defs, LinearGradient as SvgLinearGradient, Path, Stop } from "react-native-svg";
-import { LinearGradient } from "expo-linear-gradient";
+import { Sparkles } from "lucide-react-native";
 
 import { Colors } from "@/constants/colors";
+import { RoadmapChart, type RoadmapMilestone } from "@/components/RoadmapChart";
 import { useApp } from "@/providers/AppProvider";
 import type { PrimaryGoal, TimeCommitment } from "@/types";
 
-interface Milestone {
-  day: number;
-  label: string;
-  /** 0-1 position along the curve */
-  progress: number;
-}
-
-const AnimatedPath = Animated.createAnimatedComponent(Path);
+type Milestone = RoadmapMilestone;
 
 function paceMultiplier(time: TimeCommitment | null): number {
   switch (time) {
@@ -140,10 +132,11 @@ export default function ProjectionScreen() {
           ) : null}
         </Animated.View>
 
-        <ProjectionChart
+        <RoadmapChart
           milestones={milestones}
           finalLabel={finalLabel}
           finalDay={finalDay}
+          youProgress={0}
           selected={selected}
           onSelect={setSelected}
         />

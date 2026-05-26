@@ -3,9 +3,9 @@ import { Animated, Easing, LayoutAnimation, Platform, Pressable, ScrollView, Sty
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronDown, Flag, Flame, Target, TrendingUp } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import Svg, { Defs, LinearGradient as SvgLinearGradient, Path, Stop } from "react-native-svg";
 
 import { StreakEffect } from "@/components/StreakEffect";
+import { RoadmapChart, type RoadmapMilestone } from "@/components/RoadmapChart";
 import { Colors } from "@/constants/colors";
 import { getStreakTier } from "@/constants/streak-tiers";
 import { useApp } from "@/providers/AppProvider";
@@ -15,14 +15,6 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 const MINUTES_PER_TASK = 8;
-
-const AnimatedSvgPath = Animated.createAnimatedComponent(Path);
-
-interface RoadmapMilestone {
-  day: number;
-  label: string;
-  progress: number;
-}
 
 function paceMultiplier(time: string | null): number {
   switch (time) {
@@ -34,38 +26,41 @@ function paceMultiplier(time: string | null): number {
   }
 }
 
-function roadmapFor(goal: string | null, time: string | null): { milestones: RoadmapMilestone[]; finalLabel: string } {
+function roadmapFor(goal: string | null, time: string | null): { milestones: RoadmapMilestone[]; finalLabel: string; finalDay: number } {
   const m = paceMultiplier(time);
   if (goal === "build_skills") {
     return {
       milestones: [
-        { day: Math.round(7 * m), label: "First public win", progress: 0.16 },
-        { day: Math.round(34 * m), label: "Skill clicks", progress: 0.4 },
-        { day: Math.round(120 * m), label: "Portfolio piece", progress: 0.68 },
-        { day: Math.round(210 * m), label: "First paid use", progress: 0.92 },
+        { day: Math.round(7 * m), label: "First public win", progress: 0.10 },
+        { day: Math.round(34 * m), label: "Skill clicks", progress: 0.34 },
+        { day: Math.round(120 * m), label: "Portfolio piece", progress: 0.58 },
+        { day: Math.round(210 * m), label: "First paid use", progress: 0.80 },
       ],
-      finalLabel: "Mastery",
+      finalLabel: "Teaching others",
+      finalDay: Math.round(300 * m),
     };
   }
   if (goal === "day_trading") {
     return {
       milestones: [
-        { day: Math.round(9 * m), label: "Paper trading", progress: 0.16 },
-        { day: Math.round(35 * m), label: "First green week", progress: 0.4 },
-        { day: Math.round(110 * m), label: "Live strategy", progress: 0.66 },
-        { day: Math.round(200 * m), label: "Consistent month", progress: 0.92 },
+        { day: Math.round(9 * m), label: "Paper trading", progress: 0.10 },
+        { day: Math.round(35 * m), label: "First green week", progress: 0.34 },
+        { day: Math.round(110 * m), label: "Live strategy", progress: 0.58 },
+        { day: Math.round(200 * m), label: "Consistent month", progress: 0.80 },
       ],
-      finalLabel: "Compounding",
+      finalLabel: "Scaling capital",
+      finalDay: Math.round(300 * m),
     };
   }
   return {
     milestones: [
-      { day: Math.round(7 * m), label: "Foundation set", progress: 0.16 },
-      { day: Math.round(26 * m), label: "First client", progress: 0.4 },
-      { day: Math.round(90 * m), label: "First $500 month", progress: 0.66 },
-      { day: Math.round(189 * m), label: "First repeat customer", progress: 0.92 },
+      { day: Math.round(7 * m), label: "Foundation set", progress: 0.10 },
+      { day: Math.round(26 * m), label: "First client", progress: 0.34 },
+      { day: Math.round(90 * m), label: "First $500 month", progress: 0.58 },
+      { day: Math.round(189 * m), label: "Repeat customer", progress: 0.80 },
     ],
-    finalLabel: "Profitable",
+    finalLabel: "$2k month",
+    finalDay: Math.round(300 * m),
   };
 }
 
@@ -348,56 +343,20 @@ export default function ProgressScreen() {
 }
 
 function RoadmapCard({ goal, time, businessName, totalCompleted }: { goal: string | null; time: string | null; businessName: string | null; totalCompleted: number }) {
-  const { milestones, finalLabel } = useMemo(() => roadmapFor(goal, time), [goal, time]);
-  const finalDay = milestones[milestones.length - 1]?.day ?? 180;
-  const finalDate = formatRoadmapDate(finalDay + 30);
+  const { milestones, finalLabel, finalDay } = useMemo(() => roadmapFor(goal, time), [goal, time]);
+  const finalDate = formatRoadmapDate(finalDay);
 
-  // Progress along the curve based on tasks completed. Caps at the final
+  // Progress along the curve based on tasks completed. Caps near the final
   // milestone so the marker never overshoots.
-  const completionRatio = Math.min(0.95, totalCompleted / 80);
+  const completionRatio = Math.min(0.92, totalCompleted / 80);
 
-  const draw = useRef(new Animated.Value(0)).current;
-  const dotAnims = useMemo(() => milestones.map(() => new Animated.Value(0)), [milestones]);
-  const youDot = useRef(new Animated.Value(0)).current;
+  const [selected, setSelected] = useState<number | null>(null);
 
-  useEffect(() => {
-    draw.setValue(0);
-    Animated.timing(draw, { toValue: 1, duration: 1500, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
-    Animated.parallel(
-      dotAnims.map((v, i) =>
-        Animated.sequence([
-          Animated.delay(420 + i * 230),
-          Animated.spring(v, { toValue: 1, friction: 5, tension: 110, useNativeDriver: true }),
-        ]),
-      ),
-    ).start();
-    Animated.sequence([
-      Animated.delay(1300),
-      Animated.spring(youDot, { toValue: 1, friction: 5, tension: 90, useNativeDriver: true }),
-    ]).start();
-  }, [draw, dotAnims, youDot]);
-
-  const W = 320;
-  const H = 160;
-  const padX = 14;
-  const padTop = 14;
-  const padBottom = 26;
-  const innerW = W - padX * 2;
-  const innerH = H - padTop - padBottom;
-
-  const path = `M ${padX},${padTop + innerH * 0.86}
-    C ${padX + innerW * 0.22},${padTop + innerH * 0.82}
-      ${padX + innerW * 0.35},${padTop + innerH * 0.7}
-      ${padX + innerW * 0.5},${padTop + innerH * 0.48}
-    S ${padX + innerW * 0.82},${padTop + innerH * 0.1}
-      ${padX + innerW},${padTop + innerH * 0.04}`;
-  const pathLen = 540;
-  const dashOffset = draw.interpolate({ inputRange: [0, 1], outputRange: [pathLen, 0] });
-
-  const yForX = (x: number) => {
-    const eased = 1 - Math.pow(1 - x, 2.2);
-    return padTop + innerH * (0.86 - eased * 0.82);
-  };
+  const nextIdx = useMemo(() => {
+    const idx = milestones.findIndex((m) => m.progress > completionRatio);
+    return idx === -1 ? null : idx;
+  }, [milestones, completionRatio]);
+  const nextMilestone = nextIdx !== null ? milestones[nextIdx] : null;
 
   return (
     <View style={styles.roadmapCard}>
@@ -410,6 +369,11 @@ function RoadmapCard({ goal, time, businessName, totalCompleted }: { goal: strin
           <Text style={styles.roadmapTitle} numberOfLines={2}>
             {businessName ? `Building ${businessName}` : "Where your daily tasks lead"}
           </Text>
+          {nextMilestone ? (
+            <Text style={styles.roadmapNext}>
+              ~{Math.max(1, nextMilestone.day)} days until {nextMilestone.label.toLowerCase()}
+            </Text>
+          ) : null}
         </View>
         <View style={styles.roadmapTrend}>
           <TrendingUp size={11} color={Colors.accentDeep} />
@@ -417,95 +381,20 @@ function RoadmapCard({ goal, time, businessName, totalCompleted }: { goal: strin
         </View>
       </View>
 
-      <View style={styles.roadmapChartWrap}>
-        <Svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
-          <Defs>
-            <SvgLinearGradient id="roadLine" x1="0" y1="0" x2="1" y2="0">
-              <Stop offset="0" stopColor="#d4d4d4" />
-              <Stop offset="0.4" stopColor={Colors.accent} />
-              <Stop offset="1" stopColor={Colors.accentGold} />
-            </SvgLinearGradient>
-            <SvgLinearGradient id="roadFill" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor="rgba(212,175,55,0.22)" />
-              <Stop offset="1" stopColor="rgba(212,175,55,0)" />
-            </SvgLinearGradient>
-          </Defs>
+      <RoadmapChart
+        milestones={milestones}
+        finalLabel={`${finalLabel} \u00b7 ${finalDate}`}
+        finalDay={finalDay}
+        youProgress={completionRatio}
+        selected={selected}
+        onSelect={setSelected}
+      />
 
-          <Path
-            d={`M ${padX},${padTop + innerH * 0.86} L ${padX + innerW},${padTop + innerH * 0.86}`}
-            stroke="#eeeeee" strokeWidth={1} strokeDasharray="3 4"
-          />
-          <Path
-            d={`M ${padX},${padTop + innerH * 0.4} L ${padX + innerW},${padTop + innerH * 0.4}`}
-            stroke="#f3f3f3" strokeWidth={1} strokeDasharray="3 4"
-          />
-
-          <AnimatedSvgPath
-            d={`${path} L ${padX + innerW},${padTop + innerH * 0.86} L ${padX},${padTop + innerH * 0.86} Z`}
-            fill="url(#roadFill)" opacity={draw}
-          />
-          <AnimatedSvgPath
-            d={path}
-            stroke="url(#roadLine)" strokeWidth={3} strokeLinecap="round" fill="none"
-            strokeDasharray={pathLen} strokeDashoffset={dashOffset}
-          />
-        </Svg>
-
-        {milestones.map((m, i) => {
-          const cx = padX + innerW * m.progress;
-          const cy = yForX(m.progress);
-          const scale = dotAnims[i].interpolate({ inputRange: [0, 1], outputRange: [0.2, 1] });
-          const above = i % 2 === 0;
-          return (
-            <React.Fragment key={i}>
-              <Animated.View
-                style={[
-                  styles.roadDot,
-                  { left: cx - 7, top: cy - 7, opacity: dotAnims[i], transform: [{ scale }] },
-                ]}
-              />
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  styles.roadCalloutWrap,
-                  { left: cx - 56, top: above ? cy - 50 : cy + 12, opacity: dotAnims[i], transform: [{ scale }] },
-                ]}
-              >
-                <View style={styles.roadCallout}>
-                  <Text style={styles.roadCalloutDay}>Day {m.day}</Text>
-                  <Text style={styles.roadCalloutLabel} numberOfLines={1}>{m.label}</Text>
-                </View>
-              </Animated.View>
-            </React.Fragment>
-          );
-        })}
-
-        {/* "You are here" marker */}
-        {(() => {
-          const cx = padX + innerW * completionRatio;
-          const cy = yForX(completionRatio);
-          const scale = youDot.interpolate({ inputRange: [0, 1], outputRange: [0.2, 1] });
-          return (
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.youHere,
-                { left: cx - 11, top: cy - 11, opacity: youDot, transform: [{ scale }] },
-              ]}
-            >
-              <View style={styles.youHereInner} />
-            </Animated.View>
-          );
-        })()}
-      </View>
-
-      <View style={styles.roadAxisRow}>
-        <Text style={styles.roadAxisLabel}>Today</Text>
-        <View style={styles.roadFinal}>
-          <Flag size={11} color={Colors.text} />
-          <Text style={styles.roadFinalText}>{finalLabel} · {finalDate}</Text>
-        </View>
-      </View>
+      <Text style={styles.roadEstimateNote}>
+        {selected !== null
+          ? "Milestones are estimated timeframes based on consistent effort."
+          : "Tap a milestone to see details. Timeframes are estimates."}
+      </Text>
     </View>
   );
 }
@@ -572,20 +461,10 @@ const styles = StyleSheet.create({
   roadmapIconWrap: { width: 32, height: 32, borderRadius: 10, backgroundColor: Colors.accentDim, alignItems: "center", justifyContent: "center" },
   roadmapEyebrow: { color: Colors.textDim, fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
   roadmapTitle: { color: Colors.text, fontSize: 15, fontWeight: "900", letterSpacing: -0.2, marginTop: 2 },
+  roadmapNext: { color: Colors.accentDeep, fontSize: 11, fontWeight: "800", letterSpacing: 0.2, marginTop: 4, opacity: 0.85 },
   roadmapTrend: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: Colors.accentDim, borderWidth: 1, borderColor: Colors.borderStrong },
   roadmapTrendText: { color: Colors.accentDeep, fontSize: 9, fontWeight: "900", letterSpacing: 0.6 },
-  roadmapChartWrap: { width: "100%", aspectRatio: 320 / 160, position: "relative", marginTop: 4 },
-  roadDot: { position: "absolute", width: 14, height: 14, borderRadius: 7, backgroundColor: Colors.text, borderWidth: 3, borderColor: "#ffffff", shadowColor: Colors.accentGold, shadowOpacity: 0.6, shadowRadius: 6, shadowOffset: { width: 0, height: 0 } },
-  roadCalloutWrap: { position: "absolute", width: 112, alignItems: "center" },
-  roadCallout: { paddingHorizontal: 8, paddingVertical: 6, borderRadius: 9, backgroundColor: Colors.text, alignItems: "center" },
-  roadCalloutDay: { color: Colors.accentGold, fontSize: 9, fontWeight: "900", letterSpacing: 0.8 },
-  roadCalloutLabel: { color: "#ffffff", fontSize: 11, fontWeight: "800", marginTop: 1 },
-  youHere: { position: "absolute", width: 22, height: 22, borderRadius: 11, backgroundColor: "rgba(212,175,55,0.25)", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: Colors.accentGold },
-  youHereInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.accentGold },
-  roadAxisRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 },
-  roadAxisLabel: { color: Colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 0.5 },
-  roadFinal: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: "#fff8e1", borderWidth: 1, borderColor: "#fcd34d" },
-  roadFinalText: { color: Colors.text, fontSize: 11, fontWeight: "900", letterSpacing: 0.2 },
+  roadEstimateNote: { color: Colors.textDim, fontSize: 11, fontWeight: "600", textAlign: "center", marginTop: 6, opacity: 0.75 },
 
   advanced: { marginTop: 8, padding: 6, borderRadius: 16, backgroundColor: "#fafafa", borderWidth: 1, borderColor: "#eeeeee" },
   statRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 13 },
