@@ -19,6 +19,24 @@ interface AccountRow {
   created_at: string;
 }
 
+interface AppUserStatsRow {
+  id: string;
+  user_id: string | null;
+  email: string | null;
+  name: string | null;
+  age: number | null;
+  streak: number | null;
+  best_streak: number | null;
+  points: number | null;
+  business_switch_bonus: number | null;
+  total_completed: number | null;
+  total_sessions: number | null;
+  sessions_today: number | null;
+  avg_tasks_per_day: number | null;
+  last_session_at: string | null;
+  state_blob: Record<string, unknown> | null;
+}
+
 interface CodeRow {
   code: string;
   plan: "base" | "premium";
@@ -68,6 +86,50 @@ export default function AdminScreen() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
   });
 
+  const appUserStatsQuery = useQuery({
+    queryKey: ["admin-app-users-stats"],
+    queryFn: async (): Promise<AppUserStatsRow[]> => {
+      if (!supabase) return [];
+      const { data, error } = await supabase
+        .from("app_users")
+        .select("id, user_id, email, name, age, streak, best_streak, points, business_switch_bonus, total_completed, total_sessions, sessions_today, avg_tasks_per_day, last_session_at, state_blob")
+        .order("last_session_at", { ascending: false, nullsFirst: false })
+        .limit(200);
+      if (error) throw error;
+      return (data ?? []) as AppUserStatsRow[];
+    },
+    enabled: isAdmin,
+  });
+
+  /**
+   * Patch admin-editable counters on an app_users row. We update both the
+   * dedicated column AND the matching key inside `state_blob` so the
+   * change survives the next client sync (the client treats state_blob
+   * as the source of truth on hydrate).
+   */
+  const editAppUser = useMutation({
+    mutationFn: async (params: { id: string; blob: Record<string, unknown> | null; patch: { streak?: number; best_streak?: number; points?: number; business_switch_bonus?: number; age?: number } }) => {
+      if (!supabase) return;
+      const blob = (params.blob && typeof params.blob === "object") ? { ...params.blob } : {};
+      const blobProfile = (blob.profile && typeof blob.profile === "object") ? { ...(blob.profile as Record<string, unknown>) } : {};
+      const payload: Record<string, unknown> = { ...params.patch, updated_at: new Date().toISOString() };
+      if (params.patch.streak !== undefined) blob.streak = params.patch.streak;
+      if (params.patch.best_streak !== undefined) blob.bestStreak = params.patch.best_streak;
+      if (params.patch.points !== undefined) blob.points = params.patch.points;
+      if (params.patch.business_switch_bonus !== undefined) blobProfile.businessSwitchBonus = params.patch.business_switch_bonus;
+      if (params.patch.age !== undefined) blobProfile.age = params.patch.age;
+      blob.profile = blobProfile;
+      payload.state_blob = blob;
+      const { error } = await supabase.from("app_users").update(payload).eq("id", params.id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-app-users-stats"] }),
+    onError: (e: unknown) => {
+      const msg = e instanceof Error ? e.message : "Update failed";
+      Alert.alert("Update failed", msg);
+    },
+  });
+
   const createCode = useMutation({
     mutationFn: async () => {
       if (!supabase) return;
@@ -104,6 +166,7 @@ export default function AdminScreen() {
 
   const users = usersQuery.data ?? [];
   const codes = codesQuery.data ?? [];
+  const appUserStats = appUserStatsQuery.data ?? [];
 
   return (
     <SafeAreaView style={styles.root} edges={["bottom"]}>
@@ -153,6 +216,16 @@ export default function AdminScreen() {
           </View>
         ))}
 
+        <Text style={[styles.h2, { marginTop: 22 }]}>Edit user data ({appUserStats.length})</Text>
+        <Text style={[styles.sub, { textAlign: "left", marginBottom: 10 }]}>Streak, points, bonuses, age. Applies live on the user&apos;s next refresh (within 60s).</Text>
+        {appUserStats.map((r) => (
+          <AppUserEditor
+            key={r.id}
+            row={r}
+            onSave={(patch) => editAppUser.mutate({ id: r.id, blob: r.state_blob, patch })}
+          />
+        ))}
+
         <Text style={[styles.h2, { marginTop: 22 }]}>Users ({users.length})</Text>
         {users.map((item) => (
           <View key={item.id} style={styles.userCard}>
@@ -184,6 +257,66 @@ export default function AdminScreen() {
         ))}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+interface AppUserEditorProps {
+  row: AppUserStatsRow;
+  onSave: (patch: { streak?: number; best_streak?: number; points?: number; business_switch_bonus?: number; age?: number }) => void;
+}
+
+function AppUserEditor({ row, onSave }: AppUserEditorProps) {
+  const [streak, setStreak] = useState<string>(String(row.streak ?? 0));
+  const [best, setBest] = useState<string>(String(row.best_streak ?? 0));
+  const [points, setPoints] = useState<string>(String(row.points ?? 0));
+  const [bonus, setBonus] = useState<string>(String(row.business_switch_bonus ?? 0));
+  const [age, setAge] = useState<string>(row.age === null || row.age === undefined ? "" : String(row.age));
+  const label = row.name?.trim() || row.email || row.user_id || row.id;
+
+  const handleSave = () => {
+    const patch: { streak?: number; best_streak?: number; points?: number; business_switch_bonus?: number; age?: number } = {};
+    const s = parseInt(streak, 10); if (!Number.isNaN(s)) patch.streak = Math.max(0, s);
+    const b = parseInt(best, 10); if (!Number.isNaN(b)) patch.best_streak = Math.max(0, b);
+    const p = parseInt(points, 10); if (!Number.isNaN(p)) patch.points = Math.max(0, p);
+    const bb = parseInt(bonus, 10); if (!Number.isNaN(bb)) patch.business_switch_bonus = Math.max(0, bb);
+    if (age.trim().length > 0) {
+      const a = parseInt(age, 10); if (!Number.isNaN(a)) patch.age = Math.max(0, Math.min(120, a));
+    }
+    onSave(patch);
+  };
+
+  return (
+    <View style={styles.editorCard}>
+      <Text style={styles.userEmail} numberOfLines={1}>{label}</Text>
+      <Text style={styles.userId} numberOfLines={1}>
+        sessions {row.total_sessions ?? 0} · today {row.sessions_today ?? 0} · avg tasks/day {row.avg_tasks_per_day ?? 0} · total done {row.total_completed ?? 0}
+      </Text>
+      <View style={styles.editorGrid}>
+        <EditorField label="Streak" value={streak} onChange={setStreak} />
+        <EditorField label="Best streak" value={best} onChange={setBest} />
+        <EditorField label="Points" value={points} onChange={setPoints} />
+        <EditorField label="Switch bonus" value={bonus} onChange={setBonus} />
+        <EditorField label="Age" value={age} onChange={setAge} />
+      </View>
+      <Pressable onPress={handleSave} style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.7 }]} testID={`admin-save-${row.id}`}>
+        <Text style={styles.saveBtnText}>Save</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function EditorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <View style={styles.editorField}>
+      <Text style={styles.editorLabel}>{label}</Text>
+      <TextInput
+        value={value}
+        onChangeText={onChange}
+        keyboardType="number-pad"
+        style={styles.editorInput}
+        placeholderTextColor={Colors.textMuted}
+      />
+    </View>
   );
 }
 
@@ -223,4 +356,11 @@ const styles = StyleSheet.create({
   toggleLabel: { color: Colors.textDim, fontSize: 12, fontWeight: "700" },
   revoke: { alignSelf: "flex-start", marginTop: 10, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: "rgba(196,69,69,0.3)", backgroundColor: "rgba(196,69,69,0.06)" },
   revokeText: { color: Colors.danger, fontSize: 12, fontWeight: "800" },
+  editorCard: { padding: 14, borderRadius: 14, borderWidth: 1, borderColor: "#eeeeee", marginBottom: 10, backgroundColor: "#ffffff", gap: 8 },
+  editorGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 6 },
+  editorField: { width: "31%", minWidth: 90 },
+  editorLabel: { color: Colors.textDim, fontSize: 11, fontWeight: "700", marginBottom: 4, letterSpacing: 0.3 },
+  editorInput: { backgroundColor: "#fafafa", borderWidth: 1, borderColor: "#eeeeee", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 14, color: Colors.text, fontWeight: "700" },
+  saveBtn: { alignSelf: "flex-start", marginTop: 10, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 999, backgroundColor: Colors.text },
+  saveBtnText: { color: "#ffffff", fontSize: 13, fontWeight: "800" },
 });

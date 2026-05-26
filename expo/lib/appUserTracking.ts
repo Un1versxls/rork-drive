@@ -2,6 +2,13 @@ import { supabase, supabaseReady } from "@/lib/supabase";
 import type { AppState, BillingCycle, BusinessIdea, PlanId, Subscription, UserProfile } from "@/types";
 import { userCodeFor } from "@/lib/userCode";
 
+function todayKeyLocal(): string {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
 export interface AppUserUpsertInput {
   userId?: string | null;
   appleUserId?: string | null;
@@ -36,6 +43,11 @@ export interface AppUserUpsertInput {
   } | null;
   appVersion?: string | null;
   platform?: string | null;
+  sessionsByDate?: Record<string, number> | null;
+  totalSessions?: number | null;
+  sessionsToday?: number | null;
+  avgTasksPerDay?: number | null;
+  lastSessionAt?: string | null;
   stats?: {
     onboarded?: boolean;
     points?: number;
@@ -125,6 +137,11 @@ function buildPayload(input: AppUserUpsertInput): Record<string, unknown> {
   }
   if (input.appVersion !== undefined) payload.app_version = input.appVersion;
   if (input.platform !== undefined) payload.platform = input.platform;
+  if (input.sessionsByDate !== undefined) payload.sessions_by_date = input.sessionsByDate;
+  if (input.totalSessions !== undefined) payload.total_sessions = input.totalSessions;
+  if (input.sessionsToday !== undefined) payload.sessions_today = input.sessionsToday;
+  if (input.avgTasksPerDay !== undefined) payload.avg_tasks_per_day = input.avgTasksPerDay;
+  if (input.lastSessionAt !== undefined) payload.last_session_at = input.lastSessionAt;
 
   if (input.stats) {
     if (input.stats.onboarded !== undefined) payload.onboarded = input.stats.onboarded;
@@ -295,6 +312,11 @@ const OPTIONAL_COLUMNS = [
   "last_showcase_seen",
   "business_switch_month",
   "business_switch_count",
+  "sessions_by_date",
+  "total_sessions",
+  "sessions_today",
+  "avg_tasks_per_day",
+  "last_session_at",
 ];
 
 function stripMissingColumn(payload: Record<string, unknown>, errMsg: string): Record<string, unknown> | null {
@@ -509,6 +531,15 @@ export function buildSyncFromAppState(
     },
     appVersion,
     platform: platformName,
+    sessionsByDate: state.sessionsByDate ?? {},
+    totalSessions: Object.values(state.sessionsByDate ?? {}).reduce((s, n) => s + n, 0),
+    sessionsToday: (state.sessionsByDate ?? {})[todayKeyLocal()] ?? 0,
+    avgTasksPerDay: (() => {
+      const days = Object.keys(state.history).length + (state.tasks.some((t) => t.dateKey === todayKeyLocal()) ? 1 : 0);
+      if (days <= 0) return 0;
+      return Math.round((totalCompleted / days) * 100) / 100;
+    })(),
+    lastSessionAt: new Date().toISOString(),
     stats: {
       onboarded: state.onboarded,
       points: state.points,

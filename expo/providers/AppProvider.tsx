@@ -2,6 +2,7 @@ import createContextHook from "@nkzw/create-context-hook";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AppState as RNAppState, type AppStateStatus } from "react-native";
 
 import { BADGES } from "@/constants/badges";
 
@@ -148,6 +149,7 @@ const DEFAULT_STATE: AppState = {
   history: {},
   unlockedBadges: [],
   unlockedAchievements: [],
+  sessionsByDate: {},
 };
 
 async function loadState(): Promise<AppState> {
@@ -158,6 +160,7 @@ async function loadState(): Promise<AppState> {
     return {
       ...DEFAULT_STATE,
       ...parsed,
+      sessionsByDate: parsed.sessionsByDate ?? {},
       profile: {
         ...DEFAULT_PROFILE,
         ...parsed.profile,
@@ -331,6 +334,48 @@ export const [AppProvider, useApp] = createContextHook(() => {
     void stamp();
     return () => { cancelled = true; };
   // saveMutation intentionally omitted so we only run when hydrated flips.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
+
+  // Track app sessions per day. Increments on cold start (when hydrated
+  // flips) and on every transition to the active foreground state.
+  // Persisted to AsyncStorage + cloud blob so we can report sessions/day
+  // and avg tasks/day analytics.
+  const lastSessionDateRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!hydrated) return;
+    const bump = (reason: string) => {
+      const key = todayKey();
+      const prev = stateRef.current;
+      // Debounce: don't bump twice for the same date in the same active session.
+      if (lastSessionDateRef.current === key && reason !== "foreground") return;
+      lastSessionDateRef.current = key;
+      const current = prev.sessionsByDate ?? {};
+      const nextCount = (current[key] ?? 0) + 1;
+      const next: AppState = {
+        ...prev,
+        sessionsByDate: { ...current, [key]: nextCount },
+      };
+      stateRef.current = next;
+      setState(next);
+      saveMutation.mutate(next);
+      // Best-effort cloud sync of the session bump so analytics stay current.
+      if (next.onboarded) syncToSupabase(next);
+    };
+    bump("cold-start");
+    let lastForegroundAt = Date.now();
+    const sub = RNAppState.addEventListener("change", (status: AppStateStatus) => {
+      if (status === "active") {
+        // Only count a new session if the app was backgrounded for >2 min
+        // (avoid counting brief sheet/permission-prompt blurs as sessions).
+        const now = Date.now();
+        if (now - lastForegroundAt > 2 * 60 * 1000) bump("foreground");
+        lastForegroundAt = now;
+      } else if (status === "background") {
+        lastForegroundAt = Date.now();
+      }
+    });
+    return () => { sub.remove(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated]);
 
@@ -894,6 +939,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
         history: blob.history ?? {},
         unlockedBadges: Array.isArray(blob.unlockedBadges) ? blob.unlockedBadges : [],
         unlockedAchievements: Array.isArray(blob.unlockedAchievements) ? blob.unlockedAchievements : [],
+        sessionsByDate: blob.sessionsByDate ?? {},
       };
       // Keep email/name in sync with what the row has if blob is missing them.
       if (!merged.profile.email && row.email) merged.profile.email = row.email;
@@ -1212,5 +1258,5 @@ export const [AppProvider, useApp] = createContextHook(() => {
     dismissPendingAchievement,
     dismissPendingBadge,
     dismissCurrentShowcase,
-  }), [hydrated, state, today, weeklyActivity, totalCompleted, totalSkipped, level, levelProgress, currentPlan, isPremium, hasActiveSubscription, customBuildsThisMonth, customBuildsRemaining, customBuildLimit, businessSwitchesThisMonth, businessSwitchesRemaining, businessSwitchLimit, pendingAchievements, pendingBadges, setAnswers, setOnboardingStep, startSubscription, grantPremiumViaCode, cancelSubscription, setDeclineReason, markRated, markRatePromptSeen, setBusiness, setProfileField, setNotificationPrefs, equipEffect, completeOnboarding, completeTask, skipTask, undoTask, resetOnboarding, flushSync, hydrateFromAppUser, dismissPendingAchievement, dismissPendingBadge, dismissCurrentShowcase]);
+  }), [hydrated, state, today, weeklyActivity, totalCompleted, totalSkipped, level, levelProgress, currentPlan, isPremium, hasActiveSubscription, customBuildsThisMonth, customBuildsRemaining, customBuildLimit, businessSwitchesThisMonth, businessSwitchesRemaining, businessSwitchLimit, pendingAchievements, pendingBadges, setAnswers, setOnboardingStep, startSubscription, grantPremiumViaCode, cancelSubscription, setDeclineReason, markRated, markRatePromptSeen, setBusiness, setProfileField, setNotificationPrefs, equipEffect, completeOnboarding, completeTask, skipTask, undoTask, resetOnboarding, flushSync, refreshFromCloud, hydrateFromAppUser, dismissPendingAchievement, dismissPendingBadge, dismissCurrentShowcase]);
 });

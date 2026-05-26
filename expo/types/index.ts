@@ -253,4 +253,6 @@ export interface AppState {
   history: Record<string, { completed: number; skipped: number }>;
   unlockedBadges: string[];
   unlockedAchievements: string[];
+  /** App opens per local date (YYYY-MM-DD -> count). Used for analytics. */
+  sessionsByDate: Record<string, number>;
 }
