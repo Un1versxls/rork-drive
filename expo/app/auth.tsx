@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Alert, Platform, Pressable, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, ScrollView } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Animated, Easing, Platform, Pressable, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as AppleAuthentication from "expo-apple-authentication";
@@ -19,8 +19,25 @@ export default function AuthScreen() {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState<boolean>(false);
+  const [syncLabel, setSyncLabel] = useState<string>("Syncing your account…");
 
   const busy = signInPending || signUpPending || signInWithApplePending;
+
+  const syncAfterAuth = async (userId: string, userEmail: string | null) => {
+    setSyncLabel("Syncing your account…");
+    setSyncing(true);
+    try {
+      const row = await fetchAppUser({ userId, email: userEmail });
+      setSyncLabel("Loading your tasks…");
+      if (row) hydrateFromAppUser(row);
+      await new Promise((r) => setTimeout(r, 350));
+    } catch (e) {
+      console.log("[auth] post-signin hydrate err", e);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const onSubmit = async () => {
     setError(null);
@@ -34,10 +51,15 @@ export default function AuthScreen() {
     }
     try {
       if (mode === "signup") {
-        await signUp({ email, password, name: name.trim() });
-        Alert.alert("Account created", "You're signed in and synced across devices.");
+        const res = await signUp({ email, password, name: name.trim() });
+        if (res?.user) {
+          await syncAfterAuth(res.user.id, res.user.email ?? email);
+        }
       } else {
-        await signIn({ email, password });
+        const res = await signIn({ email, password });
+        if (res?.user) {
+          await syncAfterAuth(res.user.id, res.user.email ?? email);
+        }
       }
       router.back();
     } catch (e) {
@@ -52,12 +74,7 @@ export default function AuthScreen() {
       const { userId, email: appleEmail, name: appleName } = await signInWithApple();
       if (appleEmail) setProfileField("email", appleEmail.toLowerCase());
       if (appleName) setProfileField("name", appleName);
-      try {
-        const row = await fetchAppUser({ userId, email: appleEmail });
-        if (row) hydrateFromAppUser(row);
-      } catch (err) {
-        console.log("[auth] apple hydrate err", err);
-      }
+      await syncAfterAuth(userId, appleEmail);
       router.back();
     } catch (e: unknown) {
       const err = e as { code?: string; message?: string };
@@ -79,6 +96,10 @@ export default function AuthScreen() {
         </View>
       </SafeAreaView>
     );
+  }
+
+  if (syncing) {
+    return <SyncOverlay label={syncLabel} />;
   }
 
   return (
@@ -166,6 +187,48 @@ export default function AuthScreen() {
     </KeyboardAvoidingView>
   );
 }
+
+function SyncOverlay({ label }: { label: string }) {
+  const spin = useRef(new Animated.Value(0)).current;
+  const fade = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fade, { toValue: 1, duration: 240, useNativeDriver: true }).start();
+    Animated.loop(
+      Animated.timing(spin, { toValue: 1, duration: 1400, easing: Easing.linear, useNativeDriver: true })
+    ).start();
+  }, [spin, fade]);
+  const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
+  return (
+    <View style={overlay.root}>
+      <Animated.View style={[overlay.center, { opacity: fade }]}
+        testID="sync-overlay"
+      >
+        <View style={overlay.ringWrap}>
+          <Animated.View style={[overlay.ring, { transform: [{ rotate }] }]} />
+          <ActivityIndicator color={Colors.accentGold} size="small" style={overlay.spinner} />
+        </View>
+        <Text style={overlay.title}>{label}</Text>
+        <Text style={overlay.sub}>This takes a moment the first time.</Text>
+      </Animated.View>
+    </View>
+  );
+}
+
+const overlay = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#ffffff" },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 },
+  ringWrap: { width: 84, height: 84, alignItems: "center", justifyContent: "center", marginBottom: 28 },
+  ring: {
+    position: "absolute",
+    width: 84, height: 84, borderRadius: 42,
+    borderWidth: 3,
+    borderColor: "rgba(212,175,55,0.15)",
+    borderTopColor: Colors.accentGold,
+  },
+  spinner: { opacity: 0.6 },
+  title: { color: Colors.text, fontSize: 18, fontWeight: "900", letterSpacing: -0.2, textAlign: "center" },
+  sub: { color: Colors.textDim, fontSize: 13, marginTop: 8, textAlign: "center", fontWeight: "600" },
+});
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#ffffff" },
