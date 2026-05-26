@@ -16,6 +16,10 @@ const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 // back to /onboarding instead.
 const VALID_ONBOARDING_STEPS = new Set<string>([
   "/onboarding",
+  "/onboarding/intro-1",
+  "/onboarding/intro-2",
+  "/onboarding/intro-3",
+  "/onboarding/intro-4",
   "/onboarding/age",
   "/onboarding/goal",
   "/onboarding/build-business",
