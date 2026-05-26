@@ -359,12 +359,21 @@ function RoadmapCard({ goal, time, businessName, totalCompleted, accountStartedA
 
   const [selected, setSelected] = useState<number | null>(null);
 
+  // Day count = whole days elapsed between Supabase auth.created_at and
+  // now, +1 so the sign-up day reads "Day 1". Caps at >= 1 for safety.
   const daysOnAccount = useMemo<number>(() => {
     if (!accountStartedAt) return 1;
     const start = new Date(accountStartedAt).getTime();
     if (Number.isNaN(start)) return 1;
-    const diffMs = Date.now() - start;
-    return Math.max(1, Math.floor(diffMs / 86400000) + 1);
+    const startUtc = Date.UTC(
+      new Date(start).getUTCFullYear(),
+      new Date(start).getUTCMonth(),
+      new Date(start).getUTCDate(),
+    );
+    const now = new Date();
+    const nowUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const days = Math.floor((nowUtc - startUtc) / 86400000) + 1;
+    return Math.max(1, days);
   }, [accountStartedAt]);
 
   const nextIdx = useMemo(() => {

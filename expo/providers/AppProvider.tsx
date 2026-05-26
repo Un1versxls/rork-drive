@@ -304,16 +304,18 @@ export const [AppProvider, useApp] = createContextHook(() => {
     let cancelled = false;
     const stamp = async () => {
       let startedAt = prev.profile.accountStartedAt;
-      // Always try to upgrade to the Supabase created_at when it's earlier
-      // than what we have locally — that's the true sign-up date.
+      // Supabase `auth.users.created_at` is the source of truth for the
+      // "Day N of your journey" counter. When the user is signed in we
+      // ALWAYS prefer that timestamp over whatever we stamped locally,
+      // so the counter is accurate even if the device clock was off or
+      // the user used DRIVE on another device first.
       try {
         if (supabase) {
           const { data } = await supabase.auth.getUser();
           const remote = data.user?.created_at ?? null;
           if (remote) {
             const remoteMs = new Date(remote).getTime();
-            const localMs = startedAt ? new Date(startedAt).getTime() : Number.POSITIVE_INFINITY;
-            if (!Number.isNaN(remoteMs) && remoteMs < localMs) {
+            if (!Number.isNaN(remoteMs)) {
               startedAt = remote;
             }
           }

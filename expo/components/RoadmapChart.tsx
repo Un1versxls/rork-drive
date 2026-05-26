@@ -393,18 +393,21 @@ const styles = StyleSheet.create({
   journeyDay: { color: Colors.accentDeep, fontSize: 11, fontWeight: "900", letterSpacing: 0.4 },
   journeySub: { color: Colors.textDim, fontSize: 10, fontWeight: "700" },
 
+  // "YOU" pill is centered ON the curve, sitting directly over the today
+  // dot (not floating above it). marginTop is half the pill height so it
+  // visually sits on the line.
   youHere: {
     position: "absolute",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
     borderRadius: 999,
     backgroundColor: "#fffaeb",
-    borderWidth: 1,
-    borderColor: "#f1e2a4",
-    marginLeft: -18,
-    marginTop: -28,
+    borderWidth: 1.5,
+    borderColor: Colors.accentGold,
+    marginLeft: -16,
+    marginTop: -10,
     shadowColor: "#d4af37",
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.35,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
   },

@@ -86,16 +86,23 @@ export default function AdminScreen() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-users"] }),
   });
 
+  // We `select("*")` and order by `updated_at` (always present) so the
+  // query never returns 0 rows just because a newer column (sessions /
+  // age / avg_tasks_per_day) hasn't been migrated yet on this Supabase
+  // project. Missing fields just render as 0 in the editor.
   const appUserStatsQuery = useQuery({
     queryKey: ["admin-app-users-stats"],
     queryFn: async (): Promise<AppUserStatsRow[]> => {
       if (!supabase) return [];
       const { data, error } = await supabase
         .from("app_users")
-        .select("id, user_id, email, name, age, streak, best_streak, points, business_switch_bonus, total_completed, total_sessions, sessions_today, avg_tasks_per_day, last_session_at, state_blob")
-        .order("last_session_at", { ascending: false, nullsFirst: false })
-        .limit(200);
-      if (error) throw error;
+        .select("*")
+        .order("updated_at", { ascending: false, nullsFirst: false })
+        .limit(500);
+      if (error) {
+        console.log("[admin] app_users select error", error.message);
+        throw error;
+      }
       return (data ?? []) as AppUserStatsRow[];
     },
     enabled: isAdmin,
