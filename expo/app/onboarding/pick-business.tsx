@@ -369,17 +369,41 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-function aiOptions(): Option[] {
-  const pool = aiPool();
-  const pros = shuffle(pool.filter((o) => o.idea.isPro)).slice(0, 2);
-  const frees = shuffle(pool.filter((o) => !o.idea.isPro)).slice(0, 1);
+/**
+ * Only surface businesses the user is old enough for. If the user hasn't
+ * filled in their age yet we leave the pool unfiltered. We also keep a
+ * safety net: if filtering wipes out one of the tiers (pro / free), we
+ * fall back to the unfiltered tier so the picker is never empty.
+ */
+function filterByAge(pool: Option[], age: number | null): Option[] {
+  if (typeof age !== "number") return pool;
+  return pool.filter((o) => {
+    const min = o.idea.minAge ?? 0;
+    return age >= min;
+  });
+}
+
+function aiOptions(age: number | null): Option[] {
+  const full = aiPool();
+  const pool = filterByAge(full, age);
+  const prosPool = pool.filter((o) => o.idea.isPro);
+  const freesPool = pool.filter((o) => !o.idea.isPro);
+  const proSource = prosPool.length > 0 ? prosPool : full.filter((o) => o.idea.isPro);
+  const freeSource = freesPool.length > 0 ? freesPool : full.filter((o) => !o.idea.isPro);
+  const pros = shuffle(proSource).slice(0, 2);
+  const frees = shuffle(freeSource).slice(0, 1);
   return [...pros, ...frees];
 }
 
-function inPersonOptions(): Option[] {
-  const pool = inPersonPool();
-  const pros = shuffle(pool.filter((o) => o.idea.isPro)).slice(0, 2);
-  const frees = shuffle(pool.filter((o) => !o.idea.isPro)).slice(0, 1);
+function inPersonOptions(age: number | null): Option[] {
+  const full = inPersonPool();
+  const pool = filterByAge(full, age);
+  const prosPool = pool.filter((o) => o.idea.isPro);
+  const freesPool = pool.filter((o) => !o.idea.isPro);
+  const proSource = prosPool.length > 0 ? prosPool : full.filter((o) => o.idea.isPro);
+  const freeSource = freesPool.length > 0 ? freesPool : full.filter((o) => !o.idea.isPro);
+  const pros = shuffle(proSource).slice(0, 2);
+  const frees = shuffle(freeSource).slice(0, 1);
   return [...pros, ...frees];
 }
 
@@ -387,7 +411,8 @@ export default function PickBusinessScreen() {
   const router = useRouter();
   const { state, setBusiness, setProfileField } = useApp();
   const path = state.profile.pathChoice ?? (state.profile.goal === "in_person_hustle" ? "in_person" : "ai");
-  const options = useMemo(() => (path === "ai" ? aiOptions() : inPersonOptions()), [path]);
+  const age = state.profile.age ?? null;
+  const options = useMemo(() => (path === "ai" ? aiOptions(age) : inPersonOptions(age)), [path, age]);
   const [selected, setSelected] = useState<string | null>(null);
 
   const freeOpt = options.find((o) => !o.idea.isPro);

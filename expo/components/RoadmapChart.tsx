@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Path, Stop } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
-import { Flag } from "lucide-react-native";
+import { Flag, Sparkles } from "lucide-react-native";
 
 import { Colors } from "@/constants/colors";
 
@@ -46,6 +46,8 @@ interface Props {
   onSelect: (i: number | null) => void;
   /** Larger variant used on the Progress tab — taller chart, deeper fades. */
   large?: boolean;
+  /** Number of days the user has had their DRIVE account. When provided, shows a gold "DAY N" badge anchored to the chart so the eyebrow text above never gets faded. */
+  daysOnAccount?: number;
 }
 
 /**
@@ -63,6 +65,7 @@ export function RoadmapChart({
   selected,
   onSelect,
   large = false,
+  daysOnAccount,
 }: Props) {
   const [wrapW, setWrapW] = useState<number>(W);
   const wrapH = wrapW * (H / W);
@@ -298,19 +301,26 @@ export function RoadmapChart({
           <Text style={styles.finalFlagDay}>· Day {finalDay}</Text>
         </Animated.View>
 
-        {/* Top + bottom fade overlays — multi-stop gradients give a deeper, atmospheric blend into the page. */}
-        <LinearGradient
-          pointerEvents="none"
-          colors={["#ffffff", "rgba(255,255,255,0.92)", "rgba(255,255,255,0.55)", "rgba(255,255,255,0)"]}
-          locations={[0, 0.35, 0.7, 1]}
-          style={[styles.fadeTop, large && styles.fadeTopLarge]}
-        />
+        {/* Bottom-only fade — kept subtle so the curve dissolves into the
+            page below, but we no longer fade the TOP because it was eating
+            the eyebrow / next-milestone text on the Progress tab. */}
         <LinearGradient
           pointerEvents="none"
           colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.55)", "rgba(255,255,255,0.92)", "#ffffff"]}
           locations={[0, 0.3, 0.65, 1]}
           style={[styles.fadeBottom, large && styles.fadeBottomLarge]}
         />
+
+        {/* "DAY N" of-your-journey badge — anchored top-left of the chart
+            so the user always sees how long they've been driving. Pairs
+            with the final-flag badge in the top-right. */}
+        {typeof daysOnAccount === "number" && daysOnAccount >= 1 ? (
+          <View pointerEvents="none" style={styles.journeyBadge}>
+            <Sparkles size={11} color={Colors.accentDeep} />
+            <Text style={styles.journeyDay}>DAY {daysOnAccount}</Text>
+            <Text style={styles.journeySub}>of your journey</Text>
+          </View>
+        ) : null}
 
         {/* "You are here" tag — only on the larger Progress-tab variant. Anchors the user's current spot on the curve. */}
         {large ? (
@@ -337,12 +347,30 @@ const styles = StyleSheet.create({
   svgWrap: { width: "100%", aspectRatio: 320 / 220, position: "relative", overflow: "hidden" },
   svgWrapLarge: { aspectRatio: 320 / 280, overflow: "visible" },
   outerLarge: { marginTop: -28, marginBottom: 12 },
-  fadeTop: { position: "absolute", left: 0, right: 0, top: 0, height: 48 },
   fadeBottom: { position: "absolute", left: 0, right: 0, bottom: 0, height: 54 },
-  // Larger Progress-tab roadmap fades — visible but softer so headings on
-  // top of the chart stay legible. Extends a little past the chart frame.
-  fadeTopLarge: { height: 96, top: -28 },
+  // Larger Progress-tab roadmap — slightly extended bottom fade only.
   fadeBottomLarge: { height: 84, bottom: -20 },
+
+  journeyBadge: {
+    position: "absolute",
+    left: 8,
+    top: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "#fffaeb",
+    borderWidth: 1,
+    borderColor: "#f1e2a4",
+    shadowColor: "#d4af37",
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  journeyDay: { color: Colors.accentDeep, fontSize: 11, fontWeight: "900", letterSpacing: 0.4 },
+  journeySub: { color: Colors.textDim, fontSize: 10, fontWeight: "700" },
 
   youHere: {
     position: "absolute",

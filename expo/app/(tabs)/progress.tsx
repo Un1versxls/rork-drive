@@ -325,6 +325,7 @@ export default function ProgressScreen() {
             time={state.profile.time}
             businessName={state.profile.business?.name ?? null}
             totalCompleted={totalCompleted}
+            accountStartedAt={state.profile.accountStartedAt}
           />
 
           <Pressable onPress={toggleAdvanced} style={styles.advancedBtn}>
@@ -348,7 +349,7 @@ export default function ProgressScreen() {
   );
 }
 
-function RoadmapCard({ goal, time, businessName, totalCompleted }: { goal: string | null; time: string | null; businessName: string | null; totalCompleted: number }) {
+function RoadmapCard({ goal, time, businessName, totalCompleted, accountStartedAt }: { goal: string | null; time: string | null; businessName: string | null; totalCompleted: number; accountStartedAt: string | null }) {
   const { milestones, finalLabel, finalDay } = useMemo(() => roadmapFor(goal, time), [goal, time]);
   const finalDate = formatRoadmapDate(finalDay);
 
@@ -357,6 +358,14 @@ function RoadmapCard({ goal, time, businessName, totalCompleted }: { goal: strin
   const completionRatio = Math.min(0.92, totalCompleted / 80);
 
   const [selected, setSelected] = useState<number | null>(null);
+
+  const daysOnAccount = useMemo<number>(() => {
+    if (!accountStartedAt) return 1;
+    const start = new Date(accountStartedAt).getTime();
+    if (Number.isNaN(start)) return 1;
+    const diffMs = Date.now() - start;
+    return Math.max(1, Math.floor(diffMs / 86400000) + 1);
+  }, [accountStartedAt]);
 
   const nextIdx = useMemo(() => {
     const idx = milestones.findIndex((m) => m.progress > completionRatio);
@@ -395,6 +404,7 @@ function RoadmapCard({ goal, time, businessName, totalCompleted }: { goal: strin
         selected={selected}
         onSelect={setSelected}
         large
+        daysOnAccount={daysOnAccount}
       />
 
       <Text style={styles.roadEstimateNote}>

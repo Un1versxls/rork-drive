@@ -134,6 +134,7 @@ const DEFAULT_PROFILE: UserProfile = {
   redeemedCodeOnce: false,
   userCode: null,
   lastShowcaseSeen: null,
+  accountStartedAt: null,
 };
 
 const DEFAULT_STATE: AppState = {
@@ -181,6 +182,7 @@ async function loadState(): Promise<AppState> {
         redeemedCodeOnce: parsed.profile?.redeemedCodeOnce ?? false,
         userCode: parsed.profile?.userCode ?? null,
         lastShowcaseSeen: parsed.profile?.lastShowcaseSeen ?? null,
+        accountStartedAt: parsed.profile?.accountStartedAt ?? null,
       },
     };
   } catch (e) {
@@ -285,6 +287,26 @@ export const [AppProvider, useApp] = createContextHook(() => {
       setHydrated(true);
     }
   }, [stateQuery.data, hydrated]);
+
+  // Stamp the user's "account started" timestamp the first time we
+  // hydrate an onboarded session that doesn't already have one. Powers
+  // the "Day N" badge on the roadmap. Existing users get backfilled to
+  // today (we'd rather show "Day 1" than guess a historical date).
+  useEffect(() => {
+    if (!hydrated) return;
+    const prev = stateRef.current;
+    if (!prev.onboarded) return;
+    if (prev.profile.accountStartedAt) return;
+    const next: AppState = {
+      ...prev,
+      profile: { ...prev.profile, accountStartedAt: new Date().toISOString() },
+    };
+    stateRef.current = next;
+    setState(next);
+    saveMutation.mutate(next);
+  // saveMutation intentionally omitted so we only run when hydrated flips.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
 
   // Nightly forced sync — every active user pushes their full state up
   // to Supabase once a day at ~5pm local time. We also catch up on the
@@ -840,6 +862,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
           redeemedCodeOnce: blob.profile?.redeemedCodeOnce ?? false,
           userCode: blob.profile?.userCode ?? null,
           lastShowcaseSeen: blob.profile?.lastShowcaseSeen ?? null,
+          accountStartedAt: blob.profile?.accountStartedAt ?? null,
         },
         tasks: Array.isArray(blob.tasks) ? blob.tasks : [],
         history: blob.history ?? {},

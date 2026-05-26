@@ -3,15 +3,19 @@ import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from "r
 import {
   Award,
   BrainCircuit,
+  CheckCircle2,
   ChevronDown,
   ChevronRight,
   Crown,
   Flame,
   Gem,
+  Settings,
   Sparkles,
+  ShieldCheck,
   Star,
   Target,
   Trophy,
+  Wrench,
   X,
   Zap,
 } from "lucide-react-native";
@@ -125,6 +129,7 @@ export function WhatsNewModal({ visible, update, hapticsEnabled, onDismiss }: Pr
 
           {page.variant === "ai-coach" ? <PhoneCoachShowcase /> : null}
           {page.variant === "badge-promo" ? <BadgePromoShowcase /> : null}
+          {page.variant === "bug-fixes" ? <BugFixesShowcase /> : null}
         </Animated.View>
 
         <Animated.View style={{ transform: [{ scale: readyScale }], width: "100%", alignItems: "stretch" }}>
@@ -683,6 +688,115 @@ function BadgePromoShowcase() {
   );
 }
 
+/**
+ * Bug-fixes / stability animation. Two counter-rotating gears with a gold
+ * sparkle sweep + stacked checklist of fix categories ticking in one by
+ * one. Fits the gold-on-light DRIVE theme.
+ */
+function BugFixesShowcase() {
+  const gearA = useRef(new Animated.Value(0)).current;
+  const gearB = useRef(new Animated.Value(0)).current;
+  const sweep = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
+  const fixes = useMemo(
+    () => [
+      { label: "Sign-in sync", Icon: ShieldCheck },
+      { label: "Task progress saves", Icon: CheckCircle2 },
+      { label: "Roadmap polish", Icon: Sparkles },
+      { label: "Snappier taps", Icon: Zap },
+    ],
+    [],
+  );
+  const fixAnims = useRef(fixes.map(() => new Animated.Value(0))).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(gearA, { toValue: 1, duration: 5400, easing: Easing.linear, useNativeDriver: true }),
+    ).start();
+    Animated.loop(
+      Animated.timing(gearB, { toValue: 1, duration: 4000, easing: Easing.linear, useNativeDriver: true }),
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(sweep, { toValue: 1, duration: 2200, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
+        Animated.delay(400),
+      ]),
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 1200, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ]),
+    ).start();
+
+    const runChecklist = () => {
+      fixAnims.forEach((v) => v.setValue(0));
+      Animated.stagger(
+        260,
+        fixAnims.map((v) =>
+          Animated.spring(v, { toValue: 1, friction: 6, tension: 110, useNativeDriver: true }),
+        ),
+      ).start(() => {
+        setTimeout(runChecklist, 2200);
+      });
+    };
+    runChecklist();
+  }, [gearA, gearB, sweep, pulse, fixAnims]);
+
+  const rotateA = gearA.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
+  const rotateB = gearB.interpolate({ inputRange: [0, 1], outputRange: ["360deg", "0deg"] });
+  const sweepX = sweep.interpolate({ inputRange: [0, 1], outputRange: [-240, 260] });
+  const pulseScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] });
+  const pulseOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.7] });
+
+  return (
+    <View style={styles.fixWrap}>
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.fixGlow, { opacity: pulseOpacity, transform: [{ scale: pulseScale }] }]}
+      />
+
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.fixSweep, { transform: [{ translateX: sweepX }, { rotate: "20deg" }] }]}
+      />
+
+      <View style={styles.gearStage} pointerEvents="none">
+        <Animated.View style={[styles.gearBig, { transform: [{ rotate: rotateA }] }]}>
+          <Settings size={88} color={Colors.accentGold} strokeWidth={1.6} />
+        </Animated.View>
+        <Animated.View style={[styles.gearSmall, { transform: [{ rotate: rotateB }] }]}>
+          <Settings size={48} color={Colors.accentDeep} strokeWidth={1.8} />
+        </Animated.View>
+        <View style={styles.wrenchChip}>
+          <Wrench size={14} color="#ffffff" strokeWidth={2.6} />
+        </View>
+      </View>
+
+      <View style={styles.fixList} pointerEvents="none">
+        {fixes.map(({ label, Icon }, i) => {
+          const a = fixAnims[i];
+          const opacity = a;
+          const translateY = a.interpolate({ inputRange: [0, 1], outputRange: [10, 0] });
+          const scale = a.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] });
+          return (
+            <Animated.View
+              key={label}
+              style={[styles.fixRow, { opacity, transform: [{ translateY }, { scale }] }]}
+            >
+              <View style={styles.fixRowIcon}>
+                <Icon size={11} color={Colors.accentDeep} strokeWidth={2.4} />
+              </View>
+              <Text style={styles.fixRowLabel}>{label}</Text>
+              <CheckCircle2 size={12} color={Colors.accentGold} strokeWidth={2.6} />
+            </Animated.View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
@@ -1098,6 +1212,90 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
   },
   freeTagText: { color: "#ffffff", fontSize: 11, fontWeight: "900", letterSpacing: 1.2 },
+
+  // Bug-fixes showcase
+  fixWrap: {
+    width: "100%",
+    height: 260,
+    borderRadius: 22,
+    backgroundColor: "#fffdf5",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.35)",
+    marginBottom: 18,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    paddingTop: 18,
+  },
+  fixGlow: {
+    position: "absolute",
+    top: -40,
+    width: 220,
+    height: 220,
+    borderRadius: 999,
+    backgroundColor: "rgba(212,175,55,0.25)",
+  },
+  fixSweep: {
+    position: "absolute",
+    top: -40,
+    width: 70,
+    height: 360,
+    backgroundColor: "rgba(212,175,55,0.18)",
+  },
+  gearStage: {
+    width: 160,
+    height: 140,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  gearBig: { position: "absolute", left: 16, top: 16 },
+  gearSmall: { position: "absolute", right: 12, bottom: 6 },
+  wrenchChip: {
+    position: "absolute",
+    bottom: -2,
+    left: 6,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.accentGold,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#d4af37",
+    shadowOpacity: 0.65,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    borderWidth: 2,
+    borderColor: "#ffffff",
+  },
+  fixList: {
+    width: "86%",
+    gap: 6,
+    marginTop: 8,
+  },
+  fixRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.35)",
+    shadowColor: "#d4af37",
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  fixRowIcon: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "rgba(212,175,55,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fixRowLabel: { flex: 1, color: Colors.text, fontSize: 11.5, fontWeight: "800" },
 
   // CTA with progress fill
   cta: {

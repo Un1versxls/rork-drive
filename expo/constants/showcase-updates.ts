@@ -20,7 +20,9 @@ export type ShowcaseVariant =
   /** AI "Ask the Coach" phone-mockup animation (default for AI updates). */
   | "ai-coach"
   /** Limited-time badge promotion — trophy + badge shower. */
-  | "badge-promo";
+  | "badge-promo"
+  /** Stability / bug-fix release — orbiting gears + gold sparkle sweep. */
+  | "bug-fixes";
 
 export interface ShowcasePage {
   /** Visual animation rendered between the headline and the CTA. */
@@ -54,13 +56,13 @@ export interface ShowcaseUpdate {
 
 export const SHOWCASE_UPDATES: ShowcaseUpdate[] = [
   {
-    id: "update-2.5.1",
+    id: "update-3.0",
     showOnFirstLaunch: true,
     finalRoute: "/badges",
     pages: [
       {
         variant: "ai-coach",
-        eyebrow: "UPDATE 2.5",
+        eyebrow: "UPDATE 3.0",
         headline: "Ask the Coach, on every task",
         body:
           "Tap any task and hit Ask the Coach — instant, personalized guidance trained on your business.",
@@ -72,6 +74,14 @@ export const SHOWCASE_UPDATES: ShowcaseUpdate[] = [
         headline: "Collect every badge → 1 month of Premium, free",
         body:
           "Earn every non-membership badge in the Badge Room and we'll credit you a free month of Premium. Limited time.",
+        cta: "Almost done",
+      },
+      {
+        variant: "bug-fixes",
+        eyebrow: "3.0 · BUG FIXES",
+        headline: "Smoother, faster, sturdier",
+        body:
+          "Tons of fixes under the hood — faster sign-in sync, no more lost task progress, sharper roadmap, snappier milestone taps, smarter age-aware business picks, and dozens of small polish passes.",
         cta: "View badges",
       },
     ],

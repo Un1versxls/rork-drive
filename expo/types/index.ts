@@ -191,6 +191,8 @@ export interface UserProfile {
   userCode: string | null;
   /** Id of the last "What's New" showcase the user dismissed. */
   lastShowcaseSeen: string | null;
+  /** ISO timestamp when the user's local DRIVE account started. Set the first time we hydrate an onboarded session. Used for the "DAY N" badge on the roadmap. */
+  accountStartedAt: string | null;
   pendingProPick: BusinessIdea | null;
   pendingProPickPool: TaskSeed[];
   pendingFreeAlt: BusinessIdea | null;
