@@ -3,10 +3,13 @@ import { Alert, Animated, Easing, KeyboardAvoidingView, LayoutAnimation, Platfor
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Award, Check, ChevronDown, ChevronRight, Cloud, CloudOff, Crown, Gift, LogIn, LogOut, Pencil, RefreshCw, Shield, Sparkles, Star, Vibrate } from "lucide-react-native";
+import { ArrowUpRight, Award, Check, ChevronDown, ChevronRight, Cloud, CloudOff, Crown, Gift, LogIn, LogOut, Pencil, RefreshCw, Shield, Sparkles, Star, Vibrate } from "lucide-react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { buildSyncFromAppState, upsertAppUser } from "@/lib/appUserTracking";
 import { supabase } from "@/lib/supabase";
 import { userCodeFor } from "@/lib/userCode";
+
+const SYNC_HINT_KEY = "drive.profile.syncHintSeen.v1";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -48,6 +51,42 @@ export default function ProfileScreen() {
   };
 
   const chevronRotate = chevronAnim.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "180deg"] });
+
+  // Sync hint: a small animated pointer + caption pulses next to the sync
+  // pill on every profile open until the user actually taps it. Persisted
+  // in AsyncStorage so the hint stops appearing once acted on.
+  const [syncHintSeen, setSyncHintSeen] = useState<boolean>(true);
+  const syncHintAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const v = await AsyncStorage.getItem(SYNC_HINT_KEY);
+        if (!mounted) return;
+        setSyncHintSeen(v === "1");
+      } catch (e) {
+        console.log("[profile] syncHint load", e);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+  useEffect(() => {
+    if (syncHintSeen) { syncHintAnim.setValue(0); return; }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(syncHintAnim, { toValue: 1, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(syncHintAnim, { toValue: 0, duration: 700, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+        Animated.delay(500),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [syncHintSeen, syncHintAnim]);
+  const dismissSyncHint = () => {
+    if (syncHintSeen) return;
+    setSyncHintSeen(true);
+    AsyncStorage.setItem(SYNC_HINT_KEY, "1").catch((e) => console.log("[profile] syncHint save", e));
+  };
 
   const pingQuery = useQuery({
     queryKey: ["supabase-ping"],
@@ -91,6 +130,7 @@ export default function ProfileScreen() {
 
   const onPressStatus = () => {
     triggerHaptic("light", state.profile.hapticsEnabled);
+    dismissSyncHint();
     if (!supabaseReady) {
       pingQuery.refetch();
       return;
@@ -147,6 +187,24 @@ export default function ProfileScreen() {
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.headerRow}>
             <Text style={styles.header}>Profile</Text>
+            <View style={styles.syncStack}>
+              {!syncHintSeen ? (
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    styles.syncHintRow,
+                    {
+                      opacity: syncHintAnim,
+                      transform: [
+                        { translateY: syncHintAnim.interpolate({ inputRange: [0, 1], outputRange: [4, -2] }) },
+                      ],
+                    },
+                  ]}
+                >
+                  <ArrowUpRight color={Colors.accentDeep} size={11} strokeWidth={2.8} />
+                  <Text style={styles.syncHintText}>tap to sync</Text>
+                </Animated.View>
+              ) : null}
             <Pressable
               onPress={onPressStatus}
               disabled={migrateMutation.isPending}
@@ -184,6 +242,7 @@ export default function ProfileScreen() {
                   : "Checking…"}
               </Text>
             </Pressable>
+            </View>
           </View>
 
           <View style={styles.userCard}>
@@ -417,6 +476,9 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#ffffff" },
   scroll: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: Platform.OS === "ios" ? 140 : 120 },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 },
+  syncStack: { alignItems: "flex-end", gap: 4 },
+  syncHintRow: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 999, backgroundColor: "#fffaeb", borderWidth: 1, borderColor: "#f1e2a4" },
+  syncHintText: { color: Colors.accentDeep, fontSize: 9, fontWeight: "900", letterSpacing: 0.4, textTransform: "uppercase" },
   header: { color: Colors.text, fontSize: 32, fontWeight: "900", letterSpacing: -0.5 },
   statusPill: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, backgroundColor: "#f4f4f4", borderWidth: 1, borderColor: "#eeeeee" },
   statusPillOn: { backgroundColor: "#e8f7ee", borderColor: "#bfe5cc" },

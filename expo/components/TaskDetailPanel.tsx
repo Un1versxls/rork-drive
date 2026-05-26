@@ -75,22 +75,29 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, subta
   const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
   const subHint = useRef(new Animated.Value(0)).current;
 
+  // Subtask coachmark loops until the user actually checks a step
+  // (action-completion). The flag flips true inside toggleStep, not when
+  // the animation finishes — so a new user keeps seeing it on every task
+  // open until they interact.
   useEffect(() => {
-    if (!visible) return;
-    if (subtaskHintSeen) return;
-    const t = setTimeout(() => {
+    if (!visible) { subHint.setValue(0); return; }
+    if (subtaskHintSeen) { subHint.setValue(0); return; }
+    const start = setTimeout(() => {
       triggerHaptic("light", hapticsEnabled);
+    }, 650);
+    const loop = Animated.loop(
       Animated.sequence([
+        Animated.delay(650),
         Animated.timing(subHint, { toValue: 1, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
         Animated.timing(subHint, { toValue: 0.45, duration: 200, useNativeDriver: true }),
         Animated.timing(subHint, { toValue: 1, duration: 220, useNativeDriver: true }),
         Animated.timing(subHint, { toValue: 0, duration: 380, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
-      ]).start(() => {
-        onSubtaskHintShown?.();
-      });
-    }, 650);
-    return () => clearTimeout(t);
-  }, [visible, subtaskHintSeen, hapticsEnabled, subHint, onSubtaskHintShown]);
+        Animated.delay(1800),
+      ]),
+    );
+    loop.start();
+    return () => { clearTimeout(start); loop.stop(); };
+  }, [visible, subtaskHintSeen, hapticsEnabled, subHint]);
 
   useEffect(() => {
     if (Platform.OS === "web") return;
@@ -146,6 +153,7 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, subta
 
   const toggleStep = (id: string) => {
     triggerHaptic("select", hapticsEnabled);
+    if (!subtaskHintSeen) onSubtaskHintShown?.();
     setChecked((c) => ({ ...c, [id]: !c[id] }));
   };
 

@@ -102,26 +102,30 @@ export default function TasksScreen() {
     })();
   }, [state.onboarded, state.profile.firstTourSeen, state.profile.lastShowcaseSeen]);
 
-  // Coachmark: after the 5-step tour ends, give the first pending task card a
-  // soft wiggle so users learn they can tap into it. Only fires once.
+  // Coachmark: loops a soft wiggle on the first pending task card until
+  // the user actually opens a task (action-completion model). Persists
+  // across sessions and across new accounts — the flag only flips true
+  // on real interaction.
   useEffect(() => {
     if (!state.onboarded) return;
-    if (!state.profile.firstTourSeen) return;
-    if (state.profile.taskHintSeen) return;
+    if (state.profile.taskHintSeen) { firstTaskHint.setValue(0); return; }
     if (pending.length === 0) return;
-    const t = setTimeout(() => {
+    const start = setTimeout(() => {
       triggerHaptic("light", state.profile.hapticsEnabled);
+    }, 900);
+    const loop = Animated.loop(
       Animated.sequence([
+        Animated.delay(900),
         Animated.timing(firstTaskHint, { toValue: 1, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
         Animated.timing(firstTaskHint, { toValue: 0.4, duration: 200, useNativeDriver: true }),
         Animated.timing(firstTaskHint, { toValue: 1, duration: 220, useNativeDriver: true }),
         Animated.timing(firstTaskHint, { toValue: 0, duration: 380, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
-      ]).start(() => {
-        setProfileField("taskHintSeen", true);
-      });
-    }, 900);
-    return () => clearTimeout(t);
-  }, [state.onboarded, state.profile.firstTourSeen, state.profile.taskHintSeen, state.profile.hapticsEnabled, pending.length, firstTaskHint, setProfileField]);
+        Animated.delay(2200),
+      ]),
+    );
+    loop.start();
+    return () => { clearTimeout(start); loop.stop(); };
+  }, [state.onboarded, state.profile.taskHintSeen, state.profile.hapticsEnabled, pending.length, firstTaskHint]);
 
   return (
     <View style={styles.root}>
@@ -182,7 +186,11 @@ export default function TasksScreen() {
               multiplier={currentPlan.multiplier}
               hapticsEnabled={state.profile.hapticsEnabled}
               hintAnim={i === 0 ? firstTaskHint : null}
-              onOpen={() => setSelectedTask(t)}
+              showHintCaption={i === 0 && !state.profile.taskHintSeen}
+              onOpen={() => {
+                if (!state.profile.taskHintSeen) setProfileField("taskHintSeen", true);
+                setSelectedTask(t);
+              }}
               onComplete={() => completeTask(t.id)}
               onSkip={() => skipTask(t.id)}
             />
@@ -263,13 +271,14 @@ interface TaskItemProps {
   multiplier: number;
   hapticsEnabled: boolean;
   hintAnim?: Animated.Value | null;
+  showHintCaption?: boolean;
   onOpen: () => void;
   onComplete: () => void;
   onSkip: () => void;
   onUndo?: () => void;
 }
 
-function TaskItem({ task, multiplier, hapticsEnabled, hintAnim, onOpen, onComplete, onSkip, onUndo }: TaskItemProps) {
+function TaskItem({ task, multiplier, hapticsEnabled, hintAnim, showHintCaption, onOpen, onComplete, onSkip, onUndo }: TaskItemProps) {
   const meta = CATEGORY_META[task.category];
   const scale = useRef(new Animated.Value(1)).current;
   const opacity = useRef(new Animated.Value(1)).current;
@@ -300,6 +309,9 @@ function TaskItem({ task, multiplier, hapticsEnabled, hintAnim, onOpen, onComple
 
   return (
     <Animated.View style={{ opacity, transform: [{ scale }, { translateY: hintTranslate }], shadowColor: "#000", shadowOpacity: hintShadow, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } }}>
+      {showHintCaption && hintAnim ? (
+        <Animated.Text style={[styles.taskHintCaption, { opacity: hintAnim }]}>tap to open this task ↓</Animated.Text>
+      ) : null}
       <View style={styles.taskCard}>
         <View style={styles.taskRow}>
           <Pressable
@@ -404,4 +416,5 @@ const styles = StyleSheet.create({
   empty: { alignItems: "center", marginBottom: 20, padding: 24, borderRadius: 16, borderWidth: 1, borderColor: "#eeeeee", backgroundColor: "#fafafa" },
   emptyTitle: { color: Colors.text, fontSize: 17, fontWeight: "800" },
   emptySub: { color: Colors.textDim, textAlign: "center", marginTop: 6, fontSize: 13 },
+  taskHintCaption: { color: Colors.accentDeep, fontSize: 11, fontWeight: "800", letterSpacing: 0.4, textAlign: "center", marginBottom: 6 },
 });

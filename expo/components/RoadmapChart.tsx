@@ -185,16 +185,23 @@ export function RoadmapChart({
           const isSelected = selected === i;
           const above = i % 2 === 0;
           const sa = selectAnims[i];
-          const calloutScale = sa.interpolate({ inputRange: [0, 1], outputRange: [1, 1.32] });
-          const calloutTX = sa.interpolate({ inputRange: [0, 1], outputRange: [0, dx] });
-          const calloutTY = sa.interpolate({ inputRange: [0, 1], outputRange: [0, dy] });
           const ringScale = sa.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1.9] });
           const ringOpacity = sa.interpolate({ inputRange: [0, 1], outputRange: [0, 0.85] });
           const dotEntryScale = dotAnims[i].interpolate({ inputRange: [0, 1], outputRange: [0.2, 1] });
+          // Compact day-pill fades out as the big callout grows in.
+          const compactOpacity = Animated.multiply(
+            dotAnims[i],
+            sa.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+          );
+          // Big callout fades in from selection.
+          const bigOpacity = sa;
+          const bigScale = sa.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
+          const bigTX = sa.interpolate({ inputRange: [0, 1], outputRange: [0, dx] });
+          const bigTY = sa.interpolate({ inputRange: [0, 1], outputRange: [0, dy] });
 
           return (
             <React.Fragment key={i}>
-              {/* Placeholder ring at the dot's home position — shows clearly where the milestone lives while the callout drifts. */}
+              {/* Placeholder ring shows where the milestone lives while the big callout drifts inward. */}
               <Animated.View
                 pointerEvents="none"
                 style={[
@@ -213,7 +220,7 @@ export function RoadmapChart({
                   e.stopPropagation();
                   onSelect(isSelected ? null : i);
                 }}
-                hitSlop={22}
+                hitSlop={28}
                 style={[styles.dotHit, { left: `${cx * 100}%`, top: `${cy * 100}%` }]}
               >
                 <Animated.View
@@ -224,6 +231,26 @@ export function RoadmapChart({
                 />
               </Pressable>
 
+              {/* Compact day chip — visible when this milestone is NOT selected. */}
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.compactWrap,
+                  {
+                    left: `${cx * 100}%`,
+                    top: `${cy * 100}%`,
+                    marginLeft: -22,
+                    marginTop: above ? -34 : 14,
+                    opacity: compactOpacity,
+                  },
+                ]}
+              >
+                <View style={styles.compactPill}>
+                  <Text style={styles.compactPillText}>D{m.day}</Text>
+                </View>
+              </Animated.View>
+
+              {/* Big callout — only visible when selected. Translates toward chart center. */}
               <Animated.View
                 pointerEvents="none"
                 style={[
@@ -231,29 +258,24 @@ export function RoadmapChart({
                   {
                     left: `${cx * 100}%`,
                     top: `${cy * 100}%`,
-                    marginLeft: -70,
-                    marginTop: above ? -54 : 14,
-                    opacity: dotAnims[i],
+                    marginLeft: -78,
+                    marginTop: above ? -70 : 18,
+                    opacity: bigOpacity,
                     transform: [
-                      { translateX: calloutTX },
-                      { translateY: calloutTY },
-                      { scale: calloutScale },
+                      { translateX: bigTX },
+                      { translateY: bigTY },
+                      { scale: bigScale },
                     ],
                     zIndex: isSelected ? 10 : 1,
                   },
                 ]}
               >
                 <View style={styles.callout}>
-                  <Animated.View
-                    style={[StyleSheet.absoluteFill, styles.calloutGlow, { opacity: sa }]}
-                  />
                   <Text style={styles.calloutDay}>DAY {m.day}</Text>
                   <Text style={styles.calloutLabel} numberOfLines={2}>
                     {m.label}
                   </Text>
-                  <Animated.Text style={[styles.calloutEstimate, { opacity: sa }]}>
-                    ~ estimate
-                  </Animated.Text>
+                  <Text style={styles.calloutEstimate}>~ estimate</Text>
                 </View>
               </Animated.View>
             </React.Fragment>
@@ -314,14 +336,13 @@ const styles = StyleSheet.create({
   // page atmosphere above and below, so we don't clip on that variant.
   svgWrap: { width: "100%", aspectRatio: 320 / 220, position: "relative", overflow: "hidden" },
   svgWrapLarge: { aspectRatio: 320 / 280, overflow: "visible" },
-  outerLarge: { marginTop: -36, marginBottom: -18 },
+  outerLarge: { marginTop: -28, marginBottom: 12 },
   fadeTop: { position: "absolute", left: 0, right: 0, top: 0, height: 48 },
   fadeBottom: { position: "absolute", left: 0, right: 0, bottom: 0, height: 54 },
-  // Much more prominent fades on the larger Progress-tab roadmap — they
-  // extend up past the chart frame (so the curve dissolves into the bar
-  // chart above) and a little past the bottom of the card.
-  fadeTopLarge: { height: 150, top: -52 },
-  fadeBottomLarge: { height: 130, bottom: -36 },
+  // Larger Progress-tab roadmap fades — visible but softer so headings on
+  // top of the chart stay legible. Extends a little past the chart frame.
+  fadeTopLarge: { height: 96, top: -28 },
+  fadeBottomLarge: { height: 84, bottom: -20 },
 
   youHere: {
     position: "absolute",
@@ -399,28 +420,38 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
   },
 
-  calloutWrap: { position: "absolute", width: 140, alignItems: "center" },
-  callout: {
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 12,
-    backgroundColor: "#ffffff",
+  compactWrap: { position: "absolute", width: 44, alignItems: "center" },
+  compactPill: {
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 999,
+    backgroundColor: "#fffaeb",
     borderWidth: 1,
     borderColor: "#f1e2a4",
+    shadowColor: "#d4af37",
+    shadowOpacity: 0.18,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  compactPillText: { color: Colors.accentDeep, fontSize: 10, fontWeight: "900", letterSpacing: 0.5 },
+
+  calloutWrap: { position: "absolute", width: 156, alignItems: "center" },
+  callout: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: "#fffdf2",
+    borderWidth: 1,
+    borderColor: Colors.accentGold,
     alignItems: "center",
     shadowColor: "#d4af37",
-    shadowOpacity: 0.22,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    overflow: "hidden",
+    shadowOpacity: 0.32,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
   },
-  calloutGlow: {
-    backgroundColor: "#fffdf2",
-    borderRadius: 12,
-  },
-  calloutDay: { color: Colors.accentDeep, fontSize: 9, fontWeight: "900", letterSpacing: 1.0 },
-  calloutLabel: { color: Colors.text, fontSize: 11.5, fontWeight: "800", marginTop: 1, textAlign: "center" },
-  calloutEstimate: { color: Colors.textDim, fontSize: 9.5, fontWeight: "700", marginTop: 3, letterSpacing: 0.4, fontStyle: "italic" },
+  calloutDay: { color: Colors.accentDeep, fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
+  calloutLabel: { color: Colors.text, fontSize: 13, fontWeight: "900", marginTop: 2, textAlign: "center" },
+  calloutEstimate: { color: Colors.textDim, fontSize: 10, fontWeight: "700", marginTop: 4, letterSpacing: 0.4, fontStyle: "italic" },
 
   finalFlag: {
     position: "absolute",
@@ -439,7 +470,7 @@ const styles = StyleSheet.create({
   finalFlagText: { color: Colors.accentDeep, fontSize: 11, fontWeight: "900", letterSpacing: 0.2 },
   finalFlagDay: { color: Colors.textDim, fontSize: 10, fontWeight: "700" },
 
-  axisRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 6, paddingTop: 0, marginTop: -2 },
+  axisRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 6, paddingTop: 6, marginTop: 6, marginBottom: 4 },
   axisDotToday: { width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.textDim },
   axisDotEnd: { width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.accentGold },
   axisSpacer: { flex: 1, height: 1, backgroundColor: "#f1e2a4", opacity: 0.6 },

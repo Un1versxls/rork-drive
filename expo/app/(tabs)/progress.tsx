@@ -75,29 +75,32 @@ export default function ProgressScreen() {
   const tier = getStreakTier(state.streak);
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
 
-  // First-visit hint: nudge the motivation card up & down so the user
-  // discovers it can be tapped to swap. Only runs once, after the 5-step
-  // tour has been completed.
+  // Coachmark: loops a soft bob on the motivation card until the user
+  // actually taps it (action-completion model — not animation-completion).
+  // Persists across sessions and across new accounts via
+  // `motivationHintSeen` which only flips true on real interaction.
   const hintAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (!state.onboarded) return;
-    if (!state.profile.firstTourSeen) return;
-    if (state.profile.motivationHintSeen) return;
-    const t = setTimeout(() => {
+    if (state.profile.motivationHintSeen) { hintAnim.setValue(0); return; }
+    const start = setTimeout(() => {
       if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
       }
+    }, 700);
+    const loop = Animated.loop(
       Animated.sequence([
+        Animated.delay(700),
         Animated.timing(hintAnim, { toValue: 1, duration: 360, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(hintAnim, { toValue: 0.6, duration: 220, useNativeDriver: true }),
+        Animated.timing(hintAnim, { toValue: 0.55, duration: 220, useNativeDriver: true }),
         Animated.timing(hintAnim, { toValue: 1, duration: 240, useNativeDriver: true }),
         Animated.timing(hintAnim, { toValue: 0, duration: 380, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
-      ]).start(() => {
-        setProfileField("motivationHintSeen", true);
-      });
-    }, 700);
-    return () => clearTimeout(t);
-  }, [state.onboarded, state.profile.firstTourSeen, state.profile.motivationHintSeen, hintAnim, setProfileField]);
+        Animated.delay(2200),
+      ]),
+    );
+    loop.start();
+    return () => { clearTimeout(start); loop.stop(); };
+  }, [state.onboarded, state.profile.motivationHintSeen, hintAnim]);
   const hintTranslate = hintAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -14] });
   const hintShadow = hintAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.18] });
 
@@ -194,6 +197,9 @@ export default function ProgressScreen() {
     setFactCooldownUntil(now + 10000);
     if (Platform.OS !== "web") {
       Haptics.selectionAsync().catch(() => {});
+    }
+    if (!state.profile.motivationHintSeen) {
+      setProfileField("motivationHintSeen", true);
     }
     Animated.parallel([
       Animated.timing(factOpacity, { toValue: 0, duration: 140, useNativeDriver: true }),
@@ -448,15 +454,10 @@ const styles = StyleSheet.create({
 
   roadmapCard: {
     marginBottom: 22,
-    padding: 16,
-    borderRadius: 20,
-    backgroundColor: "#ffffff",
-    borderWidth: 1,
-    borderColor: "#eeeeee",
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
+    paddingHorizontal: 4,
+    paddingTop: 6,
+    paddingBottom: 2,
+    backgroundColor: "transparent",
   },
   roadmapHead: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 6 },
   roadmapIconWrap: { width: 32, height: 32, borderRadius: 10, backgroundColor: Colors.accentDim, alignItems: "center", justifyContent: "center" },
@@ -465,7 +466,7 @@ const styles = StyleSheet.create({
   roadmapNext: { color: Colors.accentDeep, fontSize: 11, fontWeight: "800", letterSpacing: 0.2, marginTop: 4, opacity: 0.85 },
   roadmapTrend: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: Colors.accentDim, borderWidth: 1, borderColor: Colors.borderStrong },
   roadmapTrendText: { color: Colors.accentDeep, fontSize: 9, fontWeight: "900", letterSpacing: 0.6 },
-  roadEstimateNote: { color: Colors.textDim, fontSize: 11, fontWeight: "600", textAlign: "center", marginTop: 6, opacity: 0.75 },
+  roadEstimateNote: { color: Colors.textDim, fontSize: 11, fontWeight: "600", textAlign: "center", marginTop: 16, opacity: 0.75 },
 
   advanced: { marginTop: 8, padding: 6, borderRadius: 16, backgroundColor: "#fafafa", borderWidth: 1, borderColor: "#eeeeee" },
   statRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 13 },
