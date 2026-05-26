@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Path, Stop } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
-import { Flag, Sparkles } from "lucide-react-native";
+import { DollarSign, Flag, Sparkles } from "lucide-react-native";
 
 import { Colors } from "@/constants/colors";
 
@@ -69,6 +69,7 @@ export function RoadmapChart({
 }: Props) {
   const [wrapW, setWrapW] = useState<number>(W);
   const wrapH = wrapW * (H / W);
+  const [finalOpen, setFinalOpen] = useState<boolean>(false);
 
   const draw = useRef(new Animated.Value(0)).current;
   const dotAnims = useMemo(() => milestones.map(() => new Animated.Value(0)), [milestones]);
@@ -289,20 +290,35 @@ export function RoadmapChart({
           );
         })}
 
-        {/* Final flag */}
+        {/* Final goal — compact tappable money icon. Tapping toggles a callout
+            with the full label + day so the top-right corner stays light and
+            doesn't crowd the journey badge / chart. */}
         <Animated.View
-          pointerEvents="none"
           style={[
-            styles.finalFlag,
+            styles.finalFlagAnchor,
             {
               opacity: finalAnim,
               transform: [{ scale: finalAnim.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }],
             },
           ]}
         >
-          <Flag size={13} color={Colors.accentDeep} />
-          <Text style={styles.finalFlagText}>{finalLabel}</Text>
-          <Text style={styles.finalFlagDay}>· Day {finalDay}</Text>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              setFinalOpen((v) => !v);
+            }}
+            hitSlop={12}
+            style={styles.finalCoin}
+          >
+            <DollarSign size={14} color={Colors.accentDeep} strokeWidth={3} />
+          </Pressable>
+          {finalOpen ? (
+            <View style={styles.finalPopover} pointerEvents="box-none">
+              <Flag size={11} color={Colors.accentDeep} />
+              <Text style={styles.finalFlagText} numberOfLines={1}>{finalLabel}</Text>
+              <Text style={styles.finalFlagDay}>· Day {finalDay}</Text>
+            </View>
+          ) : null}
         </Animated.View>
 
         {/* Bottom-only fade — kept subtle so the curve dissolves into the
@@ -315,16 +331,7 @@ export function RoadmapChart({
           style={[styles.fadeBottom, large && styles.fadeBottomLarge]}
         />
 
-        {/* "DAY N" of-your-journey badge — anchored top-left of the chart
-            so the user always sees how long they've been driving. Pairs
-            with the final-flag badge in the top-right. */}
-        {typeof daysOnAccount === "number" && daysOnAccount >= 1 ? (
-          <View pointerEvents="none" style={styles.journeyBadge}>
-            <Sparkles size={11} color={Colors.accentDeep} />
-            <Text style={styles.journeyDay}>DAY {daysOnAccount}</Text>
-            <Text style={styles.journeySub}>of your journey</Text>
-          </View>
-        ) : null}
+
 
         {/* "You are here" tag — only on the larger Progress-tab variant. Anchors the user's current spot on the curve. */}
         {large ? (
@@ -333,6 +340,17 @@ export function RoadmapChart({
           </View>
         ) : null}
       </View>
+
+      {/* "DAY N of your journey" — moved BELOW the chart so it never
+          overlaps the first milestone pill or the top-right goal icon.
+          Sits between the chart and the timeline axis. */}
+      {typeof daysOnAccount === "number" && daysOnAccount >= 1 ? (
+        <View style={styles.journeyBadgeBottom}>
+          <Sparkles size={11} color={Colors.accentDeep} />
+          <Text style={styles.journeyDay}>DAY {daysOnAccount}</Text>
+          <Text style={styles.journeySub}>of your journey</Text>
+        </View>
+      ) : null}
 
       <View style={styles.axisRow}>
         <View style={styles.axisDotToday} />
@@ -355,19 +373,18 @@ const styles = StyleSheet.create({
   // Larger Progress-tab roadmap — slightly extended bottom fade only.
   fadeBottomLarge: { height: 84, bottom: -20 },
 
-  journeyBadge: {
-    position: "absolute",
-    left: 8,
-    top: 30,
+  journeyBadgeBottom: {
+    alignSelf: "center",
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    paddingHorizontal: 10,
+    paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 999,
     backgroundColor: "#fffaeb",
     borderWidth: 1,
     borderColor: "#f1e2a4",
+    marginTop: 4,
     shadowColor: "#d4af37",
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -485,19 +502,43 @@ const styles = StyleSheet.create({
   calloutLabel: { color: Colors.text, fontSize: 13, fontWeight: "900", marginTop: 2, textAlign: "center" },
   calloutEstimate: { color: Colors.textDim, fontSize: 10, fontWeight: "700", marginTop: 4, letterSpacing: 0.4, fontStyle: "italic" },
 
-  finalFlag: {
+  finalFlagAnchor: {
     position: "absolute",
     right: 8,
-    top: 30,
+    top: 14,
+    alignItems: "flex-end",
+    zIndex: 20,
+  },
+  finalCoin: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fffaeb",
+    borderWidth: 1.5,
+    borderColor: Colors.accentGold,
+    shadowColor: "#d4af37",
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  finalPopover: {
+    marginTop: 6,
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "#fffaeb",
+    borderRadius: 12,
+    backgroundColor: "#fffdf2",
     borderWidth: 1,
-    borderColor: "#f1e2a4",
+    borderColor: Colors.accentGold,
+    shadowColor: "#d4af37",
+    shadowOpacity: 0.32,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    maxWidth: 200,
   },
   finalFlagText: { color: Colors.accentDeep, fontSize: 11, fontWeight: "900", letterSpacing: 0.2 },
   finalFlagDay: { color: Colors.textDim, fontSize: 10, fontWeight: "700" },

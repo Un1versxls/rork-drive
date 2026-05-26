@@ -290,20 +290,46 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   // Stamp the user's "account started" timestamp the first time we
   // hydrate an onboarded session that doesn't already have one. Powers
-  // the "Day N" badge on the roadmap. Existing users get backfilled to
-  // today (we'd rather show "Day 1" than guess a historical date).
+  // the "Day N" badge on the roadmap. If the user is signed into
+  // Supabase, prefer their auth `created_at` (more accurate than local
+  // backfill). Otherwise fall back to today.
   useEffect(() => {
     if (!hydrated) return;
     const prev = stateRef.current;
     if (!prev.onboarded) return;
-    if (prev.profile.accountStartedAt) return;
-    const next: AppState = {
-      ...prev,
-      profile: { ...prev.profile, accountStartedAt: new Date().toISOString() },
+
+    let cancelled = false;
+    const stamp = async () => {
+      let startedAt = prev.profile.accountStartedAt;
+      // Always try to upgrade to the Supabase created_at when it's earlier
+      // than what we have locally — that's the true sign-up date.
+      try {
+        if (supabase) {
+          const { data } = await supabase.auth.getUser();
+          const remote = data.user?.created_at ?? null;
+          if (remote) {
+            const remoteMs = new Date(remote).getTime();
+            const localMs = startedAt ? new Date(startedAt).getTime() : Number.POSITIVE_INFINITY;
+            if (!Number.isNaN(remoteMs) && remoteMs < localMs) {
+              startedAt = remote;
+            }
+          }
+        }
+      } catch {}
+      if (!startedAt) startedAt = new Date().toISOString();
+      if (cancelled) return;
+      const current = stateRef.current;
+      if (current.profile.accountStartedAt === startedAt) return;
+      const next: AppState = {
+        ...current,
+        profile: { ...current.profile, accountStartedAt: startedAt },
+      };
+      stateRef.current = next;
+      setState(next);
+      saveMutation.mutate(next);
     };
-    stateRef.current = next;
-    setState(next);
-    saveMutation.mutate(next);
+    void stamp();
+    return () => { cancelled = true; };
   // saveMutation intentionally omitted so we only run when hydrated flips.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated]);
