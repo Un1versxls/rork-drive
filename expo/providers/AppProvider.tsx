@@ -1057,6 +1057,45 @@ export const [AppProvider, useApp] = createContextHook(() => {
     return routeReady;
   }, [commit]);
 
+  /**
+   * Lightweight cloud refresh: adopts admin-editable counters from the
+   * server row (streak / best streak / points / business switch bonus /
+   * premium grant) when they differ from local. Never overwrites local
+   * task progress.
+   */
+  const refreshFromCloud = useCallback(async (): Promise<void> => {
+    if (!supabase) return;
+    try {
+      const { data } = await supabase.auth.getUser();
+      const uid = data.user?.id ?? null;
+      const email = data.user?.email ?? stateRef.current.profile.email ?? null;
+      if (!uid && !email) return;
+      const row = await fetchAppUser({ userId: uid, email });
+      if (!row) return;
+      const current = stateRef.current;
+      let changed = false;
+      let next: AppState = current;
+      const nextProfile = { ...current.profile };
+      if (typeof row.streak === "number" && row.streak !== current.streak) {
+        next = { ...next, streak: row.streak }; changed = true;
+      }
+      if (typeof row.best_streak === "number" && row.best_streak !== current.bestStreak) {
+        next = { ...next, bestStreak: row.best_streak }; changed = true;
+      }
+      if (typeof row.points === "number" && row.points !== current.points) {
+        next = { ...next, points: row.points }; changed = true;
+      }
+      if (typeof row.business_switch_bonus === "number" && row.business_switch_bonus !== (current.profile.businessSwitchBonus ?? 0)) {
+        nextProfile.businessSwitchBonus = row.business_switch_bonus; changed = true;
+      }
+      if (changed) {
+        commit({ ...next, profile: nextProfile });
+      }
+    } catch (e) {
+      console.log("[AppProvider] refreshFromCloud error", e);
+    }
+  }, [commit]);
+
   const resetOnboarding = useCallback(() => {
     const next: AppState = { ...DEFAULT_STATE };
     commit(next);
@@ -1254,6 +1293,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     undoTask,
     resetOnboarding,
     flushSync,
+    refreshFromCloud,
     hydrateFromAppUser,
     dismissPendingAchievement,
     dismissPendingBadge,
