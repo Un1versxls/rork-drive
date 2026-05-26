@@ -37,10 +37,11 @@ function buildMilestones(goal: PrimaryGoal | null, time: TimeCommitment | null):
   if (isSkill) {
     return {
       milestones: [
-        { day: Math.round(7 * m), label: "First public win", progress: 0.18 },
-        { day: Math.round(34 * m), label: "Skill clicks", progress: 0.42 },
-        { day: Math.round(120 * m), label: "Portfolio piece", progress: 0.7 },
-        { day: Math.round(210 * m), label: "First paid use", progress: 0.92 },
+        { day: Math.round(7 * m), label: "First public win", progress: 0.14 },
+        { day: Math.round(34 * m), label: "Skill clicks", progress: 0.34 },
+        { day: Math.round(120 * m), label: "Portfolio piece", progress: 0.56 },
+        { day: Math.round(210 * m), label: "First paid use", progress: 0.76 },
+        { day: Math.round(300 * m), label: "Teaching others", progress: 0.93 },
       ],
       finalLabel: "Mastery loop",
     };
@@ -49,10 +50,11 @@ function buildMilestones(goal: PrimaryGoal | null, time: TimeCommitment | null):
   if (isTrading) {
     return {
       milestones: [
-        { day: Math.round(9 * m), label: "Paper trading", progress: 0.18 },
-        { day: Math.round(35 * m), label: "First green week", progress: 0.42 },
-        { day: Math.round(110 * m), label: "Live strategy", progress: 0.68 },
-        { day: Math.round(200 * m), label: "Consistent month", progress: 0.92 },
+        { day: Math.round(9 * m), label: "Paper trading", progress: 0.14 },
+        { day: Math.round(35 * m), label: "First green week", progress: 0.34 },
+        { day: Math.round(110 * m), label: "Live strategy", progress: 0.55 },
+        { day: Math.round(200 * m), label: "Consistent month", progress: 0.76 },
+        { day: Math.round(300 * m), label: "Scaling capital", progress: 0.93 },
       ],
       finalLabel: "Compounding",
     };
@@ -60,10 +62,11 @@ function buildMilestones(goal: PrimaryGoal | null, time: TimeCommitment | null):
 
   return {
     milestones: [
-      { day: Math.round(7 * m), label: "Foundation set", progress: 0.16 },
-      { day: Math.round(26 * m), label: "First client", progress: 0.4 },
-      { day: Math.round(90 * m), label: "First $500 month", progress: 0.66 },
-      { day: Math.round(189 * m), label: "First repeat customer", progress: 0.9 },
+      { day: Math.round(7 * m), label: "Foundation set", progress: 0.12 },
+      { day: Math.round(26 * m), label: "First client", progress: 0.32 },
+      { day: Math.round(90 * m), label: "First $500 month", progress: 0.54 },
+      { day: Math.round(189 * m), label: "First repeat customer", progress: 0.74 },
+      { day: Math.round(300 * m), label: "$2k month", progress: 0.93 },
     ],
     finalLabel: "Profitable",
   };

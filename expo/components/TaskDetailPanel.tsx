@@ -217,11 +217,6 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, subta
       </Animated.View>
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
         <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={{ flex: 1 }}
-            keyboardVerticalOffset={0}
-          >
           <SafeAreaView edges={["bottom"]} style={{ flex: 1 }}>
             <View style={styles.grabber} />
             <View style={styles.sheetHeader}>
@@ -318,7 +313,7 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, subta
             )}
 
             {chatOpen ? (
-              <View style={styles.chatFull}>
+              <View style={[styles.chatFull, { paddingBottom: keyboardHeight > 0 ? keyboardHeight - 10 : 10 }]}>
                 <View style={styles.chatBanner}>
                   <MessageCircle color={Colors.accentDeep} size={12} />
                   <Text style={styles.chatBannerText}>The coach only answers questions about this task — it won&apos;t do the work for you.</Text>
@@ -390,7 +385,6 @@ export function TaskDetailPanel({ task, business, hapticsEnabled, visible, subta
               </View>
             )}
           </SafeAreaView>
-          </KeyboardAvoidingView>
         </Animated.View>
       </View>
     </Modal>
