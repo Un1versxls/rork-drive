@@ -138,7 +138,7 @@ export default function FeaturePreviewScreen() {
   const onCta = () => {
     triggerHaptic("select", state.profile.hapticsEnabled);
     router.replace({
-      pathname: "/onboarding/paywall",
+      pathname: "/onboarding/projection",
       params: {
         initialPlan: params.initialPlan ?? "base",
         initialCycle: params.initialCycle ?? "monthly",

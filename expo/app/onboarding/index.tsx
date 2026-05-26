@@ -6,7 +6,6 @@ import { useRouter } from "expo-router";
 import { GradientButton } from "@/components/GradientButton";
 import { Colors } from "@/constants/colors";
 
-const LOGO_URI = "https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/ildjxbdtuicbf06zk7zn0.jpeg";
 
 export default function Welcome() {
   const router = useRouter();
@@ -30,7 +29,7 @@ export default function Welcome() {
         <Animated.View style={[styles.content, { transform: [{ translateY: riseY }] }]}>
           <View style={styles.iconWrap}>
             <Image
-              source={{ uri: LOGO_URI }}
+              source={require("../../assets/images/icon.png")}
               style={styles.icon}
               resizeMode="contain"
             />

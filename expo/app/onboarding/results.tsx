@@ -9,8 +9,9 @@ import { Colors } from "@/constants/colors";
 import { useApp } from "@/providers/AppProvider";
 import type { PrimaryGoal } from "@/types";
 
-function nextRouteForGoal(_goal: PrimaryGoal | null): string {
-  return "/onboarding/projection";
+function nextRouteForGoal(goal: PrimaryGoal | null): string {
+  if (goal === "earn_income") return "/onboarding/industry";
+  return "/onboarding/obstacle";
 }
 
 export default function ResultsScreen() {
@@ -27,7 +28,7 @@ export default function ResultsScreen() {
       canGoBack
       footer={
         <GradientButton
-          title="See my roadmap"
+          title="Continue"
           onPress={() => router.push(nextRouteForGoal(goal))}
           testID="results-continue"
         />
