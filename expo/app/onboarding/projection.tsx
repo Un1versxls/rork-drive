@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Flag, Sparkles } from "lucide-react-native";
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Path, Stop } from "react-native-svg";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { Colors } from "@/constants/colors";
 import { useApp } from "@/providers/AppProvider";
@@ -27,7 +28,7 @@ function paceMultiplier(time: TimeCommitment | null): number {
   }
 }
 
-function buildMilestones(goal: PrimaryGoal | null, time: TimeCommitment | null): { milestones: Milestone[]; finalLabel: string } {
+function buildMilestones(goal: PrimaryGoal | null, time: TimeCommitment | null): { milestones: Milestone[]; finalLabel: string; finalDay: number } {
   const m = paceMultiplier(time);
   const isSkill = goal === "build_skills";
   const isTrading = goal === "day_trading";
@@ -41,6 +42,7 @@ function buildMilestones(goal: PrimaryGoal | null, time: TimeCommitment | null):
         { day: Math.round(210 * m), label: "First paid use", progress: 0.80 },
       ],
       finalLabel: "Teaching others",
+      finalDay: Math.round(300 * m),
     };
   }
   if (isTrading) {
@@ -52,6 +54,7 @@ function buildMilestones(goal: PrimaryGoal | null, time: TimeCommitment | null):
         { day: Math.round(200 * m), label: "Consistent month", progress: 0.80 },
       ],
       finalLabel: "Scaling capital",
+      finalDay: Math.round(300 * m),
     };
   }
   return {
@@ -62,6 +65,7 @@ function buildMilestones(goal: PrimaryGoal | null, time: TimeCommitment | null):
       { day: Math.round(189 * m), label: "Repeat customer", progress: 0.80 },
     ],
     finalLabel: "$2k month",
+    finalDay: Math.round(300 * m),
   };
 }
 
@@ -72,7 +76,7 @@ export default function ProjectionScreen() {
   const goal = state.profile.goal;
   const time = state.profile.time;
 
-  const { milestones, finalLabel } = useMemo(() => buildMilestones(goal, time), [goal, time]);
+  const { milestones, finalLabel, finalDay } = useMemo(() => buildMilestones(goal, time), [goal, time]);
 
   const goalLabel = useMemo(() => {
     switch (goal) {
@@ -96,6 +100,8 @@ export default function ProjectionScreen() {
     ]).start();
   }, [fade, rise]);
 
+  const [selected, setSelected] = useState<number | null>(null);
+
   const onContinue = () => {
     router.replace({
       pathname: "/onboarding/paywall",
@@ -107,11 +113,15 @@ export default function ProjectionScreen() {
     });
   };
 
+  // Next milestone (first one ahead of "today" — today is at progress 0)
+  const nextMilestone = milestones[0];
+
   return (
-    <View style={styles.root}>
+    <Pressable style={styles.root} onPress={() => setSelected(null)}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <Animated.View style={{ opacity: fade, transform: [{ translateY: rise }] }}>
           <View style={styles.eyebrowRow}>
@@ -122,9 +132,27 @@ export default function ProjectionScreen() {
           <Text style={styles.subtitle} numberOfLines={2}>
             {goalLabel} · tracked every day, no guessing.
           </Text>
+
+          {nextMilestone ? (
+            <Text style={styles.nextHint}>
+              ~{nextMilestone.day} days until your next milestone
+            </Text>
+          ) : null}
         </Animated.View>
 
-        <ProjectionChart milestones={milestones} finalLabel={finalLabel} />
+        <ProjectionChart
+          milestones={milestones}
+          finalLabel={finalLabel}
+          finalDay={finalDay}
+          selected={selected}
+          onSelect={setSelected}
+        />
+
+        <Text style={styles.estimateNote}>
+          {selected !== null
+            ? "Milestones are estimated timeframes based on consistent effort."
+            : "Tap a milestone to see details. Timeframes are estimates."}
+        </Text>
 
         <View style={styles.taglineBlock}>
           <View style={styles.taglineLine} />
@@ -140,17 +168,30 @@ export default function ProjectionScreen() {
           style={({ pressed }) => [styles.cta, pressed && { opacity: 0.94 }]}
           testID="projection-continue"
         >
-          <Text style={styles.ctaText}>I'm in. Show me the plan.</Text>
+          <Text style={styles.ctaText}>I&apos;m in. Show me the plan.</Text>
         </Pressable>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
-function ProjectionChart({ milestones, finalLabel }: { milestones: Milestone[]; finalLabel: string }) {
+function ProjectionChart({
+  milestones,
+  finalLabel,
+  finalDay,
+  selected,
+  onSelect,
+}: {
+  milestones: Milestone[];
+  finalLabel: string;
+  finalDay: number;
+  selected: number | null;
+  onSelect: (i: number | null) => void;
+}) {
   const draw = useRef(new Animated.Value(0)).current;
   const dotAnims = useMemo(() => milestones.map(() => new Animated.Value(0)), [milestones]);
   const finalAnim = useRef(new Animated.Value(0)).current;
+  const todayPulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     draw.setValue(0);
@@ -171,7 +212,16 @@ function ProjectionChart({ milestones, finalLabel }: { milestones: Milestone[]; 
       Animated.delay(500 + dotAnims.length * 260 + 80),
       Animated.spring(finalAnim, { toValue: 1, friction: 5, tension: 110, useNativeDriver: true }),
     ]).start();
-  }, [draw, dotAnims, finalAnim]);
+
+    // Today dot pulses every ~2.5 s
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(todayPulse, { toValue: 1, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(todayPulse, { toValue: 0, duration: 700, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+        Animated.delay(900),
+      ]),
+    ).start();
+  }, [draw, dotAnims, finalAnim, todayPulse]);
 
   const W = 320;
   const H = 220;
@@ -197,8 +247,14 @@ function ProjectionChart({ milestones, finalLabel }: { milestones: Milestone[]; 
     return padTop + innerH * (0.88 - eased * 0.84);
   }
 
+  const todayCx = padX / W;
+  const todayCy = (padTop + innerH * 0.88) / H;
+
+  const pulseScale = todayPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 2.4] });
+  const pulseOpacity = todayPulse.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0] });
+
   return (
-    <View style={styles.chartCard}>
+    <View style={styles.chartBlend}>
       <View style={styles.svgWrap}>
         <Svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet">
           <Defs>
@@ -207,38 +263,22 @@ function ProjectionChart({ milestones, finalLabel }: { milestones: Milestone[]; 
               <Stop offset="0.5" stopColor={Colors.accentGold} />
               <Stop offset="1" stopColor="#b8860b" />
             </SvgLinearGradient>
-            <SvgLinearGradient id="fillGrad" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor="rgba(212,175,55,0.22)" />
-              <Stop offset="1" stopColor="rgba(212,175,55,0)" />
-            </SvgLinearGradient>
           </Defs>
 
-          {/* dashed baselines */}
+          {/* faint dashed baseline */}
           <Path
             d={`M ${padX},${padTop + innerH * 0.88} L ${padX + innerW},${padTop + innerH * 0.88}`}
-            stroke="#f1e9d2"
+            stroke="#f1e2a4"
             strokeWidth={1}
-            strokeDasharray="4 5"
-          />
-          <Path
-            d={`M ${padX},${padTop + innerH * 0.46} L ${padX + innerW},${padTop + innerH * 0.46}`}
-            stroke="#f6efde"
-            strokeWidth={1}
-            strokeDasharray="4 5"
+            strokeDasharray="4 6"
+            opacity={0.5}
           />
 
-          {/* filled area */}
-          <AnimatedPath
-            d={`${path} L ${padX + innerW},${padTop + innerH * 0.88} L ${padX},${padTop + innerH * 0.88} Z`}
-            fill="url(#fillGrad)"
-            opacity={draw}
-          />
-
-          {/* animated golden line */}
+          {/* animated golden line (no fill) */}
           <AnimatedPath
             d={path}
             stroke="url(#lineGrad)"
-            strokeWidth={4}
+            strokeWidth={3.5}
             strokeLinecap="round"
             fill="none"
             strokeDasharray={pathLen}
@@ -246,45 +286,87 @@ function ProjectionChart({ milestones, finalLabel }: { milestones: Milestone[]; 
           />
         </Svg>
 
+        {/* Today (current position) dot — flashes */}
+        <View
+          pointerEvents="none"
+          style={[
+            styles.todayWrap,
+            {
+              left: `${todayCx * 100}%`,
+              top: `${todayCy * 100}%`,
+            },
+          ]}
+        >
+          <Animated.View
+            style={[
+              styles.todayPulse,
+              { opacity: pulseOpacity, transform: [{ scale: pulseScale }] },
+            ]}
+          />
+          <View style={styles.todayDot} />
+        </View>
+
         {/* Milestone dots + callouts */}
         {milestones.map((m, i) => {
           const cx = (padX + innerW * m.progress) / W;
           const cy = yForX(m.progress) / H;
-          const scale = dotAnims[i].interpolate({ inputRange: [0, 1], outputRange: [0.2, 1] });
           const opacity = dotAnims[i];
+          const isSelected = selected === i;
+          const dotScale = dotAnims[i].interpolate({ inputRange: [0, 1], outputRange: [0.2, isSelected ? 1.25 : 1] });
           const above = i % 2 === 0;
           return (
             <React.Fragment key={i}>
-              <Animated.View
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onSelect(isSelected ? null : i);
+                }}
+                hitSlop={14}
                 style={[
-                  styles.dot,
+                  styles.dotHit,
                   {
                     left: `${cx * 100}%`,
                     top: `${cy * 100}%`,
-                    marginLeft: -8,
-                    marginTop: -8,
-                    opacity,
-                    transform: [{ scale }],
-                  },
-                ]}
-              />
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  styles.calloutWrap,
-                  {
-                    left: `${cx * 100}%`,
-                    top: `${cy * 100}%`,
-                    marginLeft: -64,
-                    marginTop: above ? -54 : 14,
-                    opacity,
-                    transform: [{ scale }],
                   },
                 ]}
               >
-                <View style={styles.callout}>
-                  <Text style={styles.calloutDay}>DAY {m.day}</Text>
-                  <Text style={styles.calloutLabel} numberOfLines={1}>{m.label}</Text>
+                <Animated.View
+                  style={[
+                    styles.dot,
+                    isSelected && styles.dotSelected,
+                    {
+                      opacity,
+                      transform: [{ scale: dotScale }],
+                    },
+                  ]}
+                />
+              </Pressable>
+
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  isSelected ? styles.calloutWrapBig : styles.calloutWrap,
+                  {
+                    left: `${cx * 100}%`,
+                    top: `${cy * 100}%`,
+                    marginLeft: isSelected ? -90 : -64,
+                    marginTop: isSelected ? (above ? -88 : 22) : (above ? -54 : 14),
+                    opacity,
+                    transform: [{ scale: dotAnims[i].interpolate({ inputRange: [0, 1], outputRange: [0.2, isSelected ? 1.08 : 1] }) }],
+                  },
+                ]}
+              >
+                <View style={[styles.callout, isSelected && styles.calloutSelected]}>
+                  <Text style={[styles.calloutDay, isSelected && styles.calloutDayBig]}>DAY {m.day}</Text>
+                  <Text
+                    style={[styles.calloutLabel, isSelected && styles.calloutLabelBig]}
+                    numberOfLines={isSelected ? 2 : 1}
+                  >
+                    {m.label}
+                  </Text>
+                  {isSelected ? (
+                    <Text style={styles.calloutEstimate}>~ estimate</Text>
+                  ) : null}
                 </View>
               </Animated.View>
             </React.Fragment>
@@ -299,9 +381,22 @@ function ProjectionChart({ milestones, finalLabel }: { milestones: Milestone[]; 
             { opacity: finalAnim, transform: [{ scale: finalAnim.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }] },
           ]}
         >
-          <Flag size={14} color={Colors.accentDeep} />
+          <Flag size={13} color={Colors.accentDeep} />
           <Text style={styles.finalFlagText}>{finalLabel}</Text>
+          <Text style={styles.finalFlagDay}>· Day {finalDay}</Text>
         </Animated.View>
+
+        {/* Top + bottom fade overlays so the chart blends into the page */}
+        <LinearGradient
+          pointerEvents="none"
+          colors={["#ffffff", "rgba(255,255,255,0)"]}
+          style={styles.fadeTop}
+        />
+        <LinearGradient
+          pointerEvents="none"
+          colors={["rgba(255,255,255,0)", "#ffffff"]}
+          style={styles.fadeBottom}
+        />
       </View>
 
       <View style={styles.axisRow}>
@@ -317,7 +412,7 @@ function ProjectionChart({ milestones, finalLabel }: { milestones: Milestone[]; 
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#ffffff" },
-  scroll: { paddingTop: 70, paddingHorizontal: 24, paddingBottom: 30, gap: 26 },
+  scroll: { paddingTop: 70, paddingHorizontal: 24, paddingBottom: 30, gap: 14 },
 
   eyebrowRow: {
     flexDirection: "row",
@@ -334,24 +429,54 @@ const styles = StyleSheet.create({
   eyebrow: { color: Colors.accentDeep, fontSize: 10, fontWeight: "900", letterSpacing: 1.6 },
   title: { color: Colors.text, fontSize: 36, fontWeight: "900", letterSpacing: -1.0, marginTop: 14, lineHeight: 40 },
   subtitle: { color: Colors.textDim, fontSize: 15, lineHeight: 21, marginTop: 10 },
+  nextHint: { color: Colors.accentDeep, fontSize: 11.5, fontWeight: "800", letterSpacing: 0.3, marginTop: 12, opacity: 0.85 },
 
-  chartCard: {
-    paddingTop: 8,
-    paddingBottom: 12,
-    borderRadius: 26,
-    backgroundColor: "#fffdf6",
-    borderWidth: 1,
-    borderColor: "#f1e2a4",
-    shadowColor: "#d4af37",
-    shadowOpacity: 0.18,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 6,
-    overflow: "hidden",
+  chartBlend: {
+    marginTop: 4,
+    paddingTop: 0,
+    paddingBottom: 4,
+    backgroundColor: "transparent",
   },
-  svgWrap: { width: "100%", aspectRatio: 320 / 220, position: "relative" },
-  dot: {
+  svgWrap: { width: "100%", aspectRatio: 320 / 220, position: "relative", overflow: "hidden" },
+
+  fadeTop: { position: "absolute", left: 0, right: 0, top: 0, height: 32 },
+  fadeBottom: { position: "absolute", left: 0, right: 0, bottom: 0, height: 36 },
+
+  todayWrap: {
     position: "absolute",
+    width: 14,
+    height: 14,
+    marginLeft: -7,
+    marginTop: -7,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  todayPulse: {
+    position: "absolute",
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: Colors.accentGold,
+  },
+  todayDot: {
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: Colors.accentGold,
+    borderWidth: 2.5,
+    borderColor: "#ffffff",
+  },
+
+  dotHit: {
+    position: "absolute",
+    width: 28,
+    height: 28,
+    marginLeft: -14,
+    marginTop: -14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dot: {
     width: 16, height: 16, borderRadius: 8,
     backgroundColor: Colors.accentGold,
     borderWidth: 3.5,
@@ -361,7 +486,12 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 0 },
   },
+  dotSelected: {
+    shadowOpacity: 1,
+    shadowRadius: 12,
+  },
   calloutWrap: { position: "absolute", width: 128, alignItems: "center" },
+  calloutWrapBig: { position: "absolute", width: 180, alignItems: "center", zIndex: 10 },
   callout: {
     paddingHorizontal: 10, paddingVertical: 7,
     borderRadius: 11,
@@ -374,32 +504,47 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
   },
+  calloutSelected: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderColor: Colors.accentGold,
+    backgroundColor: "#fffdf2",
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+  },
   calloutDay: { color: Colors.accentDeep, fontSize: 9, fontWeight: "900", letterSpacing: 1.0 },
-  calloutLabel: { color: Colors.text, fontSize: 11.5, fontWeight: "800", marginTop: 1 },
+  calloutDayBig: { fontSize: 11, letterSpacing: 1.4 },
+  calloutLabel: { color: Colors.text, fontSize: 11.5, fontWeight: "800", marginTop: 1, textAlign: "center" },
+  calloutLabelBig: { fontSize: 14, marginTop: 2 },
+  calloutEstimate: { color: Colors.textDim, fontSize: 9.5, fontWeight: "700", marginTop: 4, letterSpacing: 0.4, fontStyle: "italic" },
 
   finalFlag: {
     position: "absolute",
-    right: 12,
-    top: 14,
+    right: 8,
+    top: 30,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 11,
+    gap: 5,
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
     backgroundColor: "#fffaeb",
     borderWidth: 1,
     borderColor: "#f1e2a4",
   },
-  finalFlagText: { color: Colors.accentDeep, fontSize: 11.5, fontWeight: "900", letterSpacing: 0.2 },
+  finalFlagText: { color: Colors.accentDeep, fontSize: 11, fontWeight: "900", letterSpacing: 0.2 },
+  finalFlagDay: { color: Colors.textDim, fontSize: 10, fontWeight: "700" },
 
-  axisRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 18, paddingTop: 2 },
+  axisRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 6, paddingTop: 0, marginTop: -2 },
   axisDotToday: { width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.textDim },
   axisDotEnd: { width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.accentGold },
-  axisSpacer: { flex: 1, height: 1, backgroundColor: "#f1e2a4" },
+  axisSpacer: { flex: 1, height: 1, backgroundColor: "#f1e2a4", opacity: 0.6 },
   axisLabel: { color: Colors.textDim, fontSize: 11, fontWeight: "800", letterSpacing: 0.5 },
 
-  taglineBlock: { alignItems: "center", gap: 8, marginTop: 4 },
+  estimateNote: { color: Colors.textDim, fontSize: 11, fontWeight: "600", textAlign: "center", marginTop: 2, opacity: 0.75 },
+
+  taglineBlock: { alignItems: "center", gap: 8, marginTop: 16 },
   taglineLine: { width: 38, height: 2, borderRadius: 1, backgroundColor: Colors.accentGold, opacity: 0.7 },
   tagline: { color: Colors.text, fontSize: 22, fontWeight: "900", letterSpacing: -0.4 },
   taglineSub: { color: Colors.textDim, fontSize: 13, fontWeight: "600", textAlign: "center", maxWidth: 280 },
