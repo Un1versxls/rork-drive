@@ -19,6 +19,7 @@ import { generateDailyTasks } from "@/constants/task-pool";
 import { triggerHaptic } from "@/lib/haptics";
 import { upsertAppUser, buildSyncFromAppState, fetchAppUser, type AppUserRow } from "@/lib/appUserTracking";
 import { supabase } from "@/lib/supabase";
+import { setLocalRevokedFlag, isDeviceBlacklisted } from "@/lib/deviceBlacklist";
 import { userCodeFor } from "@/lib/userCode";
 import { currentShowcase } from "@/constants/showcase-updates";
 import type {
@@ -1072,6 +1073,30 @@ export const [AppProvider, useApp] = createContextHook(() => {
       const uid = data.user?.id ?? null;
       const email = data.user?.email ?? stateRef.current.profile.email ?? null;
       if (!uid && !email) return;
+      // If admin flipped is_revoked on the account, tear the session
+      // down so the RevokedScreen takes over on the next render.
+      if (uid) {
+        try {
+          const { data: acc } = await supabase
+            .from("user_accounts")
+            .select("is_revoked")
+            .eq("id", uid)
+            .maybeSingle();
+          if (acc?.is_revoked === true) {
+            await setLocalRevokedFlag(true);
+            try { await supabase.auth.signOut(); } catch {}
+            return;
+          }
+        } catch (e) { console.log("[AppProvider] revoke check err", e); }
+      }
+      // Also kick out if the device itself was blacklisted while signed in.
+      try {
+        if (await isDeviceBlacklisted()) {
+          await setLocalRevokedFlag(true);
+          try { await supabase.auth.signOut(); } catch {}
+          return;
+        }
+      } catch {}
       const row = await fetchAppUser({ userId: uid, email });
       if (!row) return;
       const current = stateRef.current;

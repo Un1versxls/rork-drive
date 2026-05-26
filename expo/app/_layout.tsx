@@ -8,14 +8,30 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AppProvider } from "@/providers/AppProvider";
-import { AuthProvider } from "@/providers/AuthProvider";
+import { AuthProvider, useAuth } from "@/providers/AuthProvider";
 import { Colors } from "@/constants/colors";
 import { KeyboardToolbar } from "@/components/KeyboardToolbar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { RevokedScreen } from "@/components/RevokedScreen";
+import { useRouter } from "expo-router";
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
+
+function RevokedGate({ children }: { children: React.ReactNode }) {
+  const { accessRevoked, clearRevoked } = useAuth();
+  const router = useRouter();
+  if (!accessRevoked) return <>{children}</>;
+  return (
+    <RevokedScreen
+      onSignInAgain={() => {
+        void clearRevoked();
+        router.replace("/auth");
+      }}
+    />
+  );
+}
 
 function RootLayoutNav() {
   return (
@@ -62,7 +78,9 @@ export default function RootLayout() {
               <AppProvider>
                 <View style={styles.root}>
                   <StatusBar style="dark" />
-                  <RootLayoutNav />
+                  <RevokedGate>
+                    <RootLayoutNav />
+                  </RevokedGate>
                   <KeyboardToolbar />
                 </View>
               </AppProvider>
