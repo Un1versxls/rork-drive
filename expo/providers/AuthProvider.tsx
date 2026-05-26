@@ -104,11 +104,13 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const user: AuthUser | null = useMemo(() => {
     if (!session) return null;
     const acc = accountQuery.data;
+    const email = session.user.email ?? acc?.email ?? "";
+    const devAllowed = isDevAllowedEmail(email);
     return {
       id: session.user.id,
-      email: session.user.email ?? acc?.email ?? "",
-      isAdmin: acc?.is_admin ?? false,
-      isDev: acc?.is_dev ?? false,
+      email,
+      isAdmin: (acc?.is_admin ?? false) || devAllowed,
+      isDev: (acc?.is_dev ?? false) || devAllowed,
       adminGrantedPremium: acc?.admin_granted_premium ?? false,
       isRevoked: acc?.is_revoked ?? false,
     };
