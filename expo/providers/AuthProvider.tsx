@@ -1,13 +1,10 @@
 import createContextHook from "@nkzw/create-context-hook";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as AppleAuthentication from "expo-apple-authentication";
 import type { Session } from "@supabase/supabase-js";
 
 import { supabase, supabaseReady } from "@/lib/supabase";
-import { findLocalCode } from "@/constants/local-codes";
 import { upsertAppUser } from "@/lib/appUserTracking";
 import { isDevAllowedEmail } from "@/constants/dev-allowlist";
 import { isDeviceBlacklisted, stampDeviceOnAccount, setLocalRevokedFlag, readLocalRevokedFlag } from "@/lib/deviceBlacklist";
@@ -156,66 +153,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     },
   });
 
-  const signInWithAppleMutation = useMutation({
-    mutationFn: async (): Promise<{ userId: string; email: string | null; name: string | null }> => {
-      if (!supabase) throw new Error("Supabase not configured");
-      if (Platform.OS !== "ios") throw new Error("Apple Sign In is only available on iOS");
-      const available = await AppleAuthentication.isAvailableAsync();
-      if (!available) throw new Error("Apple Sign In is not available on this device");
-
-      const credential = await AppleAuthentication.signInAsync({
-        requestedScopes: [
-          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-          AppleAuthentication.AppleAuthenticationScope.EMAIL,
-        ],
-      });
-      if (!credential.identityToken) {
-        throw new Error("Apple didn't return an identity token. Try again.");
-      }
-      const givenName = credential.fullName?.givenName ?? null;
-      const familyName = credential.fullName?.familyName ?? null;
-      const fullName = [givenName, familyName].filter(Boolean).join(" ").trim() || givenName;
-
-      const { data, error } = await supabase.auth.signInWithIdToken({
-        provider: "apple",
-        token: credential.identityToken,
-      });
-      if (error) {
-        if (/audience/i.test(error.message ?? "")) {
-          throw new Error("Apple Sign In needs the production app to sync. Please test in TestFlight or a development build.");
-        }
-        throw error;
-      }
-      if (!data.user) throw new Error("Apple sign in didn't return a user.");
-
-      const userEmail = credential.email ?? data.user.email ?? null;
-
-      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-      if (fullName) patch.name = fullName;
-      if (userEmail) patch.email = userEmail.toLowerCase();
-      try {
-        await supabase.from("user_accounts").update(patch).eq("id", data.user.id);
-      } catch (e) {
-        console.log("[auth] apple user_accounts update exception", e);
-      }
-
-      try {
-        await upsertAppUser({
-          userId: data.user.id,
-          appleUserId: credential.user ?? null,
-          email: userEmail,
-          name: fullName,
-          authProvider: "apple",
-          touchLastSeen: true,
-        });
-      } catch (e) {
-        console.log("[auth] apple app_users sync failed", e);
-      }
-
-      return { userId: data.user.id, email: userEmail, name: fullName };
-    },
-  });
-
   const signInMutation = useMutation({
     mutationFn: async (params: { email: string; password: string }) => {
       if (!supabase) throw new Error("Supabase not configured");
@@ -256,82 +193,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     setAccessRevoked(false);
   }, []);
 
-  const redeemCodeMutation = useMutation({
-    mutationFn: async (rawCode: string) => {
-      const code = rawCode.trim().toUpperCase();
-      if (!code) throw new Error("Enter a code");
-
-      const local = findLocalCode(code);
-
-      if (supabase && session) {
-        try {
-          const { data: existing, error: fetchErr } = await supabase
-            .from("redeem_codes")
-            .select("*")
-            .eq("code", code)
-            .eq("active", true)
-            .maybeSingle();
-
-          if (!fetchErr && existing) {
-            if (existing.uses >= existing.max_uses) throw new Error("Code has been used up");
-
-            const { error: updErr } = await supabase
-              .from("redeem_codes")
-              .update({
-                uses: existing.uses + 1,
-                claimed_by: session.user.id,
-                active: existing.uses + 1 < existing.max_uses,
-              })
-              .eq("code", code);
-            if (updErr) console.log("[redeem] update code error", updErr.message);
-
-            const grantsAdmin = existing.grants_admin === true || existing.plan === "admin";
-            const patch: Record<string, unknown> = {};
-            if (grantsAdmin) patch.is_admin = true;
-            if (existing.plan === "base" || existing.plan === "premium") {
-              patch.admin_granted_premium = true;
-              patch.granted_premium_plan = existing.plan;
-            } else if (grantsAdmin) {
-              patch.admin_granted_premium = true;
-              patch.granted_premium_plan = "premium";
-            }
-
-            const { error: grantErr } = await supabase
-              .from("user_accounts")
-              .update(patch)
-              .eq("id", session.user.id);
-            if (grantErr) console.log("[redeem] grant error", grantErr.message);
-
-            return (existing.plan === "admin" ? "premium" : existing.plan) as "base" | "premium";
-          }
-          if (fetchErr) console.log("[redeem] fetch error, falling back", fetchErr.message);
-        } catch (e) {
-          console.log("[redeem] network error, falling back to local", e);
-        }
-      }
-
-      if (local) {
-        if (supabase && session) {
-          const patch: Record<string, unknown> = {};
-          if (local.grantsAdmin) patch.is_admin = true;
-          patch.admin_granted_premium = true;
-          patch.granted_premium_plan = local.plan === "admin" ? "premium" : local.plan;
-          try {
-            await supabase.from("user_accounts").update(patch).eq("id", session.user.id);
-          } catch (e) {
-            console.log("[redeem] local grant sync failed", e);
-          }
-        }
-        return (local.plan === "admin" ? "premium" : local.plan) as "base" | "premium";
-      }
-
-      throw new Error("Code not found");
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["user-account"] });
-    },
-  });
-
   return useMemo(() => ({
     ready: supabaseReady,
     booting,
@@ -344,11 +205,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     signUpPending: signUpMutation.isPending,
     signIn: signInMutation.mutateAsync,
     signInPending: signInMutation.isPending,
-    signInWithApple: signInWithAppleMutation.mutateAsync,
-    signInWithApplePending: signInWithAppleMutation.isPending,
     signOut: signOutMutation.mutateAsync,
-    redeemCode: redeemCodeMutation.mutateAsync,
-    redeemPending: redeemCodeMutation.isPending,
     refreshAccount: () => qc.invalidateQueries({ queryKey: ["user-account"] }),
-  }), [booting, session, user, accessRevoked, triggerAccessRevoked, clearRevoked, signUpMutation.mutateAsync, signUpMutation.isPending, signInMutation.mutateAsync, signInMutation.isPending, signInWithAppleMutation.mutateAsync, signInWithAppleMutation.isPending, signOutMutation.mutateAsync, redeemCodeMutation.mutateAsync, redeemCodeMutation.isPending, qc]);
+  }), [booting, session, user, accessRevoked, triggerAccessRevoked, clearRevoked, signUpMutation.mutateAsync, signUpMutation.isPending, signInMutation.mutateAsync, signInMutation.isPending, signOutMutation.mutateAsync, qc]);
 });

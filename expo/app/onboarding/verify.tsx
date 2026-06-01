@@ -6,15 +6,12 @@ import { OnboardingShell } from "@/components/OnboardingShell";
 import { GradientButton } from "@/components/GradientButton";
 import { Colors } from "@/constants/colors";
 import { supabaseReady } from "@/lib/supabase";
-import { findLocalCode } from "@/constants/local-codes";
-import { useApp } from "@/providers/AppProvider";
 import { sendVerificationCode, verifyCode } from "@/lib/emailVerification";
 
 const CODE_LEN = 6;
 
 export default function VerifyScreen() {
   const router = useRouter();
-  const { grantPremiumViaCode } = useApp();
   const params = useLocalSearchParams<{ email?: string; skipSend?: string }>();
   const email = (params.email ?? "").toString();
   const skipSend = params.skipSend === "1";
@@ -68,16 +65,8 @@ export default function VerifyScreen() {
     setError(null);
     setInfo(null);
 
-    const local = findLocalCode(code);
-    if (local) {
-      grantPremiumViaCode();
-      router.replace("/onboarding/source");
-      setVerifying(false);
-      return;
-    }
-
     if (!supabaseReady || skipSend) {
-      setError("Verification is unavailable right now. Use an access code to continue.");
+      setError("Verification is unavailable right now. Please try again later.");
       setVerifying(false);
       return;
     }
@@ -152,15 +141,6 @@ export default function VerifyScreen() {
         </Pressable>
 
         <Text style={styles.hint}>Didn&apos;t get it? Check your spam folder.</Text>
-
-        <Pressable
-          onPress={() => router.replace("/redeem-code")}
-          hitSlop={10}
-          style={styles.codeBtn}
-          testID="verify-code-btn"
-        >
-          <Text style={styles.codeText}>Have an access code instead?</Text>
-        </Pressable>
       </View>
     </OnboardingShell>
   );
@@ -189,6 +169,4 @@ const styles = StyleSheet.create({
   resendText: { color: Colors.text, fontWeight: "700", fontSize: 14 },
   resendDisabled: { color: Colors.textDim },
   hint: { color: Colors.textDim, fontSize: 12, marginTop: 8, textAlign: "center" },
-  codeBtn: { alignSelf: "center", marginTop: 18, paddingVertical: 8, paddingHorizontal: 10 },
-  codeText: { color: Colors.textMuted, fontSize: 12, fontWeight: "700", textDecorationLine: "underline" },
 });

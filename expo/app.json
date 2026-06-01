@@ -2,7 +2,7 @@
   "expo": {
     "name": "DRIVE",
     "slug": "drive-productivity",
-    "version": "2.8.0",
+    "version": "2.8.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "rork-app",
@@ -15,8 +15,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "app.rork.i3ycts4qs75xuu5dfjfqx",
-      "usesAppleSignIn": true
+      "bundleIdentifier": "app.rork.i3ycts4qs75xuu5dfjfqx"
     },
     "android": {
       "adaptiveIcon": {
@@ -36,8 +35,7 @@
         }
       ],
       "expo-font",
-      "expo-web-browser",
-      "expo-apple-authentication"
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

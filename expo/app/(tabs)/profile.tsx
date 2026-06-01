@@ -3,11 +3,13 @@ import { Alert, Animated, Easing, KeyboardAvoidingView, LayoutAnimation, Platfor
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowUpRight, Award, Check, ChevronDown, ChevronRight, Cloud, CloudOff, Crown, Gift, LogIn, LogOut, Pencil, RefreshCw, Shield, Sparkles, Star, Vibrate } from "lucide-react-native";
+import { ArrowUpRight, Award, Check, ChevronDown, ChevronRight, Cloud, CloudOff, Crown, ExternalLink, FileText, LogIn, LogOut, Pencil, RefreshCw, Shield, ShieldCheck, Sparkles, Star, Trash2, Vibrate } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { buildSyncFromAppState, upsertAppUser } from "@/lib/appUserTracking";
 import { supabase } from "@/lib/supabase";
 import { userCodeFor } from "@/lib/userCode";
+import { TERMS_URL, PRIVACY_URL, openURL } from "@/constants/legal";
+import { deleteAccount } from "@/lib/deleteAccount";
 
 const SYNC_HINT_KEY = "drive.profile.syncHintSeen.v1";
 
@@ -168,6 +170,36 @@ export default function ProfileScreen() {
     Alert.alert("Reset DRIVE?", "This clears your progress and restarts onboarding.", [
       { text: "Cancel", style: "cancel" },
       { text: "Reset", style: "destructive", onPress: confirm },
+    ]);
+  };
+
+  const [deleting, setDeleting] = useState<boolean>(false);
+  const onDeleteAccount = () => {
+    const run = async () => {
+      setDeleting(true);
+      try {
+        try { await flushSync(); } catch (e) { console.log("[profile] flushSync before delete failed", e); }
+        const res = await deleteAccount();
+        if (!res.ok) {
+          if (Platform.OS === "web") { if (typeof window !== "undefined") window.alert(res.error ?? "Couldn't delete your account."); }
+          else Alert.alert("Couldn't delete account", res.error ?? "Please try again.");
+          return;
+        }
+        resetOnboarding();
+        router.replace("/onboarding");
+      } finally {
+        setDeleting(false);
+      }
+    };
+    const title = "Delete account?";
+    const msg = "This permanently deletes your account and all your data. This can't be undone.";
+    if (Platform.OS === "web") {
+      if (typeof window !== "undefined" && window.confirm(title + "\n\n" + msg)) run();
+      return;
+    }
+    Alert.alert(title, msg, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: run },
     ]);
   };
 
@@ -428,12 +460,11 @@ export default function ProfileScreen() {
 
           <Text style={styles.sectionTitle}>More</Text>
           <MenuRow Icon={Award} label="Badges" onPress={() => router.push("/badges")} />
-          <MenuRow Icon={Gift} label="Redeem a code" onPress={() => router.push("/redeem")} />
           <MenuRow Icon={Star} label="Rate the app" onPress={() => {
             if (Platform.OS === "web") return;
             Alert.alert("Thanks!", "Opening the App Store…");
           }} />
-          {user?.isAdmin ? (
+          {__DEV__ && user?.isAdmin ? (
             <MenuRow Icon={Shield} label="Admin panel" onPress={() => router.push("/admin")} />
           ) : null}
           <View style={styles.card}>
@@ -451,6 +482,17 @@ export default function ProfileScreen() {
               />
             </View>
           </View>
+
+          <Text style={styles.sectionTitle}>Legal</Text>
+          <MenuRow Icon={FileText} label="Terms of Use" onPress={() => openURL(TERMS_URL)} trailing="external" />
+          <MenuRow Icon={ShieldCheck} label="Privacy Policy" onPress={() => openURL(PRIVACY_URL)} trailing="external" />
+
+          {user ? (
+            <Pressable onPress={onDeleteAccount} disabled={deleting} style={({ pressed }) => [styles.deleteBtn, pressed && { opacity: 0.7 }, deleting && { opacity: 0.5 }]} testID="delete-account-btn">
+              <Trash2 color={Colors.danger} size={16} />
+              <Text style={styles.deleteText}>{deleting ? "Deleting…" : "Delete account"}</Text>
+            </Pressable>
+          ) : null}
 
           <Pressable onPress={onReset} style={({ pressed }) => [styles.resetBtn, pressed && { opacity: 0.7 }]}>
             <Text style={styles.resetText}>Reset everything</Text>
@@ -470,12 +512,12 @@ export default function ProfileScreen() {
   );
 }
 
-function MenuRow({ Icon, label, onPress }: { Icon: React.ComponentType<{ color: string; size: number }>; label: string; onPress: () => void }) {
+function MenuRow({ Icon, label, onPress, trailing }: { Icon: React.ComponentType<{ color: string; size: number }>; label: string; onPress: () => void; trailing?: "chevron" | "external" }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.menuRow, pressed && { opacity: 0.75 }]}>
       <View style={styles.settingIcon}><Icon color={Colors.text} size={16} /></View>
       <Text style={styles.menuLabel}>{label}</Text>
-      <ChevronRight color={Colors.textMuted} size={18} />
+      {trailing === "external" ? <ExternalLink color={Colors.textMuted} size={16} /> : <ChevronRight color={Colors.textMuted} size={18} />}
     </Pressable>
   );
 }
@@ -556,6 +598,8 @@ const styles = StyleSheet.create({
 
   dangerBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 999, backgroundColor: "#fafafa", borderWidth: 1, borderColor: "#eeeeee", marginTop: 16 },
   dangerText: { color: Colors.textDim, fontWeight: "800", fontSize: 14 },
+  deleteBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 14, backgroundColor: "#fdecec", borderWidth: 1, borderColor: "#f3c6c6", marginTop: 8 },
+  deleteText: { color: Colors.danger, fontSize: 14, fontWeight: "800" },
   resetBtn: { alignSelf: "center", marginTop: 16 },
   resetText: { color: Colors.danger, fontSize: 12, fontWeight: "700" },
   footer: { color: Colors.textMuted, textAlign: "center", fontSize: 11, marginTop: 22 },

@@ -3,7 +3,6 @@ import { ActivityIndicator, Animated, Easing, Platform, Pressable, StyleSheet, T
 import { RefreshCcw } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import * as AppleAuthentication from "expo-apple-authentication";
 
 import { GradientButton } from "@/components/GradientButton";
 import { Colors } from "@/constants/colors";
@@ -13,8 +12,8 @@ import { fetchAppUser } from "@/lib/appUserTracking";
 
 export default function AuthScreen() {
   const router = useRouter();
-  const { signIn, signUp, signInPending, signUpPending, signInWithApple, signInWithApplePending, ready } = useAuth();
-  const { hydrateFromAppUser, setProfileField } = useApp();
+  const { signIn, signUp, signInPending, signUpPending, ready } = useAuth();
+  const { hydrateFromAppUser } = useApp();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
@@ -25,7 +24,7 @@ export default function AuthScreen() {
   const [syncPercent, setSyncPercent] = useState<number>(0);
   const [syncDone, setSyncDone] = useState<boolean>(false);
 
-  const busy = signInPending || signUpPending || signInWithApplePending;
+  const busy = signInPending || signUpPending;
 
   const syncAfterAuth = async (userId: string, userEmail: string | null) => {
     setSyncLabel("Connecting to your account…");
@@ -93,21 +92,6 @@ export default function AuthScreen() {
     }
   };
 
-  const onApple = async () => {
-    setError(null);
-    try {
-      const { userId, email: appleEmail, name: appleName } = await signInWithApple();
-      if (appleEmail) setProfileField("email", appleEmail.toLowerCase());
-      if (appleName) setProfileField("name", appleName);
-      await syncAfterAuth(userId, appleEmail);
-    } catch (e: unknown) {
-      const err = e as { code?: string; message?: string };
-      if (err?.code === "ERR_REQUEST_CANCELED") return;
-      const msg = err?.message ?? "Apple sign in failed";
-      setError(msg);
-    }
-  };
-
   if (!ready) {
     return (
       <SafeAreaView style={styles.root}>
@@ -134,27 +118,6 @@ export default function AuthScreen() {
 
           <Text style={styles.title}>{mode === "signin" ? "Welcome back." : "Create account."}</Text>
           <Text style={styles.sub}>Sync your progress across devices.</Text>
-
-          {Platform.OS === "ios" ? (
-            <View style={styles.appleWrap}>
-              <AppleAuthentication.AppleAuthenticationButton
-                buttonType={
-                  mode === "signin"
-                    ? AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
-                    : AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP
-                }
-                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-                cornerRadius={14}
-                style={styles.appleBtn}
-                onPress={onApple}
-              />
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>OR</Text>
-                <View style={styles.dividerLine} />
-              </View>
-            </View>
-          ) : null}
 
           <View style={styles.form}>
             {mode === "signup" ? (
@@ -335,11 +298,6 @@ const styles = StyleSheet.create({
   closeText: { color: Colors.textDim, fontSize: 22 },
   title: { color: Colors.text, fontSize: 30, fontWeight: "900", letterSpacing: -0.5, marginTop: 8 },
   sub: { color: Colors.textDim, fontSize: 15, marginTop: 6 },
-  appleWrap: { marginTop: 24 },
-  appleBtn: { width: "100%", height: 52 },
-  divider: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 18 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: "#eeeeee" },
-  dividerText: { color: Colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1 },
   form: { marginTop: 18 },
   label: { color: Colors.textDim, fontSize: 12, fontWeight: "800", letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 8 },
   input: {

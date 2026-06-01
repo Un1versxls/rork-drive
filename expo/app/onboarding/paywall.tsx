@@ -8,6 +8,7 @@ import type { PurchasesOffering, PurchasesPackage } from "react-native-purchases
 
 import { GradientButton } from "@/components/GradientButton";
 import { Colors } from "@/constants/colors";
+import { TERMS_URL, PRIVACY_URL, openURL } from "@/constants/legal";
 import { useApp } from "@/providers/AppProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { submitSurveyResponse } from "@/lib/surveyTracking";
@@ -90,7 +91,7 @@ export default function PaywallScreen() {
         return { ok: true as const };
       }
       if (!currentPkg) {
-        throw new Error("Subscription not available. Please try again.");
+        throw new Error("Subscriptions are temporarily unavailable. Please try again in a moment.");
       }
       const info = await purchasePackage(currentPkg);
       const entKey: "base" | "premium" = planId;
@@ -215,6 +216,9 @@ export default function PaywallScreen() {
               ? "Full access. Cancel anytime."
               : "Cancel anytime before the trial ends."}
           </Text>
+          {!loadingPkgs && Platform.OS !== "web" && !offeringsQuery.data ? (
+            <Text style={styles.loadWarn}>Subscriptions are temporarily unavailable. Pull to retry or try again shortly.</Text>
+          ) : null}
 
           <View style={styles.planSwitcher}>
             <PlanToggle
@@ -298,11 +302,11 @@ export default function PaywallScreen() {
           {purchaseMutation.isPending ? (
             <ActivityIndicator size="small" color={Colors.textDim} />
           ) : null}
-          {!fromUpgrade ? (
-            <Pressable onPress={() => router.push("/redeem-code")} hitSlop={10} style={styles.codeBtn} testID="paywall-code-btn">
-              <Text style={styles.codeBtnText}>Have an access code? (skip payment)</Text>
-            </Pressable>
-          ) : null}
+          <View style={styles.legalLinks}>
+            <Pressable onPress={() => openURL(TERMS_URL)} hitSlop={8}><Text style={styles.legalLink}>Terms of Use</Text></Pressable>
+            <Text style={styles.legalDot}>·</Text>
+            <Pressable onPress={() => openURL(PRIVACY_URL)} hitSlop={8}><Text style={styles.legalLink}>Privacy Policy</Text></Pressable>
+          </View>
         </View>
       </SafeAreaView>
     </View>
@@ -414,8 +418,10 @@ const styles = StyleSheet.create({
 
   footer: { paddingBottom: 8, paddingTop: 4, gap: 6 },
   legal: { color: Colors.textMuted, fontSize: 10, textAlign: "center", lineHeight: 14 },
-  codeBtn: { alignSelf: "center", paddingVertical: 6, paddingHorizontal: 10, marginTop: 2 },
-  codeBtnText: { color: Colors.textMuted, fontSize: 11, fontWeight: "600", textDecorationLine: "underline" },
+  loadWarn: { color: Colors.danger, fontSize: 12, fontWeight: "700", marginTop: 10, lineHeight: 17 },
+  legalLinks: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 4 },
+  legalLink: { color: Colors.textMuted, fontSize: 11, fontWeight: "700", textDecorationLine: "underline" },
+  legalDot: { color: Colors.textMuted, fontSize: 11, fontWeight: "700" },
   proBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,
     backgroundColor: Colors.accentGold,
