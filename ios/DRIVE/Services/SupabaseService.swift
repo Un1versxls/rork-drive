@@ -76,6 +76,17 @@ enum SupabaseService {
         let _: EmptyOK = try await callFunction("send-otp", body: ["email": clean])
     }
 
+    /// Creates an account directly from name + email + password — no email code.
+    static func signUp(email: String, name: String, password: String) async throws {
+        let clean = email.trimmingCharacters(in: .whitespaces).lowercased()
+        let body: [String: String] = [
+            "email": clean,
+            "name": name.trimmingCharacters(in: .whitespaces),
+            "password": password,
+        ]
+        let _: EmptyOK = try await callFunction("signup", body: body)
+    }
+
     /// Verifies the 6-digit code. When `password` is supplied, the account
     /// password is set server-side in the same call (only after the email is
     /// proven via the code).

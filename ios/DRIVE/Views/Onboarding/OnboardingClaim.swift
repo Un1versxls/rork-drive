@@ -208,7 +208,6 @@ struct ClaimStep: View {
     let onSignIn: () -> Void
 
     @State private var password = ""
-    @State private var codeSent = false
     @State private var appear = false
 
     var body: some View {
@@ -217,13 +216,11 @@ struct ClaimStep: View {
                 VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("CLAIM IT").sectionEyebrow().foregroundStyle(DriveColor.accentDeep)
-                        Text(codeSent ? "Check your email" : "Claim your business")
+                        Text("Claim your business")
                             .font(.system(size: 28, weight: .black))
                             .foregroundStyle(DriveColor.text)
                             .tracking(-0.5)
-                        Text(codeSent
-                             ? "Enter the 6-digit code we sent to \(email)."
-                             : "Create your free account to lock in \(business?.name ?? "your business") and save your progress.")
+                        Text("Create your free account to lock in \(business?.name ?? "your business") and save your progress.")
                             .font(.system(size: 15))
                             .foregroundStyle(DriveColor.textDim)
                     }
@@ -241,13 +238,7 @@ struct ClaimStep: View {
                         .overlay { RoundedRectangle(cornerRadius: 12).stroke(Color(hex: 0xF1E2A4), lineWidth: 1) }
                     }
 
-                    if codeSent {
-                        OTPEntryView(email: email, password: password) { onClaimed() } onChangeEmail: {
-                            withAnimation { codeSent = false }
-                        }
-                    } else {
-                        claimForm
-                    }
+                    claimForm
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
@@ -256,18 +247,16 @@ struct ClaimStep: View {
                 .offset(y: appear ? 0 : 12)
             }
 
-            if !codeSent {
-                Button(action: onSignIn) {
-                    HStack(spacing: 5) {
-                        Text("Already have an account?").foregroundStyle(DriveColor.textDim)
-                        Text("Sign in").foregroundStyle(DriveColor.accentDeep).fontWeight(.bold)
-                    }
-                    .font(.system(size: 14, weight: .semibold))
-                    .frame(maxWidth: .infinity)
+            Button(action: onSignIn) {
+                HStack(spacing: 5) {
+                    Text("Already have an account?").foregroundStyle(DriveColor.textDim)
+                    Text("Sign in").foregroundStyle(DriveColor.accentDeep).fontWeight(.bold)
                 }
-                .buttonStyle(.plain)
-                .padding(.bottom, 18)
+                .font(.system(size: 14, weight: .semibold))
+                .frame(maxWidth: .infinity)
             }
+            .buttonStyle(.plain)
+            .padding(.bottom, 18)
         }
         .onAppear { withAnimation(.easeOut(duration: 0.32)) { appear = true } }
     }
@@ -283,9 +272,7 @@ struct ClaimStep: View {
                     .foregroundStyle(DriveColor.textMuted)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            SendCodeButton(email: email, name: name, password: password) {
-                withAnimation { codeSent = true }
-            }
+            SignUpButton(email: email, name: name, password: password) { onClaimed() }
         }
         .padding(.top, 4)
     }
@@ -349,11 +336,11 @@ private struct ClaimField: View {
     }
 }
 
-private struct SendCodeButton: View {
+private struct SignUpButton: View {
     let email: String
     let name: String
     let password: String
-    let onSent: () -> Void
+    let onDone: () -> Void
     @State private var loading = false
     @State private var error: String?
 
@@ -365,8 +352,8 @@ private struct SendCodeButton: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            GradientButton(title: "Send my code", variant: .gold, disabled: !valid, loading: loading) {
-                Task { await send() }
+            GradientButton(title: "Create account & claim", variant: .gold, disabled: !valid, loading: loading) {
+                Task { await submit() }
             }
             if let error {
                 Text(error).font(.system(size: 12, weight: .semibold)).foregroundStyle(DriveColor.danger)
@@ -374,16 +361,18 @@ private struct SendCodeButton: View {
         }
     }
 
-    private func send() async {
+    private func submit() async {
+        guard !loading else { return }
         loading = true
         error = nil
         do {
-            try await SupabaseService.sendOTP(email: email)
+            try await SupabaseService.signUp(email: email, name: name, password: password)
             loading = false
-            onSent()
+            Haptics.notify(.success)
+            onDone()
         } catch {
             loading = false
-            self.error = (error as? SupabaseError)?.errorDescription ?? "Couldn't send the code. Try again."
+            self.error = (error as? SupabaseError)?.errorDescription ?? "Couldn't create your account. Try again."
         }
     }
 }
