@@ -15,14 +15,14 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "app.rork.i3ycts4qs75xuu5dfjfqx"
+      "bundleIdentifier": "app.rork.i3ycts4qs75xuu5dfjfqx.expo"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "app.rork.i3ycts4qs75xuu5dfjfqx"
+      "package": "app.rork.i3ycts4qs75xuu5dfjfqx.expo"
     },
     "web": {
       "favicon": "./assets/images/favicon.png"

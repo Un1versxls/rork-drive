@@ -2,7 +2,7 @@
   "$schema": "https://rork.com/schema/rork.json",
   "apps": [
     {
-      "name": "DRIVE",
+      "name": "DRIVE (Expo)",
       "path": "expo",
       "framework": "react-native"
     },
