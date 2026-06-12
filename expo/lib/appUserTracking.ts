@@ -1,3 +1,5 @@
+import { Platform } from "react-native";
+import Constants from "expo-constants";
 import { supabase, supabaseReady } from "@/lib/supabase";
 import type { AppState, BillingCycle, BusinessIdea, PlanId, Subscription, UserProfile } from "@/types";
 import { userCodeFor } from "@/lib/userCode";
@@ -473,20 +475,10 @@ export function buildSyncFromAppState(
     state.tasks.filter((t) => t.status === "completed").length;
   const totalSkipped = Object.values(state.history).reduce((s, d) => s + d.skipped, 0) +
     state.tasks.filter((t) => t.status === "skipped").length;
-  // Platform/app version are best-effort; require Platform from RN.
-  // We import lazily to avoid pulling RN into non-RN contexts.
-  let platformName: string | null = null;
-  let appVersion: string | null = null;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { Platform } = require("react-native");
-    platformName = Platform?.OS ?? null;
-  } catch {}
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const Constants = require("expo-constants").default;
-    appVersion = Constants?.expoConfig?.version ?? Constants?.manifest?.version ?? null;
-  } catch {}
+  // Platform/app version are best-effort.
+  const platformName: string | null = Platform?.OS ?? null;
+  const appVersion: string | null =
+    Constants?.expoConfig?.version ?? null;
   return {
     userId: authUserId,
     appleUserId: p.appleUserId,
