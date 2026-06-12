@@ -52,17 +52,20 @@ struct AppUserRow {
 
 @MainActor
 enum SupabaseService {
-    // Public anon credentials (safe to embed). Prefer build-injected values,
-    // fall back to the known project so the app works in every environment.
+    // Public anon credentials (safe to embed). The native app always talks to
+    // this Supabase project. We only honor a build-injected value if it points
+    // at the same project, so an unrelated env value can never repoint the app.
+    private static let projectRef = "ndoihidkznqdlacpiura"
+    private static let defaultURL = "https://ndoihidkznqdlacpiura.supabase.co"
+    private static let defaultAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kb2loaWRrem5xZGxhY3BpdXJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDkyOTMsImV4cCI6MjA5MjIyNTI5M30.Oc7pgUEkB2Tw0mc3A7a0ih1UpiNHLpufmuNqaqnf_bE"
+
     private static var baseURL: String {
         let v = Config.EXPO_PUBLIC_SUPABASE_URL
-        return v.isEmpty ? "https://ndoihidkznqdlacpiura.supabase.co" : v
+        return v.contains(projectRef) ? v : defaultURL
     }
     private static var anonKey: String {
         let v = Config.EXPO_PUBLIC_SUPABASE_ANON_KEY
-        return v.isEmpty
-            ? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kb2loaWRrem5xZGxhY3BpdXJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDkyOTMsImV4cCI6MjA5MjIyNTI5M30.Oc7pgUEkB2Tw0mc3A7a0ih1UpiNHLpufmuNqaqnf_bE"
-            : v
+        return v.contains(projectRef) ? v : defaultAnonKey
     }
 
     static var isConfigured: Bool { !baseURL.isEmpty && !anonKey.isEmpty }
