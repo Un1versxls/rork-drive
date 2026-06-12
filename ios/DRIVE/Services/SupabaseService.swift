@@ -106,6 +106,82 @@ enum SupabaseService {
         let _: EmptyOK = try await callFunction("verify-password", body: ["email": clean, "password": password])
     }
 
+    // MARK: - Supabase Auth (GoTrue)
+
+    /// Signs in against Supabase's built-in Auth — the accounts that appear under
+    /// Authentication → Users in the dashboard. This is where existing users
+    /// (created by the web/Expo app) actually live. Throws on bad credentials.
+    static func authSignIn(email: String, password: String) async throws {
+        let clean = email.trimmingCharacters(in: .whitespaces).lowercased()
+        guard isConfigured, let url = URL(string: "\(baseURL)/auth/v1/token?grant_type=password") else {
+            throw SupabaseError.notConfigured
+        }
+        try await postAuth(url: url, body: ["email": clean, "password": password])
+    }
+
+    /// Creates an account in Supabase Auth (same store the web app uses), so
+    /// native sign-ups and web sign-ups share one identity per email.
+    static func authSignUp(email: String, name: String, password: String) async throws {
+        let clean = email.trimmingCharacters(in: .whitespaces).lowercased()
+        guard isConfigured, let url = URL(string: "\(baseURL)/auth/v1/signup") else {
+            throw SupabaseError.notConfigured
+        }
+        let body: [String: Any] = [
+            "email": clean,
+            "password": password,
+            "data": ["name": name.trimmingCharacters(in: .whitespaces)],
+        ]
+        try await postAuth(url: url, body: body)
+    }
+
+    private struct AuthErrorBody: Decodable {
+        let error_description: String?
+        let msg: String?
+        let error: String?
+        var message: String? { error_description ?? msg ?? error }
+    }
+
+    private static func postAuth(url: URL, body: [String: Any]) async throws {
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue(anonKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(anonKey)", forHTTPHeaderField: "Authorization")
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+        req.timeoutInterval = 25
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: req)
+            guard let http = response as? HTTPURLResponse else { throw SupabaseError.network }
+            if (200...299).contains(http.statusCode) { return }
+            if let e = try? JSONDecoder().decode(AuthErrorBody.self, from: data), let m = e.message {
+                throw SupabaseError.server(friendlyAuthMessage(m))
+            }
+            throw SupabaseError.server("Couldn't sign you in. Try again.")
+        } catch let e as SupabaseError {
+            throw e
+        } catch {
+            throw SupabaseError.network
+        }
+    }
+
+    private static func friendlyAuthMessage(_ raw: String) -> String {
+        let lower = raw.lowercased()
+        if lower.contains("invalid login") || lower.contains("invalid_grant") || lower.contains("invalid credentials") {
+            return "Incorrect email or password."
+        }
+        if lower.contains("email not confirmed") {
+            return "Please confirm your email, then sign in."
+        }
+        if lower.contains("already registered") || lower.contains("already been registered") || lower.contains("user already") {
+            return "An account already exists for this email. Sign in instead."
+        }
+        if lower.contains("password") && lower.contains("least") {
+            return "Password must be at least 6 characters."
+        }
+        return raw
+    }
+
     private struct EmptyOK: Decodable { let ok: Bool? }
     private struct FnError: Decodable { let error: String? }
 

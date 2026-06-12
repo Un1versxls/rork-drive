@@ -366,7 +366,7 @@ private struct SignUpButton: View {
         loading = true
         error = nil
         do {
-            try await SupabaseService.signUp(email: email, name: name, password: password)
+            try await SupabaseService.authSignUp(email: email, name: name, password: password)
             loading = false
             Haptics.notify(.success)
             onDone()
@@ -585,7 +585,7 @@ struct SignInSheet: View {
         working = true
         message = nil
         do {
-            try await SupabaseService.verifyPassword(email: email, password: password)
+            try await SupabaseService.authSignIn(email: email, password: password)
         } catch {
             working = false
             message = (error as? SupabaseError)?.errorDescription ?? "Couldn't sign you in. Try again."

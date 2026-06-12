@@ -249,12 +249,20 @@ final class AppStore {
         Task { await pushToCloud() }
     }
 
-    /// Signs an existing user in. Only succeeds when their plan is still active;
-    /// otherwise reports `.expired` so the UI can explain and route to paywall.
+    /// Signs an existing user in. The caller verifies credentials against
+    /// Supabase Auth first, so reaching here means the account is real. We then
+    /// pull their cloud profile: an active plan restores saved state; a lapsed
+    /// plan reports `.expired`; a verified user with no cloud row yet starts a
+    /// fresh session (and seeds one) rather than being turned away.
     func signIn(email: String) async -> SignInResult {
         let clean = email.trimmingCharacters(in: .whitespaces).lowercased()
         guard let row = await SupabaseService.fetchUser(email: clean) else {
-            return .notFound
+            // Authenticated, but no cloud profile yet — begin a fresh session.
+            state.profile.email = clean
+            state.onboarded = true
+            commit()
+            Task { await pushToCloud() }
+            return .restored
         }
         if !row.isSubscriptionActive {
             return .expired
