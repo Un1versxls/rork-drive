@@ -104,6 +104,37 @@ struct RoadmapChart: View {
                         .position(x: pt.x, y: pt.y + 18)
                 }
 
+                // "More info" soft callout near the selected dot, nudged
+                // toward the middle of the roadmap.
+                if let sel = selected, sel < milestones.count, dotsVisible {
+                    let dotPt = point(for: milestones[sel].progress, w: w, h: h)
+                    let mid = CGPoint(x: w / 2, y: h / 2)
+                    let dx = mid.x - dotPt.x
+                    let dy = mid.y - dotPt.y
+                    let len = max(1, sqrt(dx*dx + dy*dy))
+                    let calloutPt = CGPoint(x: dotPt.x + dx / len * 44, y: dotPt.y + dy / len * 40)
+                    VStack(spacing: 2) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "info.circle.fill").font(.system(size: 9, weight: .bold))
+                            Text("MORE INFO").font(.system(size: 9, weight: .black)).tracking(0.8)
+                        }
+                        .foregroundStyle(DriveColor.accentDeep)
+                        Text(milestones[sel].label)
+                            .font(.system(size: 11, weight: .heavy))
+                            .foregroundStyle(DriveColor.text)
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 7)
+                    .background(DriveColor.bg)
+                    .clipShape(.rect(cornerRadius: 10))
+                    .overlay { RoundedRectangle(cornerRadius: 10).stroke(DriveColor.borderStrong, lineWidth: 1) }
+                    .shadow(color: DriveColor.gold.opacity(0.25), radius: 8, x: 0, y: 3)
+                    .fixedSize()
+                    .position(x: calloutPt.x, y: calloutPt.y)
+                    .transition(.scale(scale: 0.7).combined(with: .opacity))
+                    .allowsHitTesting(false)
+                }
+
                 // YOU marker
                 let youPt = point(for: youProgress, w: w, h: h)
                 VStack(spacing: 2) {

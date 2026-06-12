@@ -45,12 +45,7 @@ struct ProgressTabView: View {
 
     private var streakHero: some View {
         VStack(spacing: 6) {
-            Button {
-                if store.state.profile.hapticsEnabled { Haptics.impact(.heavy) }
-            } label: {
-                StreakFlame(streak: store.state.streak, size: 160)
-            }
-            .buttonStyle(.plain)
+            StreakFlameButton(streak: store.state.streak, size: 160, hapticsEnabled: store.state.profile.hapticsEnabled)
             HStack(spacing: 6) {
                 Image(systemName: "flame.fill").font(.system(size: 16)).foregroundStyle(store.tier.primary)
                 Text(store.tier.label.uppercased())

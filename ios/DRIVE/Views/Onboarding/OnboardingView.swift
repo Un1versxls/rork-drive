@@ -13,12 +13,13 @@ import SwiftUI
 
 enum OBScreen {
     case welcome, reviewRating, usedApps, whyApps, whyDrive
-    case goal, experience, reviewMaya, time, priority, reviewJordan, obstacle, name, match
+    case goal, experience, reviewMaya, time, motivation, priority, reviewJordan, obstacle, name, match
 }
 
 struct OnboardingView: View {
     @Environment(AppStore.self) private var store
     @State private var idx: Int = 0
+    @State private var showShowcase = false
     @State private var showPaywall = false
 
     // local picks
@@ -27,17 +28,18 @@ struct OnboardingView: View {
     @State private var experience: ExperienceLevel?
     @State private var time: TimeCommitment?
     @State private var priority: Priority?
+    @State private var motivation: Int?
     @State private var obstacle: Obstacle?
     @State private var name: String = ""
     @State private var pickedBusiness: BusinessIdea?
 
-    private let questionScreens: [OBScreen] = [.goal, .experience, .time, .priority, .obstacle, .name, .match]
+    private let questionScreens: [OBScreen] = [.goal, .experience, .time, .motivation, .priority, .obstacle, .name, .match]
 
     private var flow: [OBScreen] {
         var f: [OBScreen] = [.welcome, .reviewRating, .usedApps]
         if usedApps == false { f.append(.whyApps) }
         if usedApps != nil { f.append(.whyDrive) }
-        f += [.goal, .experience, .reviewMaya, .time, .priority, .reviewJordan, .obstacle, .name, .match]
+        f += [.goal, .experience, .reviewMaya, .time, .motivation, .priority, .reviewJordan, .obstacle, .name, .match]
         return f
     }
 
@@ -68,6 +70,13 @@ struct OnboardingView: View {
                         removal: .opacity
                     ))
             }
+        }
+        .fullScreenCover(isPresented: $showShowcase) {
+            AppShowcaseView(hapticsEnabled: store.state.profile.hapticsEnabled) {
+                showShowcase = false
+                showPaywall = true
+            }
+            .environment(store)
         }
         .fullScreenCover(isPresented: $showPaywall) {
             PaywallView(fromUpgrade: false) {
@@ -134,6 +143,10 @@ struct OnboardingView: View {
                     }
                 }
             }
+        case .motivation:
+            QuestionStep(title: "How fired up are you right now?", subtitle: "Slide to set your starting energy.") {
+                MotivationScaleStep(value: $motivation) { advanceSoon() }
+            }
         case .priority:
             QuestionStep(title: "What matters most to you?", subtitle: nil) {
                 VStack(spacing: 12) {
@@ -173,7 +186,7 @@ struct OnboardingView: View {
         commitPartial()
         if current == .match {
             commitPartial()
-            showPaywall = true
+            showShowcase = true
             return
         }
         withAnimation(.easeInOut(duration: 0.22)) { idx = min(flow.count - 1, idx + 1) }
@@ -193,6 +206,7 @@ struct OnboardingView: View {
             if let experience { p.experience = experience }
             if let time { p.time = time }
             if let priority { p.priority = priority }
+            if let motivation { p.confidence = motivation }
             if let obstacle { p.obstacle = obstacle }
             if !name.trimmingCharacters(in: .whitespaces).isEmpty {
                 p.name = name.trimmingCharacters(in: .whitespaces)
@@ -318,6 +332,52 @@ private struct WelcomeStep: View {
         .onAppear {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) { appear = true }
         }
+    }
+}
+
+// MARK: - Motivation scale (emoji + slider variety)
+
+private struct MotivationScaleStep: View {
+    @Binding var value: Int?
+    let onPick: () -> Void
+
+    @State private var raw: Double = 3
+    @State private var committed = false
+
+    private let emojis = ["😴", "🙂", "😃", "🔥", "🚀"]
+    private let labels = ["Low", "Okay", "Good", "Fired up", "Unstoppable"]
+    private var step: Int { min(4, max(0, Int(raw.rounded()))) }
+
+    var body: some View {
+        VStack(spacing: 22) {
+            Text(emojis[step])
+                .font(.system(size: 72))
+                .scaleEffect(committed ? 1.1 : 1)
+                .animation(.spring(response: 0.3, dampingFraction: 0.5), value: step)
+
+            Text(labels[step])
+                .font(.system(size: 20, weight: .black))
+                .foregroundStyle(DriveColor.text)
+
+            HStack(spacing: 8) {
+                ForEach(0..<5, id: \.self) { i in
+                    Capsule()
+                        .fill(i <= step ? DriveColor.gold : DriveColor.border)
+                        .frame(height: 10)
+                }
+            }
+
+            Slider(value: $raw, in: 0...4, step: 1)
+                .tint(DriveColor.gold)
+                .onChange(of: step) { _, _ in Haptics.selection() }
+
+            GradientButton(title: "That's me", variant: .gold) {
+                committed = true
+                value = step + 1
+                onPick()
+            }
+        }
+        .padding(.top, 6)
     }
 }
 

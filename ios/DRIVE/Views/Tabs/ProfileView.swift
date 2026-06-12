@@ -13,6 +13,7 @@ struct ProfileView: View {
     @State private var showBadges = false
     @State private var showPaywall = false
     @State private var confirmReset = false
+    @State private var confirmDelete = false
 
     var body: some View {
         ZStack {
@@ -50,16 +51,32 @@ struct ProfileView: View {
                     linkRow(icon: "doc.text", label: "Terms of Use", url: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")
                     linkRow(icon: "checkmark.shield", label: "Privacy Policy", url: "https://rork.app/privacy")
 
-                    Button { confirmReset = true } label: {
-                        Text("Reset everything")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(DriveColor.danger)
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 18)
-                    }
-                    .buttonStyle(.plain)
+                    HStack(spacing: 10) {
+                        Button { confirmReset = true } label: {
+                            Text("Reset everything")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(DriveColor.danger)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 13)
+                                .background(DriveColor.bgSoft)
+                                .clipShape(.rect(cornerRadius: 12))
+                        }
+                        .buttonStyle(.plain)
 
-                    Text("DRIVE v1.0")
+                        Button { confirmDelete = true } label: {
+                            Text("Delete account")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 13)
+                                .background(DriveColor.danger)
+                                .clipShape(.rect(cornerRadius: 12))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.top, 18)
+
+                    Text("DRIVE \(AppInfo.versionLabel)")
                         .font(.system(size: 11))
                         .foregroundStyle(DriveColor.textMuted)
                         .frame(maxWidth: .infinity)
@@ -81,6 +98,12 @@ struct ProfileView: View {
             Button("Reset", role: .destructive) { store.resetEverything() }
         } message: {
             Text("This clears your progress and restarts onboarding.")
+        }
+        .alert("Delete account?", isPresented: $confirmDelete) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive) { store.deleteAccount() }
+        } message: {
+            Text("This permanently deletes your account and all your data on this device. This can't be undone.")
         }
     }
 

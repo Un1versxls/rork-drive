@@ -18,6 +18,10 @@ final class AppStore {
     /// Badge ids freshly unlocked and waiting to be surfaced as a toast.
     var pendingBadge: Badge? = nil
 
+    /// Set when the user just earned the Badge Blitz free month — drives the
+    /// celebration overlay.
+    var pendingFreeMonth: Bool = false
+
     private let storageKey = "drive.state.v1"
 
     init() {
@@ -95,6 +99,28 @@ final class AppStore {
     var level: Int { max(1, state.points / 500 + 1) }
 
     var tier: StreakTier { StreakTiers.tier(for: state.streak) }
+
+    /// Whether the "What's New" popup should be shown (onboarded + a newer build).
+    var shouldShowWhatsNew: Bool {
+        state.onboarded && state.profile.lastSeenBuild < AppInfo.build
+    }
+
+    func markWhatsNewSeen() {
+        state.profile.lastSeenBuild = AppInfo.build
+        commit()
+    }
+
+    /// Badges unlocked in the current calendar month (for the Blitz event).
+    var badgesThisMonth: Int {
+        state.badgeMonthKey == Self.monthKey() ? state.monthlyBadgeCount : 0
+    }
+
+    static func monthKey(_ date: Date = Date()) -> String {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.dateFormat = "yyyy-MM"
+        return f.string(from: date)
+    }
 
     /// Last 7 days of completed-task counts (oldest → today).
     var weeklyActivity: [(key: String, label: String, completed: Int)] {
@@ -268,6 +294,43 @@ final class AppStore {
         commit()
     }
 
+    /// Local-account deletion: wipes all stored data and restarts onboarding.
+    func deleteAccount() {
+        UserDefaults.standard.removeObject(forKey: storageKey)
+        state = AppState()
+        commit()
+    }
+
+    // MARK: - Badge Blitz event
+
+    private func registerBadgeUnlock() {
+        let month = Self.monthKey()
+        if state.badgeMonthKey != month {
+            state.badgeMonthKey = month
+            state.monthlyBadgeCount = 0
+        }
+        state.monthlyBadgeCount += 1
+
+        if state.monthlyBadgeCount >= AppInfo.badgeBlitzGoal,
+           state.freeMonthGrantedMonth != month {
+            grantFreeMonth(month: month)
+        }
+    }
+
+    private func grantFreeMonth(month: String) {
+        state.freeMonthGrantedMonth = month
+        var sub = state.profile.subscription
+        sub.active = true
+        sub.plan = .premium
+        sub.trial = false
+        if sub.startedAt == nil { sub.startedAt = Date() }
+        let base = max(sub.expiresAt ?? Date(), Date())
+        sub.expiresAt = Calendar.current.date(byAdding: .month, value: 1, to: base)
+        state.profile.subscription = sub
+        pendingFreeMonth = true
+        if state.profile.hapticsEnabled { Haptics.notify(.success) }
+    }
+
     // MARK: - Badges / Achievements
 
     func isBadgeUnlocked(_ id: String) -> Bool {
@@ -296,6 +359,7 @@ final class AppStore {
             }
             if value >= b.threshold {
                 unlocked.insert(b.id)
+                registerBadgeUnlock()
                 if b.important && pendingBadge == nil {
                     pendingBadge = b
                 }

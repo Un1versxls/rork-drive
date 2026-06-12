@@ -46,6 +46,8 @@ struct MainTabView: View {
     @Environment(AppStore.self) private var store
     @State private var tab: DriveTab = .tasks
     @State private var toastBadge: Badge?
+    @State private var showTour = false
+    @State private var showWhatsNew = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -69,6 +71,28 @@ struct MainTabView: View {
                     .padding(.top, 8)
             }
         }
+        .overlay {
+            if showTour {
+                FeatureTour(hapticsEnabled: store.state.profile.hapticsEnabled) {
+                    store.setProfile { $0.firstTourSeen = true }
+                    withAnimation(.easeOut(duration: 0.2)) { showTour = false }
+                    evaluateWhatsNew()
+                }
+                .transition(.opacity)
+                .zIndex(50)
+            }
+            if store.pendingFreeMonth {
+                FreeMonthOverlay { store.pendingFreeMonth = false }
+                    .zIndex(60)
+            }
+        }
+        .fullScreenCover(isPresented: $showWhatsNew) {
+            WhatsNewView(hapticsEnabled: store.state.profile.hapticsEnabled) {
+                store.markWhatsNewSeen()
+                showWhatsNew = false
+            }
+        }
+        .onAppear(perform: evaluateIntros)
         .onChange(of: store.pendingBadge?.id) { _, _ in
             if let badge = store.pendingBadge {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) { toastBadge = badge }
@@ -78,6 +102,21 @@ struct MainTabView: View {
                     store.pendingBadge = nil
                 }
             }
+        }
+    }
+
+    /// First-run tour takes priority; otherwise check the What's New popup.
+    private func evaluateIntros() {
+        if !store.state.profile.firstTourSeen {
+            withAnimation(.easeIn(duration: 0.3)) { showTour = true }
+        } else {
+            evaluateWhatsNew()
+        }
+    }
+
+    private func evaluateWhatsNew() {
+        if store.shouldShowWhatsNew {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { showWhatsNew = true }
         }
     }
 

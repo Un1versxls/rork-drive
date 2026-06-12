@@ -212,6 +212,9 @@ struct Profile: Codable {
     var fullDayAchieved: Bool = false
     var accountStartedAt: Date? = nil
 
+    /// Highest "What's New" build the user has already seen.
+    var lastSeenBuild: Int = 0
+
     var customBuildMonth: String? = nil
     var customBuildCount: Int = 0
     var businessSwitchMonth: String? = nil
@@ -231,6 +234,11 @@ struct AppState: Codable {
     var history: [String: DayStat] = [:]
     var unlockedBadges: [String] = []
     var unlockedAchievements: [String] = []
+
+    // Monthly badge-blitz event (15 badges in a month → 1 free month).
+    var badgeMonthKey: String? = nil      // "yyyy-MM" the count belongs to
+    var monthlyBadgeCount: Int = 0
+    var freeMonthGrantedMonth: String? = nil
 }
 
 struct DayStat: Codable {

@@ -74,6 +74,7 @@ struct TasksView: View {
         .sheet(item: $selectedTask) { task in
             TaskDetailSheet(task: task,
                             business: store.state.profile.business,
+                            hapticsEnabled: store.state.profile.hapticsEnabled,
                             onComplete: { store.completeTask(task.id); selectedTask = nil },
                             onSkip: { store.skipTask(task.id); selectedTask = nil })
         }
@@ -113,7 +114,7 @@ struct TasksView: View {
             }
             Spacer()
             VStack(spacing: 4) {
-                StreakFlame(streak: store.state.streak, size: 54, showNumber: true)
+                StreakFlameButton(streak: store.state.streak, size: 54, showNumber: true, hapticsEnabled: store.state.profile.hapticsEnabled)
                 HStack(spacing: 4) {
                     Image(systemName: "flame.fill").font(.system(size: 10))
                     Text(store.tier.label.uppercased()).font(.system(size: 10, weight: .black))
