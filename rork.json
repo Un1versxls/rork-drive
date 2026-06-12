@@ -2,19 +2,14 @@
   "$schema": "https://rork.com/schema/rork.json",
   "apps": [
     {
-      "name": "DRIVE (Expo)",
-      "path": "expo",
-      "framework": "react-native"
+      "name": "DRIVE",
+      "path": "ios",
+      "framework": "swift"
     },
     {
       "name": "Backend",
       "path": "backend",
       "framework": "supabase"
-    },
-    {
-      "name": "DRIVE",
-      "path": "ios",
-      "framework": "swift"
     }
   ]
 }
