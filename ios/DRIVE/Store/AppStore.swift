@@ -26,6 +26,12 @@ final class AppStore {
     private var lastCloudSyncAt: Date? = nil
     private let syncInterval: TimeInterval = 30 * 60 // 30 minutes
 
+    // Device-level "seen once" flags. These live in UserDefaults (not the synced
+    // state blob) so the first-run tour and What's New popup only ever show once
+    // per device and can never be re-triggered by a cloud restore on sign-in.
+    private let deviceTourSeenKey = "drive.device.tourSeen.v1"
+    private let deviceSeenBuildKey = "drive.device.seenBuild.v1"
+
     init() {
         load()
     }
@@ -136,12 +142,28 @@ final class AppStore {
 
     var tier: StreakTier { StreakTiers.tier(for: state.streak) }
 
-    /// Whether the "What's New" popup should be shown (onboarded + a newer build).
+    /// Whether the first-run feature tour has already been seen on this device.
+    var hasSeenTour: Bool {
+        state.profile.firstTourSeen || UserDefaults.standard.bool(forKey: deviceTourSeenKey)
+    }
+
+    func markTourSeen() {
+        UserDefaults.standard.set(true, forKey: deviceTourSeenKey)
+        state.profile.firstTourSeen = true
+        commit()
+    }
+
+    /// Highest What's New build already seen on this device (independent of sync).
+    private var deviceSeenBuild: Int { UserDefaults.standard.integer(forKey: deviceSeenBuildKey) }
+
+    /// Whether the "What's New" popup should be shown (onboarded + a newer build
+    /// than this device has ever seen).
     var shouldShowWhatsNew: Bool {
-        state.onboarded && state.profile.lastSeenBuild < AppInfo.build
+        state.onboarded && max(state.profile.lastSeenBuild, deviceSeenBuild) < AppInfo.build
     }
 
     func markWhatsNewSeen() {
+        UserDefaults.standard.set(AppInfo.build, forKey: deviceSeenBuildKey)
         state.profile.lastSeenBuild = AppInfo.build
         commit()
     }
@@ -264,9 +286,10 @@ final class AppStore {
             Task { await pushToCloud() }
             return .restored
         }
-        if !row.isSubscriptionActive {
-            return .expired
-        }
+        // Always restore the saved cloud state so everything comes back: tasks
+        // (including which ones are completed, e.g. 5/10 today), streak, badges,
+        // points, business and subscription. We report `.expired` only as a
+        // signal for the paywall — the data is still restored either way.
         if var blob = row.stateBlob {
             blob.profile.email = clean
             blob.onboarded = true
@@ -277,7 +300,7 @@ final class AppStore {
             state.onboarded = true
         }
         commit()
-        return .restored
+        return row.isSubscriptionActive ? .restored : .expired
     }
 
     // MARK: - Tasks

@@ -11,6 +11,9 @@ struct RootView: View {
     @Environment(AppStore.self) private var store
     @Environment(\.scenePhase) private var scenePhase
 
+    @State private var showLoader = true
+    @State private var wasBackgrounded = false
+
     var body: some View {
         Group {
             if !store.hydrated {
@@ -24,15 +27,41 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.3), value: store.state.onboarded)
+        .overlay {
+            if showLoader {
+                LaunchLoadingView()
+                    .transition(.opacity)
+                    .zIndex(100)
+            }
+        }
         .onAppear {
             store.rolloverTasks()
             store.maybeSyncOnForeground()
+            startLoader()
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active {
+            switch phase {
+            case .active:
                 store.rolloverTasks()
                 store.maybeSyncOnForeground()
+                // Returning from the background re-shows the brief loading screen.
+                if wasBackgrounded {
+                    wasBackgrounded = false
+                    startLoader()
+                }
+            case .background:
+                wasBackgrounded = true
+            default:
+                break
             }
+        }
+    }
+
+    /// Shows the branded loading screen for ~2s, then fades it out.
+    private func startLoader() {
+        showLoader = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            withAnimation(.easeInOut(duration: 0.6)) { showLoader = false }
         }
     }
 }
@@ -84,7 +113,7 @@ struct MainTabView: View {
         .overlay {
             if showTour {
                 FeatureTour(hapticsEnabled: store.state.profile.hapticsEnabled) {
-                    store.setProfile { $0.firstTourSeen = true }
+                    store.markTourSeen()
                     withAnimation(.easeOut(duration: 0.2)) { showTour = false }
                     evaluateWhatsNew()
                 }
@@ -117,7 +146,7 @@ struct MainTabView: View {
 
     /// First-run tour takes priority; otherwise check the What's New popup.
     private func evaluateIntros() {
-        if !store.state.profile.firstTourSeen {
+        if !store.hasSeenTour {
             withAnimation(.easeIn(duration: 0.3)) { showTour = true }
         } else {
             evaluateWhatsNew()
@@ -177,6 +206,61 @@ struct SplashView: View {
             }
         }
         .onAppear { withAnimation(.easeInOut(duration: 1).repeatForever(autoreverses: true)) { pulse = true } }
+    }
+}
+
+// MARK: - Launch / foreground loading screen
+
+/// Branded loading screen shown briefly on cold launch and when returning from
+/// the background. No buttons — it simply fades out after a short beat.
+struct LaunchLoadingView: View {
+    @State private var appear = false
+    @State private var pulse = false
+    @State private var glow = false
+
+    var body: some View {
+        ZStack {
+            DriveColor.bg.ignoresSafeArea()
+
+            VStack(spacing: 18) {
+                ZStack {
+                    Circle()
+                        .fill(DriveColor.gold.opacity(0.16))
+                        .frame(width: 132, height: 132)
+                        .scaleEffect(glow ? 1.12 : 0.9)
+                        .opacity(glow ? 0 : 0.9)
+                    Circle()
+                        .fill(LinearGradient(colors: [DriveColor.gold, DriveColor.accentDark], startPoint: .top, endPoint: .bottom))
+                        .frame(width: 84, height: 84)
+                        .scaleEffect(pulse ? 1.05 : 0.96)
+                        .shadow(color: DriveColor.gold.opacity(0.35), radius: 18, x: 0, y: 10)
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 36, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+
+                VStack(spacing: 8) {
+                    Text("DRIVE")
+                        .font(.system(size: 26, weight: .black))
+                        .tracking(4)
+                        .foregroundStyle(DriveColor.text)
+                    Text("Build something real, one day at a time.")
+                        .font(.system(size: 13, weight: .semibold))
+                        .tracking(0.3)
+                        .foregroundStyle(DriveColor.textMuted)
+                        .multilineTextAlignment(.center)
+                }
+                .opacity(appear ? 1 : 0)
+                .offset(y: appear ? 0 : 8)
+            }
+            .scaleEffect(appear ? 1 : 0.94)
+            .opacity(appear ? 1 : 0)
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.4)) { appear = true }
+            withAnimation(.easeInOut(duration: 1).repeatForever(autoreverses: true)) { pulse = true }
+            withAnimation(.easeOut(duration: 1.6).repeatForever(autoreverses: false)) { glow = true }
+        }
     }
 }
 
