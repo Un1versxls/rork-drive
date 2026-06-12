@@ -297,17 +297,13 @@ private struct WelcomeStep: View {
         VStack(spacing: 0) {
             Spacer()
             VStack(spacing: 18) {
-                ZStack {
-                    Circle()
-                        .fill(LinearGradient(colors: [DriveColor.gold, DriveColor.accentDark], startPoint: .top, endPoint: .bottom))
-                        .frame(width: 96, height: 96)
-                        .shadow(color: DriveColor.gold.opacity(0.4), radius: 24, x: 0, y: 12)
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: 42, weight: .bold))
-                        .foregroundStyle(.white)
-                }
-                .scaleEffect(appear ? 1 : 0.7)
-                .opacity(appear ? 1 : 0)
+                Image("AppLogo")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 104, height: 104)
+                    .shadow(color: DriveColor.gold.opacity(0.35), radius: 24, x: 0, y: 12)
+                    .scaleEffect(appear ? 1 : 0.7)
+                    .opacity(appear ? 1 : 0)
 
                 Text("DRIVE")
                     .font(.system(size: 44, weight: .black))
