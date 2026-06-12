@@ -4,6 +4,8 @@
 //
 //  The business recommendation, claim (email code) step, the "this is your
 //  edge" moment, and the sign-in sheet — all sharing one OTP entry control.
+//  Includes a guidance note and a custom-business hint on the match step.
+//  The custom-business note is shown for the in-person hustle path only.
 //
 
 import SwiftUI
@@ -30,6 +32,23 @@ struct MatchPathStep: View {
                     .font(.system(size: 15))
                     .foregroundStyle(DriveColor.textDim)
 
+                if !analyzing {
+                    HStack(spacing: 8) {
+                        Image(systemName: "map.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(DriveColor.gold)
+                        Text("We'll guide you step-by-step through starting one of these businesses.")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(DriveColor.text)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(DriveColor.accentDim)
+                    .clipShape(.rect(cornerRadius: 14))
+                    .padding(.top, 14)
+                }
+
                 if analyzing {
                     AnalyzingCard().padding(.top, 24)
                 } else {
@@ -49,6 +68,15 @@ struct MatchPathStep: View {
 
                     GradientButton(title: "Claim this business", variant: .gold, disabled: picked == nil) { onNext() }
                         .padding(.top, 10)
+
+                    if path == .hustle {
+                        Text("Want something different? You can create a custom business tailored to you in the dashboard with Premium.")
+                            .font(.system(size: 12))
+                            .foregroundStyle(DriveColor.textMuted)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, 14)
+                    }
                 }
             }
             .padding(.horizontal, 20)
