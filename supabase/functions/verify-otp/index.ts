@@ -27,11 +27,15 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   try {
-    const { email, code } = await req.json();
+    const { email, code, password } = await req.json();
     const cleanEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
     const cleanCode = typeof code === "string" ? code.trim() : "";
+    const cleanPassword = typeof password === "string" ? password : "";
     if (!cleanEmail || !/^\d{6}$/.test(cleanCode)) {
       return json({ error: "Invalid request" }, 400);
+    }
+    if (cleanPassword && cleanPassword.length < 6) {
+      return json({ error: "Password must be at least 6 characters." }, 400);
     }
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -74,6 +78,15 @@ Deno.serve(async (req: Request) => {
       .from("email_otps")
       .update({ consumed_at: nowIso })
       .eq("id", row.id);
+
+    // Email ownership is now proven — set the account password if one was sent.
+    if (cleanPassword) {
+      const pwHash = await sha256(`${cleanEmail}:${cleanPassword}:drive-pw-v1`);
+      const { error: upErr } = await admin
+        .from("app_users")
+        .upsert({ email: cleanEmail, password_hash: pwHash }, { onConflict: "email" });
+      if (upErr) console.log("[verify-otp] password set error", upErr.message);
+    }
 
     console.log("[verify-otp] verified", cleanEmail);
     return json({ ok: true });

@@ -76,10 +76,20 @@ enum SupabaseService {
         let _: EmptyOK = try await callFunction("send-otp", body: ["email": clean])
     }
 
-    /// Returns true when the code is valid.
-    static func verifyOTP(email: String, code: String) async throws {
+    /// Verifies the 6-digit code. When `password` is supplied, the account
+    /// password is set server-side in the same call (only after the email is
+    /// proven via the code).
+    static func verifyOTP(email: String, code: String, password: String? = nil) async throws {
         let clean = email.trimmingCharacters(in: .whitespaces).lowercased()
-        let _: EmptyOK = try await callFunction("verify-otp", body: ["email": clean, "code": code])
+        var body: [String: String] = ["email": clean, "code": code]
+        if let password, !password.isEmpty { body["password"] = password }
+        let _: EmptyOK = try await callFunction("verify-otp", body: body)
+    }
+
+    /// Verifies an existing account's email + password for sign-in.
+    static func verifyPassword(email: String, password: String) async throws {
+        let clean = email.trimmingCharacters(in: .whitespaces).lowercased()
+        let _: EmptyOK = try await callFunction("verify-password", body: ["email": clean, "password": password])
     }
 
     private struct EmptyOK: Decodable { let ok: Bool? }

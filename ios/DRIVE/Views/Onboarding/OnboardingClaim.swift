@@ -207,6 +207,7 @@ struct ClaimStep: View {
     let onClaimed: () -> Void
     let onSignIn: () -> Void
 
+    @State private var password = ""
     @State private var codeSent = false
     @State private var appear = false
 
@@ -241,7 +242,7 @@ struct ClaimStep: View {
                     }
 
                     if codeSent {
-                        OTPEntryView(email: email) { onClaimed() } onChangeEmail: {
+                        OTPEntryView(email: email, password: password) { onClaimed() } onChangeEmail: {
                             withAnimation { codeSent = false }
                         }
                     } else {
@@ -275,11 +276,55 @@ struct ClaimStep: View {
         VStack(spacing: 14) {
             ClaimField(placeholder: "Your name", text: $name, keyboard: .default, content: .name)
             ClaimField(placeholder: "Your email", text: $email, keyboard: .emailAddress, content: .emailAddress)
-            SendCodeButton(email: email, name: name) {
+            ClaimSecureField(placeholder: "Create a password", text: $password, content: .newPassword)
+            if !password.isEmpty && password.count < 6 {
+                Text("Password must be at least 6 characters.")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(DriveColor.textMuted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            SendCodeButton(email: email, name: name, password: password) {
                 withAnimation { codeSent = true }
             }
         }
         .padding(.top, 4)
+    }
+}
+
+private struct ClaimSecureField: View {
+    let placeholder: String
+    @Binding var text: String
+    let content: UITextContentType
+    @State private var revealed = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Group {
+                if revealed {
+                    TextField(placeholder, text: $text)
+                } else {
+                    SecureField(placeholder, text: $text)
+                }
+            }
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundStyle(DriveColor.text)
+            .textContentType(content)
+            .autocorrectionDisabled()
+            .textInputAutocapitalization(.never)
+
+            Button {
+                revealed.toggle()
+            } label: {
+                Image(systemName: revealed ? "eye.slash" : "eye")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(DriveColor.textDim)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(16)
+        .background(DriveColor.bgSoft)
+        .clipShape(.rect(cornerRadius: 14))
+        .overlay { RoundedRectangle(cornerRadius: 14).stroke(DriveColor.border, lineWidth: 1) }
     }
 }
 
@@ -307,13 +352,15 @@ private struct ClaimField: View {
 private struct SendCodeButton: View {
     let email: String
     let name: String
+    let password: String
     let onSent: () -> Void
     @State private var loading = false
     @State private var error: String?
 
     private var valid: Bool {
         name.trimmingCharacters(in: .whitespaces).count >= 1 &&
-        email.contains("@") && email.contains(".")
+        email.contains("@") && email.contains(".") &&
+        password.count >= 6
     }
 
     var body: some View {
@@ -345,6 +392,7 @@ private struct SendCodeButton: View {
 
 struct OTPEntryView: View {
     let email: String
+    var password: String? = nil
     let onVerified: () -> Void
     let onChangeEmail: () -> Void
 
@@ -396,7 +444,7 @@ struct OTPEntryView: View {
         loading = true
         error = nil
         do {
-            try await SupabaseService.verifyOTP(email: email, code: code)
+            try await SupabaseService.verifyOTP(email: email, code: code, password: password)
             loading = false
             Haptics.notify(.success)
             onVerified()
@@ -491,43 +539,39 @@ struct SignInSheet: View {
     let onResult: (AppStore.SignInResult) -> Void
 
     @State private var email = ""
-    @State private var codeSent = false
+    @State private var password = ""
     @State private var message: String?
     @State private var working = false
+
+    private var valid: Bool {
+        email.contains("@") && email.contains(".") && password.count >= 6
+    }
 
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 18) {
-                Text(codeSent ? "Enter your code" : "Welcome back")
+                Text("Welcome back")
                     .font(.system(size: 26, weight: .black))
                     .foregroundStyle(DriveColor.text)
-                Text(codeSent
-                     ? "We sent a 6-digit code to \(email)."
-                     : "Sign in with the email you used. You'll need an active plan to sign back in.")
+                Text("Sign in with your email and password. You'll need an active plan to sign back in.")
                     .font(.system(size: 14))
                     .foregroundStyle(DriveColor.textDim)
 
-                if codeSent {
-                    OTPEntryView(email: email) {
-                        Task { await finishSignIn() }
-                    } onChangeEmail: {
-                        withAnimation { codeSent = false }
-                    }
-                } else {
-                    TextField("Your email", text: $email)
-                        .font(.system(size: 17, weight: .semibold))
-                        .keyboardType(.emailAddress)
-                        .textContentType(.emailAddress)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                        .padding(16)
-                        .background(DriveColor.bgSoft)
-                        .clipShape(.rect(cornerRadius: 14))
-                        .overlay { RoundedRectangle(cornerRadius: 14).stroke(DriveColor.border, lineWidth: 1) }
+                TextField("Your email", text: $email)
+                    .font(.system(size: 17, weight: .semibold))
+                    .keyboardType(.emailAddress)
+                    .textContentType(.emailAddress)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .padding(16)
+                    .background(DriveColor.bgSoft)
+                    .clipShape(.rect(cornerRadius: 14))
+                    .overlay { RoundedRectangle(cornerRadius: 14).stroke(DriveColor.border, lineWidth: 1) }
 
-                    GradientButton(title: "Send code", variant: .gold, disabled: !(email.contains("@") && email.contains(".")), loading: working) {
-                        Task { await sendCode() }
-                    }
+                SignInPasswordField(text: $password)
+
+                GradientButton(title: "Sign in", variant: .gold, disabled: !valid, loading: working) {
+                    Task { await submit() }
                 }
 
                 if let message {
@@ -547,28 +591,62 @@ struct SignInSheet: View {
         }
     }
 
-    private func sendCode() async {
+    private func submit() async {
+        guard valid, !working else { return }
         working = true
         message = nil
         do {
-            try await SupabaseService.sendOTP(email: email)
-            working = false
-            withAnimation { codeSent = true }
+            try await SupabaseService.verifyPassword(email: email, password: password)
         } catch {
             working = false
-            message = (error as? SupabaseError)?.errorDescription ?? "Couldn't send the code."
+            message = (error as? SupabaseError)?.errorDescription ?? "Couldn't sign you in. Try again."
+            return
         }
-    }
-
-    private func finishSignIn() async {
         let result = await store.signIn(email: email)
+        working = false
         switch result {
         case .restored:
+            Haptics.notify(.success)
             onResult(.restored)
         case .expired:
             message = "Your plan has expired. Resubscribe to sign back in."
         case .notFound:
             message = "No account found for that email."
         }
+    }
+}
+
+private struct SignInPasswordField: View {
+    @Binding var text: String
+    @State private var revealed = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Group {
+                if revealed {
+                    TextField("Your password", text: $text)
+                } else {
+                    SecureField("Your password", text: $text)
+                }
+            }
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundStyle(DriveColor.text)
+            .textContentType(.password)
+            .autocorrectionDisabled()
+            .textInputAutocapitalization(.never)
+
+            Button {
+                revealed.toggle()
+            } label: {
+                Image(systemName: revealed ? "eye.slash" : "eye")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(DriveColor.textDim)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(16)
+        .background(DriveColor.bgSoft)
+        .clipShape(.rect(cornerRadius: 14))
+        .overlay { RoundedRectangle(cornerRadius: 14).stroke(DriveColor.border, lineWidth: 1) }
     }
 }

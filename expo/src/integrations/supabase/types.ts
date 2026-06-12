@@ -25,6 +25,7 @@ export type Database = {
           email: string | null
           id: string
           name: string | null
+          password_hash: string | null
           subscription_active: boolean
           subscription_cycle: string | null
           subscription_plan: string | null
@@ -39,6 +40,7 @@ export type Database = {
           email?: string | null
           id?: string
           name?: string | null
+          password_hash?: string | null
           subscription_active?: boolean
           subscription_cycle?: string | null
           subscription_plan?: string | null
@@ -53,6 +55,7 @@ export type Database = {
           email?: string | null
           id?: string
           name?: string | null
+          password_hash?: string | null
           subscription_active?: boolean
           subscription_cycle?: string | null
           subscription_plan?: string | null
