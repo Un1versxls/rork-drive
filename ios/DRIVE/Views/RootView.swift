@@ -9,6 +9,7 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(AppStore.self) private var store
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
@@ -23,7 +24,16 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.3), value: store.state.onboarded)
-        .onAppear { store.rolloverTasks() }
+        .onAppear {
+            store.rolloverTasks()
+            store.maybeSyncOnForeground()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                store.rolloverTasks()
+                store.maybeSyncOnForeground()
+            }
+        }
     }
 }
 

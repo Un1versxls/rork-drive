@@ -9,6 +9,35 @@ import Foundation
 
 // MARK: - Onboarding answer enums
 
+/// The two top-level routes a user picks at the start of onboarding.
+enum BusinessPath: String, Codable, CaseIterable, Identifiable {
+    case onlineAI = "online_ai"
+    case hustle = "in_person"
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .onlineAI: return "Online AI business"
+        case .hustle: return "In-person hustle"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .onlineAI: return "Build income from your laptop or phone"
+        case .hustle: return "Make money with your hands, locally"
+        }
+    }
+
+    var emoji: String {
+        switch self {
+        case .onlineAI: return "🤖"
+        case .hustle: return "🛠️"
+        }
+    }
+}
+
 enum PrimaryGoal: String, Codable, CaseIterable, Identifiable {
     case earnIncome = "earn_income"
     case buildSkills = "build_skills"
@@ -59,6 +88,33 @@ enum ExperienceLevel: String, Codable, CaseIterable, Identifiable {
         case .intermediate: return "I know the basics"
         case .advanced: return "I've done this before"
         case .expert: return "I do this professionally"
+        }
+    }
+
+    /// Path-specific, relatable framing for the experience scale.
+    func title(for path: BusinessPath) -> String {
+        switch (path, self) {
+        case (.onlineAI, .beginner): return "Total beginner"
+        case (.onlineAI, .intermediate): return "Dabbled a bit"
+        case (.onlineAI, .advanced): return "Made some money online"
+        case (.onlineAI, .expert): return "Built businesses myself"
+        case (.hustle, .beginner): return "Just chores so far"
+        case (.hustle, .intermediate): return "Odd jobs for cash"
+        case (.hustle, .advanced): return "Run a side gig already"
+        case (.hustle, .expert): return "Run my own operation"
+        }
+    }
+
+    func subtitle(for path: BusinessPath) -> String {
+        switch (path, self) {
+        case (.onlineAI, .beginner): return "I mostly use ChatGPT for homework"
+        case (.onlineAI, .intermediate): return "I've tried a few tools and ideas"
+        case (.onlineAI, .advanced): return "I've earned a bit with online stuff"
+        case (.onlineAI, .expert): return "I've built one or more online businesses"
+        case (.hustle, .beginner): return "I help around the house for money"
+        case (.hustle, .intermediate): return "I've done yardwork, babysitting, etc."
+        case (.hustle, .advanced): return "I already make money on the side"
+        case (.hustle, .expert): return "e.g. my own pressure-washing company"
         }
     }
 }
@@ -174,6 +230,50 @@ struct BusinessIdea: Codable, Identifiable, Hashable {
     var startupCost: String
     var timeToIncome: String
     var firstMilestones: [String]
+    /// Premium-only ideas require an active Premium plan to start.
+    var premium: Bool
+    /// Which onboarding route this idea belongs to.
+    var path: BusinessPath?
+
+    init(
+        id: String,
+        name: String,
+        tagline: String,
+        description: String,
+        whyFit: String,
+        startupCost: String,
+        timeToIncome: String,
+        firstMilestones: [String],
+        premium: Bool = false,
+        path: BusinessPath? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.tagline = tagline
+        self.description = description
+        self.whyFit = whyFit
+        self.startupCost = startupCost
+        self.timeToIncome = timeToIncome
+        self.firstMilestones = firstMilestones
+        self.premium = premium
+        self.path = path
+    }
+
+    // Lenient decoding so business records persisted before these fields
+    // existed still load cleanly from local storage / the cloud blob.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        tagline = try c.decode(String.self, forKey: .tagline)
+        description = try c.decode(String.self, forKey: .description)
+        whyFit = try c.decode(String.self, forKey: .whyFit)
+        startupCost = try c.decode(String.self, forKey: .startupCost)
+        timeToIncome = try c.decode(String.self, forKey: .timeToIncome)
+        firstMilestones = try c.decode([String].self, forKey: .firstMilestones)
+        premium = ((try? c.decodeIfPresent(Bool.self, forKey: .premium)) ?? nil) ?? false
+        path = ((try? c.decodeIfPresent(BusinessPath.self, forKey: .path)) ?? nil)
+    }
 }
 
 // MARK: - Subscription
@@ -191,7 +291,9 @@ struct Subscription: Codable {
 
 struct Profile: Codable {
     var name: String = ""
+    var email: String? = nil
     var goal: PrimaryGoal? = nil
+    var path: BusinessPath? = nil
     var experience: ExperienceLevel? = nil
     var time: TimeCommitment? = nil
     var priority: Priority? = nil
@@ -219,6 +321,9 @@ struct Profile: Codable {
     var customBuildCount: Int = 0
     var businessSwitchMonth: String? = nil
     var businessSwitchCount: Int = 0
+
+    /// Set once the user has claimed their business with a verified email.
+    var claimedAt: Date? = nil
 }
 
 // MARK: - App state

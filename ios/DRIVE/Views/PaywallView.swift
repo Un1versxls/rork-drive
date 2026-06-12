@@ -102,6 +102,20 @@ struct PaywallView: View {
                 .font(.system(size: 15))
                 .foregroundStyle(DriveColor.textDim)
                 .lineSpacing(2)
+            if let biz = store.state.profile.business, biz.premium {
+                HStack(spacing: 8) {
+                    Image(systemName: "crown.fill").font(.system(size: 12)).foregroundStyle(DriveColor.gold)
+                    Text("\(biz.name) is a Premium business — choose Premium below to unlock it.")
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .foregroundStyle(DriveColor.text)
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(hex: 0xFFFAEB))
+                .clipShape(.rect(cornerRadius: 12))
+                .overlay { RoundedRectangle(cornerRadius: 12).stroke(Color(hex: 0xF1E2A4), lineWidth: 1) }
+                .padding(.top, 4)
+            }
         }
     }
 

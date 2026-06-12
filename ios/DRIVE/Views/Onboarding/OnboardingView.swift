@@ -2,44 +2,46 @@
 //  OnboardingView.swift
 //  DRIVE
 //
-//  Multi-step onboarding questionnaire that builds the user's profile,
-//  matches a business, and leads into the paywall. Cal AI–style flow:
-//  social proof, a branching "have you used a productivity app?" question
-//  with a why-it-helps graph, a premium DRIVE comparison, and reviews
-//  spread across the questionnaire.
+//  Two-path onboarding (online AI business vs. in-person hustle) with
+//  branching social proof, a path-aware experience scale, a Cal AI–style
+//  roadmap preview, 3 personalized business recommendations, and a
+//  claim-your-business step (name + email code) that leads into the
+//  "this is your edge" moment and the paywall. Sign-in is available from the
+//  path screen and the claim screen.
 //
 
 import SwiftUI
 
 enum OBScreen {
-    case welcome, reviewRating, usedApps, whyApps, whyDrive
-    case goal, experience, reviewMaya, time, motivation, priority, reviewJordan, obstacle, name, match
+    case welcome, reviewRating, path, usedApps, whyApps, whyDrive
+    case experience, reviewMaya, time, priority, reviewJordan, obstacle, roadmap, match, claim
 }
 
 struct OnboardingView: View {
     @Environment(AppStore.self) private var store
     @State private var idx: Int = 0
-    @State private var showShowcase = false
+    @State private var showEdge = false
     @State private var showPaywall = false
+    @State private var showSignIn = false
 
     // local picks
+    @State private var path: BusinessPath?
     @State private var usedApps: Bool?
-    @State private var goal: PrimaryGoal?
     @State private var experience: ExperienceLevel?
     @State private var time: TimeCommitment?
     @State private var priority: Priority?
-    @State private var motivation: Int?
     @State private var obstacle: Obstacle?
     @State private var name: String = ""
+    @State private var email: String = ""
     @State private var pickedBusiness: BusinessIdea?
 
-    private let questionScreens: [OBScreen] = [.goal, .experience, .time, .motivation, .priority, .obstacle, .name, .match]
+    private let questionScreens: [OBScreen] = [.path, .experience, .time, .priority, .obstacle, .match]
 
     private var flow: [OBScreen] {
-        var f: [OBScreen] = [.welcome, .reviewRating, .usedApps]
+        var f: [OBScreen] = [.welcome, .reviewRating, .path, .usedApps]
         if usedApps == false { f.append(.whyApps) }
         if usedApps != nil { f.append(.whyDrive) }
-        f += [.goal, .experience, .reviewMaya, .time, .motivation, .priority, .reviewJordan, .obstacle, .name, .match]
+        f += [.experience, .reviewMaya, .time, .priority, .reviewJordan, .obstacle, .roadmap, .match, .claim]
         return f
     }
 
@@ -54,6 +56,13 @@ struct OnboardingView: View {
         let f = flow
         let answered = f.prefix(idx + 1).filter { questionScreens.contains($0) }.count
         return (answered, questionScreens.count)
+    }
+
+    private var recommendations: [BusinessIdea] {
+        guard let path else { return [] }
+        return BusinessCatalog.recommend(
+            path: path, experience: experience, time: time, priority: priority, obstacle: obstacle
+        )
     }
 
     var body: some View {
@@ -71,9 +80,9 @@ struct OnboardingView: View {
                     ))
             }
         }
-        .fullScreenCover(isPresented: $showShowcase) {
-            AppShowcaseView(hapticsEnabled: store.state.profile.hapticsEnabled) {
-                showShowcase = false
+        .fullScreenCover(isPresented: $showEdge) {
+            EdgeStep(business: pickedBusiness, hapticsEnabled: store.state.profile.hapticsEnabled) {
+                showEdge = false
                 showPaywall = true
             }
             .environment(store)
@@ -82,6 +91,13 @@ struct OnboardingView: View {
             PaywallView(fromUpgrade: false) {
                 showPaywall = false
                 store.completeOnboarding()
+            }
+            .environment(store)
+        }
+        .sheet(isPresented: $showSignIn) {
+            SignInSheet { result in
+                showSignIn = false
+                handleSignIn(result)
             }
             .environment(store)
         }
@@ -96,32 +112,21 @@ struct OnboardingView: View {
             ReviewStep(
                 kind: .rating(score: "4.9", sub: "Based on 12,400+ reviews"),
                 headline: "Loved by 42,000+ people building something real.",
-                message: "DRIVE turns big goals into the right daily tasks — so you stop scrolling and start shipping."
+                message: "DRIVE turns a big goal into the right daily tasks — so you stop scrolling and start shipping."
             ) { advance() }
+        case .path:
+            PathStep(picked: path, onPick: { p in path = p; advanceSoon() }, onSignIn: { showSignIn = true })
         case .usedApps:
-            ProductivityStep(picked: usedApps) { ans in
-                usedApps = ans
-                advance()
-            }
+            ProductivityStep(picked: usedApps) { ans in usedApps = ans; advance() }
         case .whyApps:
             WhyAppsStep { advance() }
         case .whyDrive:
             WhyDriveStep { advance() }
-        case .goal:
-            QuestionStep(title: "What's your main goal?", subtitle: "We'll tailor your daily plan to this.") {
-                VStack(spacing: 12) {
-                    ForEach(PrimaryGoal.allCases) { g in
-                        OptionCard(title: g.title, subtitle: g.subtitle, emoji: g.emoji, selected: goal == g) {
-                            goal = g; advanceSoon()
-                        }
-                    }
-                }
-            }
         case .experience:
             QuestionStep(title: "How experienced are you?", subtitle: "Be honest — we meet you where you are.") {
                 VStack(spacing: 12) {
                     ForEach(ExperienceLevel.allCases) { e in
-                        OptionCard(title: e.title, subtitle: e.subtitle, selected: experience == e) {
+                        OptionCard(title: e.title(for: path ?? .onlineAI), subtitle: e.subtitle(for: path ?? .onlineAI), selected: experience == e) {
                             experience = e; advanceSoon()
                         }
                     }
@@ -131,7 +136,7 @@ struct OnboardingView: View {
             ReviewStep(
                 kind: .person(initial: "M", name: "Maya, 22", tint: Color(hex: 0xFECACA)),
                 headline: "\u{201C}Made $1.4k in a month\u{201D}",
-                message: "DRIVE replaced hours of TikTok scrolling with the right next step."
+                message: "DRIVE replaced hours of scrolling with the right next step."
             ) { advance() }
         case .time:
             QuestionStep(title: "How much time can you give?", subtitle: "Every day counts — even 15 minutes.") {
@@ -143,12 +148,8 @@ struct OnboardingView: View {
                     }
                 }
             }
-        case .motivation:
-            QuestionStep(title: "How fired up are you right now?", subtitle: "Slide to set your starting energy.") {
-                MotivationScaleStep(value: $motivation) { advanceSoon() }
-            }
         case .priority:
-            QuestionStep(title: "What matters most to you?", subtitle: nil) {
+            QuestionStep(title: "What matters most to you?", subtitle: "This shapes what we recommend.") {
                 VStack(spacing: 12) {
                     ForEach(Priority.allCases) { p in
                         OptionCard(title: p.title, subtitle: p.subtitle, selected: priority == p) {
@@ -173,10 +174,26 @@ struct OnboardingView: View {
                     }
                 }
             }
-        case .name:
-            NameStep(name: $name) { advance() }
+        case .roadmap:
+            RoadmapPreviewStep(path: path ?? .onlineAI) { advance() }
         case .match:
-            MatchStep(goal: goal ?? .earnIncome, picked: $pickedBusiness) { advance() }
+            MatchPathStep(
+                path: path ?? .onlineAI,
+                ideas: recommendations,
+                picked: $pickedBusiness
+            ) { advance() }
+        case .claim:
+            ClaimStep(
+                name: $name,
+                email: $email,
+                business: pickedBusiness,
+                onClaimed: {
+                    commitPartial()
+                    store.claim(email: email, name: name)
+                    showEdge = true
+                },
+                onSignIn: { showSignIn = true }
+            )
         }
     }
 
@@ -186,8 +203,6 @@ struct OnboardingView: View {
         commitPartial()
         if current == .match {
             commitPartial()
-            showShowcase = true
-            return
         }
         withAnimation(.easeInOut(duration: 0.22)) { idx = min(flow.count - 1, idx + 1) }
     }
@@ -200,20 +215,33 @@ struct OnboardingView: View {
         withAnimation(.easeInOut(duration: 0.2)) { idx = max(0, idx - 1) }
     }
 
+    private func handleSignIn(_ result: AppStore.SignInResult) {
+        switch result {
+        case .restored:
+            // RootView switches to the dashboard automatically (onboarded = true).
+            break
+        case .expired, .notFound:
+            // Stay in onboarding; the sheet already explained the outcome.
+            break
+        }
+    }
+
     private func commitPartial() {
         store.setProfile { p in
-            if let goal { p.goal = goal }
+            if let path {
+                p.path = path
+                p.goal = .earnIncome
+            }
             if let experience { p.experience = experience }
             if let time { p.time = time }
             if let priority { p.priority = priority }
-            if let motivation { p.confidence = motivation }
             if let obstacle { p.obstacle = obstacle }
             if !name.trimmingCharacters(in: .whitespaces).isEmpty {
                 p.name = name.trimmingCharacters(in: .whitespaces)
             }
-            if let pickedBusiness {
-                p.business = pickedBusiness
-            }
+        }
+        if let pickedBusiness {
+            store.setBusiness(pickedBusiness, taskPool: OnboardingBusiness.taskPool(for: pickedBusiness))
         }
     }
 }
@@ -254,7 +282,7 @@ private struct OnboardingHeader: View {
 
 // MARK: - Generic question scaffold
 
-private struct QuestionStep<Content: View>: View {
+struct QuestionStep<Content: View>: View {
     let title: String
     let subtitle: String?
     @ViewBuilder let content: () -> Content
@@ -287,33 +315,44 @@ private struct QuestionStep<Content: View>: View {
     }
 }
 
-// MARK: - Welcome
+// MARK: - Welcome (logo on a soft black square, fade in + up)
 
 private struct WelcomeStep: View {
     let onStart: () -> Void
-    @State private var appear = false
+    @State private var logoIn = false
+    @State private var textIn = false
 
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
-            VStack(spacing: 18) {
-                Image("AppLogo")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 104, height: 104)
-                    .shadow(color: DriveColor.gold.opacity(0.35), radius: 24, x: 0, y: 12)
-                    .scaleEffect(appear ? 1 : 0.7)
-                    .opacity(appear ? 1 : 0)
+            VStack(spacing: 22) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .fill(Color.black)
+                        .frame(width: 132, height: 132)
+                        .shadow(color: DriveColor.gold.opacity(0.30), radius: 26, x: 0, y: 14)
+                    Image("AppLogo")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 96, height: 96)
+                }
+                .scaleEffect(logoIn ? 1 : 0.85)
+                .opacity(logoIn ? 1 : 0)
+                .offset(y: logoIn ? 0 : 24)
 
-                Text("DRIVE")
-                    .font(.system(size: 44, weight: .black))
-                    .tracking(2)
-                    .foregroundStyle(DriveColor.text)
-                Text("Turn your ambition into\na daily habit that pays off.")
-                    .font(.system(size: 17, weight: .medium))
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(DriveColor.textDim)
-                    .lineSpacing(3)
+                VStack(spacing: 12) {
+                    Text("DRIVE")
+                        .font(.system(size: 44, weight: .black))
+                        .tracking(2)
+                        .foregroundStyle(DriveColor.text)
+                    Text("Turn your ambition into\na daily habit that pays off.")
+                        .font(.system(size: 17, weight: .medium))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(DriveColor.textDim)
+                        .lineSpacing(3)
+                }
+                .opacity(textIn ? 1 : 0)
+                .offset(y: textIn ? 0 : 16)
             }
             Spacer()
             VStack(spacing: 12) {
@@ -324,98 +363,174 @@ private struct WelcomeStep: View {
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
+            .opacity(textIn ? 1 : 0)
         }
         .onAppear {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) { appear = true }
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) { logoIn = true }
+            withAnimation(.easeOut(duration: 0.5).delay(0.25)) { textIn = true }
         }
     }
 }
 
-// MARK: - Motivation scale (emoji + slider variety)
+// MARK: - Path selection
 
-private struct MotivationScaleStep: View {
-    @Binding var value: Int?
-    let onPick: () -> Void
-
-    @State private var raw: Double = 3
-    @State private var committed = false
-
-    private let emojis = ["😴", "🙂", "😃", "🔥", "🚀"]
-    private let labels = ["Low", "Okay", "Good", "Fired up", "Unstoppable"]
-    private var step: Int { min(4, max(0, Int(raw.rounded()))) }
+private struct PathStep: View {
+    let picked: BusinessPath?
+    let onPick: (BusinessPath) -> Void
+    let onSignIn: () -> Void
+    @State private var appear = false
 
     var body: some View {
-        VStack(spacing: 22) {
-            Text(emojis[step])
-                .font(.system(size: 72))
-                .scaleEffect(committed ? 1.1 : 1)
-                .animation(.spring(response: 0.3, dampingFraction: 0.5), value: step)
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("YOUR PATH").sectionEyebrow().foregroundStyle(DriveColor.accentDeep)
+                Text("How do you want\nto make money?")
+                    .font(.system(size: 30, weight: .black))
+                    .foregroundStyle(DriveColor.text)
+                    .tracking(-0.6)
+                Text("Pick a lane — we'll tailor everything from here.")
+                    .font(.system(size: 15))
+                    .foregroundStyle(DriveColor.textDim)
+            }
+            .padding(.top, 8)
 
-            Text(labels[step])
-                .font(.system(size: 20, weight: .black))
-                .foregroundStyle(DriveColor.text)
-
-            HStack(spacing: 8) {
-                ForEach(0..<5, id: \.self) { i in
-                    Capsule()
-                        .fill(i <= step ? DriveColor.gold : DriveColor.border)
-                        .frame(height: 10)
+            VStack(spacing: 14) {
+                ForEach(BusinessPath.allCases) { p in
+                    PathCard(path: p, selected: picked == p) { onPick(p) }
                 }
             }
-
-            Slider(value: $raw, in: 0...4, step: 1)
-                .tint(DriveColor.gold)
-                .onChange(of: step) { _, _ in Haptics.selection() }
-
-            GradientButton(title: "That's me", variant: .gold) {
-                committed = true
-                value = step + 1
-                onPick()
-            }
-        }
-        .padding(.top, 6)
-    }
-}
-
-// MARK: - Name
-
-private struct NameStep: View {
-    @Binding var name: String
-    let onNext: () -> Void
-    @FocusState private var focused: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("What should we call you?")
-                .font(.system(size: 28, weight: .black))
-                .foregroundStyle(DriveColor.text)
-                .tracking(-0.5)
-            Text("This shows up on your dashboard.")
-                .font(.system(size: 15))
-                .foregroundStyle(DriveColor.textDim)
-
-            TextField("Your name", text: $name)
-                .font(.system(size: 22, weight: .bold))
-                .foregroundStyle(DriveColor.text)
-                .focused($focused)
-                .submitLabel(.done)
-                .onSubmit { if canContinue { onNext() } }
-                .padding(.vertical, 14)
-                .overlay(alignment: .bottom) {
-                    Rectangle().fill(DriveColor.text).frame(height: 2)
-                }
-                .padding(.top, 18)
+            .padding(.top, 26)
 
             Spacer()
-            GradientButton(title: "Continue", disabled: !canContinue) { onNext() }
+
+            Button(action: onSignIn) {
+                HStack(spacing: 5) {
+                    Text("Already have an account?").foregroundStyle(DriveColor.textDim)
+                    Text("Sign in").foregroundStyle(DriveColor.accentDeep).fontWeight(.bold)
+                }
+                .font(.system(size: 14, weight: .semibold))
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.plain)
+            .padding(.bottom, 18)
         }
         .padding(.horizontal, 20)
         .padding(.top, 8)
-        .padding(.bottom, 24)
-        .onAppear { focused = true }
+        .opacity(appear ? 1 : 0)
+        .offset(y: appear ? 0 : 12)
+        .onAppear { withAnimation(.easeOut(duration: 0.32)) { appear = true } }
+    }
+}
+
+private struct PathCard: View {
+    let path: BusinessPath
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button {
+            Haptics.selection()
+            action()
+        } label: {
+            HStack(spacing: 16) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(selected ? DriveColor.text : DriveColor.accentDim)
+                        .frame(width: 56, height: 56)
+                    Text(path.emoji).font(.system(size: 28))
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(path.title).font(.system(size: 18, weight: .black)).foregroundStyle(DriveColor.text)
+                    Text(path.subtitle).font(.system(size: 13)).foregroundStyle(DriveColor.textDim)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right").font(.system(size: 15, weight: .bold)).foregroundStyle(DriveColor.textMuted)
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(selected ? DriveColor.bg : DriveColor.bgSoft)
+            .clipShape(.rect(cornerRadius: 20))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(selected ? DriveColor.gold : DriveColor.border, lineWidth: selected ? 2 : 1)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Roadmap preview (Cal AI–style entrance)
+
+private struct RoadmapPreviewStep: View {
+    let path: BusinessPath
+    let onContinue: () -> Void
+    @State private var selected: Int? = nil
+    @State private var appear = false
+
+    private var milestones: [RoadmapMilestone] {
+        [
+            .init(day: 1, label: "Start your first task", progress: 0.0),
+            .init(day: 7, label: "Land your first win", progress: 0.32),
+            .init(day: 21, label: "First real income", progress: 0.6),
+            .init(day: 45, label: "Consistent momentum", progress: 0.82),
+        ]
     }
 
-    private var canContinue: Bool {
-        !name.trimmingCharacters(in: .whitespaces).isEmpty
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("YOUR ROADMAP").sectionEyebrow().foregroundStyle(DriveColor.accentDeep)
+                Text("Here's the journey\nahead of you.")
+                    .font(.system(size: 28, weight: .black))
+                    .foregroundStyle(DriveColor.text)
+                    .tracking(-0.5)
+                Text("Small daily steps compound into real results. Tap a milestone to peek ahead.")
+                    .font(.system(size: 15))
+                    .foregroundStyle(DriveColor.textDim)
+            }
+            .padding(.top, 8)
+            .opacity(appear ? 1 : 0)
+            .offset(y: appear ? 0 : 12)
+
+            RoadmapChart(
+                milestones: milestones,
+                finalLabel: "Your goal",
+                youProgress: 0.0,
+                daysOnAccount: 0,
+                autoSelectIndex: 1,
+                selected: $selected
+            )
+            .padding(20)
+            .driveCard(fill: DriveColor.bgSoft, padding: 20)
+            .padding(.top, 22)
+
+            Spacer()
+
+            GradientButton(title: "Looks good", variant: .gold) { onContinue() }
+                .padding(.bottom, 20)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .onAppear { withAnimation(.easeOut(duration: 0.32)) { appear = true } }
+    }
+}
+
+// MARK: - Helpers shared with the store
+
+enum OnboardingBusiness {
+    /// Builds a focused daily task pool from a business's first milestones.
+    static func taskPool(for business: BusinessIdea) -> [TaskSeed] {
+        let cats: [TaskCategory] = [.focus, .growth, .hustle, .skill, .mindset]
+        var seeds: [TaskSeed] = business.firstMilestones.enumerated().map { i, m in
+            TaskSeed(
+                title: m,
+                description: "A concrete step toward launching \(business.name).",
+                category: cats[i % cats.count],
+                difficulty: (i % 3) + 1
+            )
+        }
+        seeds.append(TaskSeed(title: "Tell one person about \(business.name)", description: "Share what you're building and ask for honest feedback.", category: .growth, difficulty: 1))
+        seeds.append(TaskSeed(title: "Define today's one move", description: "Write the single most important step for \(business.name) today.", category: .focus, difficulty: 2))
+        return seeds
     }
 }

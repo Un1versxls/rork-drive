@@ -12,6 +12,7 @@ struct TasksView: View {
     @State private var selectedTask: DriveTask?
     @State private var celebrate = false
     @State private var celebrateKey: String?
+    @State private var logoIn = false
 
     private var pending: [DriveTask] { store.todayTasks.filter { $0.status == .pending } }
     private var done: [DriveTask] { store.todayTasks.filter { $0.status != .pending } }
@@ -103,14 +104,30 @@ struct TasksView: View {
 
     private var header: some View {
         HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(greeting)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(DriveColor.textDim)
-                Text(store.state.profile.name.isEmpty ? "Driver" : store.state.profile.name)
-                    .font(.system(size: 26, weight: .black))
-                    .foregroundStyle(DriveColor.text)
-                    .tracking(-0.5)
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.black)
+                        .frame(width: 44, height: 44)
+                        .shadow(color: DriveColor.gold.opacity(0.25), radius: 8, x: 0, y: 4)
+                    Image("AppLogo")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 30, height: 30)
+                }
+                .scaleEffect(logoIn ? 1 : 0.8)
+                .opacity(logoIn ? 1 : 0)
+                .offset(y: logoIn ? 0 : 8)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(greeting)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(DriveColor.textDim)
+                    Text(store.state.profile.name.isEmpty ? "Driver" : store.state.profile.name)
+                        .font(.system(size: 26, weight: .black))
+                        .foregroundStyle(DriveColor.text)
+                        .tracking(-0.5)
+                }
             }
             Spacer()
             VStack(spacing: 4) {
@@ -125,6 +142,7 @@ struct TasksView: View {
                 .clipShape(Capsule())
             }
         }
+        .onAppear { withAnimation(.easeOut(duration: 0.5)) { logoIn = true } }
     }
 
     private var heroCard: some View {

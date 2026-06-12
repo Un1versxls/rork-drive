@@ -23,6 +23,8 @@ final class AppStore {
     var pendingFreeMonth: Bool = false
 
     private let storageKey = "drive.state.v1"
+    private var lastCloudSyncAt: Date? = nil
+    private let syncInterval: TimeInterval = 30 * 60 // 30 minutes
 
     init() {
         load()
@@ -52,6 +54,40 @@ final class AppStore {
 
     private func commit() {
         persist()
+        scheduleCloudPush()
+    }
+
+    // MARK: - Cloud sync (Supabase app_users.state_blob)
+
+    /// Whether this user has claimed their account with a verified email.
+    var isSignedIn: Bool {
+        !(state.profile.email ?? "").isEmpty
+    }
+
+    /// Debounced background push so rapid commits don't spam the network.
+    private var pushPending = false
+    private func scheduleCloudPush() {
+        guard isSignedIn, !pushPending else { return }
+        pushPending = true
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2))
+            pushPending = false
+            await pushToCloud()
+        }
+    }
+
+    @discardableResult
+    func pushToCloud() async -> Bool {
+        guard isSignedIn else { return false }
+        lastCloudSyncAt = Date()
+        return await SupabaseService.upsert(state: state, email: state.profile.email)
+    }
+
+    /// Called on launch / foreground. Syncs at most once per 30 minutes.
+    func maybeSyncOnForeground() {
+        guard isSignedIn else { return }
+        if let last = lastCloudSyncAt, Date().timeIntervalSince(last) < syncInterval { return }
+        Task { await pushToCloud() }
     }
 
     // MARK: - Date helpers
@@ -190,6 +226,50 @@ final class AppStore {
         )
         state.lastActiveDate = key
         commit()
+        Task { await pushToCloud() }
+    }
+
+    // MARK: - Claim / auth
+
+    /// Result of attempting to sign in with an existing account.
+    enum SignInResult {
+        case restored          // active plan — state pulled from cloud
+        case expired           // account exists but the plan has lapsed
+        case notFound          // no account for this email
+    }
+
+    /// Records the verified email after a successful claim/sign-up and pushes.
+    func claim(email: String, name: String) {
+        let clean = email.trimmingCharacters(in: .whitespaces).lowercased()
+        let nm = name.trimmingCharacters(in: .whitespaces)
+        state.profile.email = clean
+        if !nm.isEmpty { state.profile.name = nm }
+        state.profile.claimedAt = Date()
+        commit()
+        Task { await pushToCloud() }
+    }
+
+    /// Signs an existing user in. Only succeeds when their plan is still active;
+    /// otherwise reports `.expired` so the UI can explain and route to paywall.
+    func signIn(email: String) async -> SignInResult {
+        let clean = email.trimmingCharacters(in: .whitespaces).lowercased()
+        guard let row = await SupabaseService.fetchUser(email: clean) else {
+            return .notFound
+        }
+        if !row.isSubscriptionActive {
+            return .expired
+        }
+        if var blob = row.stateBlob {
+            blob.profile.email = clean
+            blob.onboarded = true
+            state = blob
+            rolloverTasks()
+        } else {
+            state.profile.email = clean
+            state.onboarded = true
+        }
+        commit()
+        return .restored
     }
 
     // MARK: - Tasks

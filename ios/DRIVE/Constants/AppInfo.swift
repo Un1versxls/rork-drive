@@ -10,8 +10,8 @@ import SwiftUI
 enum AppInfo {
     /// Bump this whenever you ship a new round of features. The What's New
     /// popup shows when `profile.lastSeenBuild` is below this number.
-    static let build = 2
-    static let versionLabel = "v3.2"
+    static let build = 3
+    static let versionLabel = "v3.3"
 
 
     /// Number of badges to unlock in one calendar month to earn a free month.
@@ -42,6 +42,20 @@ struct WhatsNewFeature: Identifiable {
 
 enum WhatsNew {
     static let features: [WhatsNewFeature] = [
+        WhatsNewFeature(
+            icon: "point.topleft.down.to.point.bottomright.curvepath",
+            tint: DriveColor.accentDeep,
+            eyebrow: "NEW",
+            title: "Pick your path",
+            body: "Choose an online AI business or an in-person hustle, then get 3 ideas matched to your answers — claim one to begin."
+        ),
+        WhatsNewFeature(
+            icon: "icloud.fill",
+            tint: DriveColor.accent,
+            eyebrow: "NEW",
+            title: "Your progress, everywhere",
+            body: "Claim your business with your email and your tasks, streak and plan sync to the cloud — sign back in anytime."
+        ),
         WhatsNewFeature(
             icon: "brain.head.profile",
             tint: DriveColor.accentDeep,
