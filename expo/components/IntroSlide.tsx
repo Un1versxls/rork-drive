@@ -17,6 +17,8 @@ interface Props {
   title: string;
   subtitle?: string;
   children?: React.ReactNode;
+  /** Hide the progress dots row (used when slides are spread through the flow). */
+  showDots?: boolean;
 }
 
 /**
@@ -24,7 +26,7 @@ interface Props {
  * Always plays a one-by-one star animation at the top so every page feels
  * cohesive while the body content differs per slide.
  */
-export function IntroSlide({ index, total, next, prev, rating = "4.9", ratingSub = "Based on 12,400+ reviews", title, subtitle, children }: Props) {
+export function IntroSlide({ index, total, next, prev, rating = "4.9", ratingSub = "Based on 12,400+ reviews", title, subtitle, children, showDots = true }: Props) {
   const router = useRouter();
   const starAnims = useMemo(
     () => [0, 1, 2, 3, 4].map(() => new Animated.Value(0)),
@@ -40,17 +42,17 @@ export function IntroSlide({ index, total, next, prev, rating = "4.9", ratingSub
 
     const seq = starAnims.map((v, i) =>
       Animated.sequence([
-        Animated.delay(220 + i * 160),
-        Animated.spring(v, { toValue: 1, friction: 4, tension: 110, useNativeDriver: true }),
+        Animated.delay(90 + i * 80),
+        Animated.spring(v, { toValue: 1, friction: 4, tension: 130, useNativeDriver: true }),
       ]),
     );
     Animated.parallel([
       ...seq,
       Animated.sequence([
-        Animated.delay(220 + 5 * 160 + 60),
+        Animated.delay(90 + 5 * 80 + 40),
         Animated.parallel([
-          Animated.timing(bodyFade, { toValue: 1, duration: 520, useNativeDriver: true }),
-          Animated.timing(bodyShift, { toValue: 0, duration: 560, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          Animated.timing(bodyFade, { toValue: 1, duration: 340, useNativeDriver: true }),
+          Animated.timing(bodyShift, { toValue: 0, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
         ]),
       ]),
     ]).start();
@@ -73,9 +75,11 @@ export function IntroSlide({ index, total, next, prev, rating = "4.9", ratingSub
             <View style={styles.backBtn} />
           )}
           <View style={styles.dotsRow}>
-            {Array.from({ length: total }).map((_, i) => (
-              <View key={i} style={[styles.dot, i === index ? styles.dotOn : null]} />
-            ))}
+            {showDots
+              ? Array.from({ length: total }).map((_, i) => (
+                  <View key={i} style={[styles.dot, i === index ? styles.dotOn : null]} />
+                ))
+              : null}
           </View>
           <View style={styles.backBtn} />
         </View>

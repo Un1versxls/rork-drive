@@ -1,9 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { Sparkles } from "lucide-react-native";
+import { Flag, Sparkles } from "lucide-react-native";
+import Svg, { Defs, LinearGradient as SvgLinearGradient, Path, Stop } from "react-native-svg";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { Colors } from "@/constants/colors";
+
+const AnimatedPath = Animated.createAnimatedComponent(Path);
 import { RoadmapChart, type RoadmapMilestone } from "@/components/RoadmapChart";
 import { useApp } from "@/providers/AppProvider";
 import type { PrimaryGoal, TimeCommitment } from "@/types";
@@ -139,6 +143,7 @@ export default function ProjectionScreen() {
           youProgress={0}
           selected={selected}
           onSelect={setSelected}
+          autoSelectIndex={0}
         />
 
         <Text style={styles.estimateNote}>

@@ -8,8 +8,9 @@ export default function Intro3() {
     <IntroSlide
       index={2}
       total={4}
-      next="/onboarding/intro-4"
-      prev="/onboarding/intro-2"
+      showDots={false}
+      next="/onboarding/name"
+      prev="/onboarding/budget"
       title={"\u201CFirst $500 month in 3 weeks\u201D"}
       subtitle="The daily task system pushed me past every excuse I used to make."
     >

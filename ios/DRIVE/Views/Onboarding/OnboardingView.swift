@@ -3,17 +3,26 @@
 //  DRIVE
 //
 //  Multi-step onboarding questionnaire that builds the user's profile,
-//  matches a business, and leads into the paywall.
+//  matches a business, and leads into the paywall. Cal AI–style flow:
+//  social proof, a branching "have you used a productivity app?" question
+//  with a why-it-helps graph, a premium DRIVE comparison, and reviews
+//  spread across the questionnaire.
 //
 
 import SwiftUI
 
+enum OBScreen {
+    case welcome, reviewRating, usedApps, whyApps, whyDrive
+    case goal, experience, reviewMaya, time, priority, reviewJordan, obstacle, name, match
+}
+
 struct OnboardingView: View {
     @Environment(AppStore.self) private var store
-    @State private var step: Int = 0
+    @State private var idx: Int = 0
     @State private var showPaywall = false
 
     // local picks
+    @State private var usedApps: Bool?
     @State private var goal: PrimaryGoal?
     @State private var experience: ExperienceLevel?
     @State private var time: TimeCommitment?
@@ -22,16 +31,42 @@ struct OnboardingView: View {
     @State private var name: String = ""
     @State private var pickedBusiness: BusinessIdea?
 
-    private let totalSteps = 8
+    private let questionScreens: [OBScreen] = [.goal, .experience, .time, .priority, .obstacle, .name, .match]
+
+    private var flow: [OBScreen] {
+        var f: [OBScreen] = [.welcome, .reviewRating, .usedApps]
+        if usedApps == false { f.append(.whyApps) }
+        if usedApps != nil { f.append(.whyDrive) }
+        f += [.goal, .experience, .reviewMaya, .time, .priority, .reviewJordan, .obstacle, .name, .match]
+        return f
+    }
+
+    private var current: OBScreen {
+        let f = flow
+        return idx >= 0 && idx < f.count ? f[idx] : .match
+    }
+
+    private var isQuestion: Bool { questionScreens.contains(current) }
+
+    private var questionProgress: (step: Int, total: Int) {
+        let f = flow
+        let answered = f.prefix(idx + 1).filter { questionScreens.contains($0) }.count
+        return (answered, questionScreens.count)
+    }
 
     var body: some View {
         ZStack {
             DriveColor.bg.ignoresSafeArea()
             VStack(spacing: 0) {
-                if step > 0 && step <= totalSteps {
-                    OnboardingHeader(step: step, total: totalSteps) { back() }
+                if isQuestion {
+                    OnboardingHeader(step: questionProgress.step, total: questionProgress.total) { back() }
                 }
                 content
+                    .id(idx)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .trailing).combined(with: .opacity),
+                        removal: .opacity
+                    ))
             }
         }
         .fullScreenCover(isPresented: $showPaywall) {
@@ -45,10 +80,25 @@ struct OnboardingView: View {
 
     @ViewBuilder
     private var content: some View {
-        switch step {
-        case 0:
+        switch current {
+        case .welcome:
             WelcomeStep { advance() }
-        case 1:
+        case .reviewRating:
+            ReviewStep(
+                kind: .rating(score: "4.9", sub: "Based on 12,400+ reviews"),
+                headline: "Loved by 42,000+ people building something real.",
+                message: "DRIVE turns big goals into the right daily tasks — so you stop scrolling and start shipping."
+            ) { advance() }
+        case .usedApps:
+            ProductivityStep(picked: usedApps) { ans in
+                usedApps = ans
+                advance()
+            }
+        case .whyApps:
+            WhyAppsStep { advance() }
+        case .whyDrive:
+            WhyDriveStep { advance() }
+        case .goal:
             QuestionStep(title: "What's your main goal?", subtitle: "We'll tailor your daily plan to this.") {
                 VStack(spacing: 12) {
                     ForEach(PrimaryGoal.allCases) { g in
@@ -58,7 +108,7 @@ struct OnboardingView: View {
                     }
                 }
             }
-        case 2:
+        case .experience:
             QuestionStep(title: "How experienced are you?", subtitle: "Be honest — we meet you where you are.") {
                 VStack(spacing: 12) {
                     ForEach(ExperienceLevel.allCases) { e in
@@ -68,7 +118,13 @@ struct OnboardingView: View {
                     }
                 }
             }
-        case 3:
+        case .reviewMaya:
+            ReviewStep(
+                kind: .person(initial: "M", name: "Maya, 22", tint: Color(hex: 0xFECACA)),
+                headline: "\u{201C}Made $1.4k in a month\u{201D}",
+                message: "DRIVE replaced hours of TikTok scrolling with the right next step."
+            ) { advance() }
+        case .time:
             QuestionStep(title: "How much time can you give?", subtitle: "Every day counts — even 15 minutes.") {
                 VStack(spacing: 12) {
                     ForEach(TimeCommitment.allCases) { t in
@@ -78,7 +134,7 @@ struct OnboardingView: View {
                     }
                 }
             }
-        case 4:
+        case .priority:
             QuestionStep(title: "What matters most to you?", subtitle: nil) {
                 VStack(spacing: 12) {
                     ForEach(Priority.allCases) { p in
@@ -88,7 +144,13 @@ struct OnboardingView: View {
                     }
                 }
             }
-        case 5:
+        case .reviewJordan:
+            ReviewStep(
+                kind: .person(initial: "J", name: "Jordan, 19", tint: Color(hex: 0xFDE68A)),
+                headline: "\u{201C}First $500 month in 3 weeks\u{201D}",
+                message: "The daily task system pushed me past every excuse I used to make."
+            ) { advance() }
+        case .obstacle:
             QuestionStep(title: "What's held you back?", subtitle: "Knowing this helps us keep you moving.") {
                 VStack(spacing: 12) {
                     ForEach(Obstacle.allCases) { o in
@@ -98,12 +160,10 @@ struct OnboardingView: View {
                     }
                 }
             }
-        case 6:
+        case .name:
             NameStep(name: $name) { advance() }
-        case 7:
+        case .match:
             MatchStep(goal: goal ?? .earnIncome, picked: $pickedBusiness) { advance() }
-        default:
-            EmptyView()
         }
     }
 
@@ -111,21 +171,20 @@ struct OnboardingView: View {
 
     private func advance() {
         commitPartial()
-        if step >= totalSteps - 1 {
-            // Last questionnaire step done → paywall.
+        if current == .match {
             commitPartial()
             showPaywall = true
             return
         }
-        withAnimation(.easeInOut(duration: 0.25)) { step += 1 }
+        withAnimation(.easeInOut(duration: 0.22)) { idx = min(flow.count - 1, idx + 1) }
     }
 
     private func advanceSoon() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) { advance() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) { advance() }
     }
 
     private func back() {
-        withAnimation(.easeInOut(duration: 0.2)) { step = max(0, step - 1) }
+        withAnimation(.easeInOut(duration: 0.2)) { idx = max(0, idx - 1) }
     }
 
     private func commitPartial() {
@@ -168,6 +227,7 @@ private struct OnboardingHeader: View {
                     Capsule().fill(DriveColor.border).frame(height: 6)
                     Capsule().fill(DriveColor.gold)
                         .frame(width: geo.size.width * CGFloat(step) / CGFloat(total), height: 6)
+                        .animation(.easeInOut(duration: 0.4), value: step)
                 }
             }
             .frame(height: 6)
@@ -184,6 +244,7 @@ private struct QuestionStep<Content: View>: View {
     let title: String
     let subtitle: String?
     @ViewBuilder let content: () -> Content
+    @State private var appear = false
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -203,6 +264,11 @@ private struct QuestionStep<Content: View>: View {
             .padding(.horizontal, 20)
             .padding(.top, 8)
             .padding(.bottom, 40)
+            .opacity(appear ? 1 : 0)
+            .offset(y: appear ? 0 : 12)
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.32)) { appear = true }
         }
     }
 }
@@ -250,7 +316,7 @@ private struct WelcomeStep: View {
             .padding(.bottom, 24)
         }
         .onAppear {
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.6)) { appear = true }
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) { appear = true }
         }
     }
 }

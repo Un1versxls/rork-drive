@@ -113,7 +113,19 @@ export type NameEffect =
   | "ember_glow"
   | "phoenix_aura"
   | "founders_mark"
-  | "diamond_trail";
+  | "diamond_trail"
+  | "neon_pulse"
+  | "frost_edge"
+  | "royal_crown"
+  | "solar_flare"
+  | "void_black"
+  | "rainbow_wave"
+  | "electric"
+  | "mythic_rune"
+  | "silver_shimmer"
+  | "blue_glow"
+  | "gold_pulse"
+  | "fire_flame";
 
 export interface NotificationPrefs {
   dailyReminders: boolean;

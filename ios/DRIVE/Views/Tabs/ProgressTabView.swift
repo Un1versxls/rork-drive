@@ -117,6 +117,7 @@ struct ProgressTabView: View {
     private var roadmapCard: some View {
         let (milestones, finalLabel) = roadmap(for: store.state.profile.goal ?? .earnIncome, time: store.state.profile.time)
         let completionRatio = min(0.92, Double(store.totalCompleted) / 80.0)
+        let nextIdx = milestones.firstIndex(where: { $0.progress > completionRatio })
         let days = daysOnAccount
         return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
@@ -131,7 +132,7 @@ struct ProgressTabView: View {
                 }
                 Spacer()
             }
-            RoadmapChart(milestones: milestones, finalLabel: finalLabel, youProgress: completionRatio, daysOnAccount: days, selected: $roadmapSelected)
+            RoadmapChart(milestones: milestones, finalLabel: finalLabel, youProgress: completionRatio, daysOnAccount: days, autoSelectIndex: nextIdx, selected: $roadmapSelected)
                 .padding(.top, 8)
             Text(roadmapSelected != nil ? "Milestones are estimated timeframes based on consistent effort." : "Tap a milestone to see details. Timeframes are estimates.")
                 .font(.system(size: 11, weight: .semibold))

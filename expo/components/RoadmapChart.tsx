@@ -48,6 +48,8 @@ interface Props {
   large?: boolean;
   /** Number of days the user has had their DRIVE account. When provided, shows a gold "DAY N" badge anchored to the chart so the eyebrow text above never gets faded. */
   daysOnAccount?: number;
+  /** Index of the milestone to auto-expand once the entrance animation finishes (Cal AI style). Usually the next uncompleted milestone. Null disables. */
+  autoSelectIndex?: number | null;
 }
 
 /**
@@ -66,39 +68,80 @@ export function RoadmapChart({
   onSelect,
   large = false,
   daysOnAccount,
+  autoSelectIndex = null,
 }: Props) {
   const [wrapW, setWrapW] = useState<number>(W);
   const wrapH = wrapW * (H / W);
   const [finalOpen, setFinalOpen] = useState<boolean>(false);
 
   const draw = useRef(new Animated.Value(0)).current;
+  // Whole-chart entrance: slide in from the left + fade (Cal AI feel).
+  const enterX = useRef(new Animated.Value(-34)).current;
+  const enterFade = useRef(new Animated.Value(0)).current;
   const dotAnims = useMemo(() => milestones.map(() => new Animated.Value(0)), [milestones]);
   const selectAnims = useMemo(() => milestones.map(() => new Animated.Value(0)), [milestones]);
   const finalAnim = useRef(new Animated.Value(0)).current;
   const todayPulse = useRef(new Animated.Value(0)).current;
+  // Tracks whether the user has interacted, so the one-time auto-expand never
+  // fights a manual tap.
+  const userTouchedRef = useRef<boolean>(false);
+
+  // Timing constants for the staged Cal AI entrance.
+  const DRAW_MS = 1150;
+  const DRAW_DELAY = 160;
+  const DOTS_START = DRAW_DELAY + DRAW_MS - 120; // dots begin right as the line finishes
+  const DOT_STAGGER = 150;
 
   useEffect(() => {
     draw.setValue(0);
-    Animated.timing(draw, {
-      toValue: 1,
-      duration: 1600,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
+    enterX.setValue(-34);
+    enterFade.setValue(0);
+    dotAnims.forEach((v) => v.setValue(0));
+    finalAnim.setValue(0);
+    userTouchedRef.current = false;
 
+    // 1) Chart panel slides in from the side and fades up.
+    Animated.parallel([
+      Animated.timing(enterX, { toValue: 0, duration: 560, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(enterFade, { toValue: 1, duration: 480, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+    ]).start();
+
+    // 2) The golden line draws left -> right.
+    Animated.sequence([
+      Animated.delay(DRAW_DELAY),
+      Animated.timing(draw, {
+        toValue: 1,
+        duration: DRAW_MS,
+        easing: Easing.inOut(Easing.cubic),
+        useNativeDriver: false,
+      }),
+    ]).start();
+
+    // 3) Dots pop in one-by-one ONLY after the line is fully drawn.
     Animated.parallel(
       dotAnims.map((v, i) =>
         Animated.sequence([
-          Animated.delay(500 + i * 240),
-          Animated.spring(v, { toValue: 1, friction: 5, tension: 110, useNativeDriver: true }),
+          Animated.delay(DOTS_START + i * DOT_STAGGER),
+          Animated.spring(v, { toValue: 1, friction: 5, tension: 120, useNativeDriver: true }),
         ]),
       ),
     ).start();
 
+    // 4) Final goal marker after the dots.
     Animated.sequence([
-      Animated.delay(500 + dotAnims.length * 240 + 100),
-      Animated.spring(finalAnim, { toValue: 1, friction: 5, tension: 110, useNativeDriver: true }),
+      Animated.delay(DOTS_START + dotAnims.length * DOT_STAGGER + 80),
+      Animated.spring(finalAnim, { toValue: 1, friction: 5, tension: 120, useNativeDriver: true }),
     ]).start();
+
+    // 5) One-time auto-expand of the next uncompleted milestone, once the
+    //    dots have settled — mimics Cal AI showing the active step expanded.
+    let autoHandle: ReturnType<typeof setTimeout> | null = null;
+    if (autoSelectIndex !== null && autoSelectIndex >= 0 && autoSelectIndex < milestones.length) {
+      const delay = DOTS_START + dotAnims.length * DOT_STAGGER + 260;
+      autoHandle = setTimeout(() => {
+        if (!userTouchedRef.current) onSelect(autoSelectIndex);
+      }, delay);
+    }
 
     Animated.loop(
       Animated.sequence([
@@ -107,7 +150,10 @@ export function RoadmapChart({
         Animated.delay(900),
       ]),
     ).start();
-  }, [draw, dotAnims, finalAnim, todayPulse]);
+
+    return () => { if (autoHandle) clearTimeout(autoHandle); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draw, dotAnims, finalAnim, todayPulse, enterX, enterFade, autoSelectIndex]);
 
   // Snappy, responsive spring when selection changes — short duration so taps
   // feel instant, spring on grow for a touch of life.
@@ -140,8 +186,8 @@ export function RoadmapChart({
   const onLayout = (e: LayoutChangeEvent) => setWrapW(e.nativeEvent.layout.width);
 
   return (
-    <Pressable onPress={() => onSelect(null)} style={large ? styles.outerLarge : undefined}>
-      <View style={[styles.svgWrap, large && styles.svgWrapLarge]} onLayout={onLayout}>
+    <Pressable onPress={() => { userTouchedRef.current = true; onSelect(null); }} style={large ? styles.outerLarge : undefined}>
+      <Animated.View style={[styles.svgWrap, large && styles.svgWrapLarge, { opacity: enterFade, transform: [{ translateX: enterX }] }]} onLayout={onLayout}>
         <Svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet">
           <Defs>
             <SvgLinearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
@@ -226,6 +272,7 @@ export function RoadmapChart({
               <Pressable
                 onPress={(e) => {
                   e.stopPropagation();
+                  userTouchedRef.current = true;
                   onSelect(isSelected ? null : i);
                 }}
                 hitSlop={28}
@@ -339,7 +386,7 @@ export function RoadmapChart({
             <Text style={styles.youHereText}>YOU</Text>
           </View>
         ) : null}
-      </View>
+      </Animated.View>
 
       {/* "DAY N of your journey" — moved BELOW the chart so it never
           overlaps the first milestone pill or the top-right goal icon.

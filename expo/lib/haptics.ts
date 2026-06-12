@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 
 export type HapticKind =
   | "tap"
+  | "light"
   | "select"
   | "success"
   | "warning"
@@ -17,6 +18,7 @@ export function triggerHaptic(kind: HapticKind, enabled: boolean = true): void {
   try {
     switch (kind) {
       case "tap":
+      case "light":
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         break;
       case "select":

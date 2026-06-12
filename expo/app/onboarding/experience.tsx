@@ -82,7 +82,7 @@ export default function ExperienceScreen() {
             // used by the confidence screen.
             requestAnimationFrame(() => {
               try {
-                router.push("/onboarding/confidence");
+                router.push("/onboarding/intro-4");
               } catch (e) {
                 console.log("[experience] nav failed", e);
                 navLockRef.current = false;

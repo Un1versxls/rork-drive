@@ -50,6 +50,8 @@ const POOL: Record<PrimaryGoal, TaskSeed[]> = {
   grow_business: BUSINESS,
   stay_productive: PRODUCTIVE,
   day_trading: DAY_TRADING,
+  ai_business: BUSINESS,
+  in_person_hustle: EARN,
 };
 
 export function generateDailyTasks(

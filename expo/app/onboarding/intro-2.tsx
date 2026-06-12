@@ -8,8 +8,9 @@ export default function Intro2() {
     <IntroSlide
       index={1}
       total={4}
-      next="/onboarding/intro-3"
-      prev="/onboarding/intro-1"
+      showDots={false}
+      next="/onboarding/time"
+      prev="/onboarding/confidence"
       title={"\u201CMade $1.4k in a month\u201D"}
       subtitle="DRIVE replaced hours of TikTok scrolling with the right next step."
     >

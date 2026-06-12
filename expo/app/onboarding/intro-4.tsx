@@ -9,8 +9,9 @@ export default function Intro4() {
     <IntroSlide
       index={3}
       total={4}
-      next="/onboarding/age"
-      prev="/onboarding/intro-3"
+      showDots={false}
+      next="/onboarding/confidence"
+      prev="/onboarding/experience"
       title="Why people pick DRIVE."
       subtitle="A focused system, not another to-do list."
     >

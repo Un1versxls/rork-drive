@@ -25,13 +25,13 @@ export function resetOnboardingHistory(): void {
 }
 
 const PREV_STEP: Record<string, Href> = {
-  "/onboarding/age": "/onboarding",
+  "/onboarding/age": "/onboarding/why-drive",
   "/onboarding/goal": "/onboarding/age",
   "/onboarding/build-business": "/onboarding/goal",
   "/onboarding/experience": "/onboarding/goal",
   "/onboarding/skill-topic": "/onboarding/goal",
   "/onboarding/confidence": "/onboarding/experience",
-  "/onboarding/time": "/onboarding/confidence",
+  "/onboarding/time": "/onboarding/intro-2",
   "/onboarding/priority": "/onboarding/time",
   "/onboarding/results": "/onboarding/priority",
   "/onboarding/industry": "/onboarding/results",
@@ -39,7 +39,7 @@ const PREV_STEP: Record<string, Href> = {
   "/onboarding/obstacle": "/onboarding/results",
   "/onboarding/projection": "/onboarding/feature-preview",
   "/onboarding/paywall": "/onboarding/projection",
-  "/onboarding/name": "/onboarding/obstacle",
+  "/onboarding/name": "/onboarding/intro-3",
   "/onboarding/sync-accounts": "/onboarding/name",
   "/onboarding/sign-in": "/onboarding/sync-accounts",
   "/onboarding/apple-signin": "/onboarding/sync-accounts",
@@ -50,7 +50,6 @@ const PREV_STEP: Record<string, Href> = {
   "/onboarding/business": "/onboarding/match",
   "/onboarding/plan-summary": "/onboarding/source",
   "/onboarding/try-free": "/onboarding/plan-summary",
-  "/onboarding/paywall": "/onboarding/try-free",
   "/onboarding/decline": "/onboarding/paywall",
   "/onboarding/complete": "/onboarding/paywall",
 };

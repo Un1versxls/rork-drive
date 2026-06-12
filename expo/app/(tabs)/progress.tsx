@@ -414,6 +414,7 @@ function RoadmapCard({ goal, time, businessName, totalCompleted, accountStartedA
         onSelect={setSelected}
         large
         daysOnAccount={daysOnAccount}
+        autoSelectIndex={nextIdx}
       />
 
       <Text style={styles.roadEstimateNote}>

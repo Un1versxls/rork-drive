@@ -29,7 +29,7 @@ export default function ResultsScreen() {
       footer={
         <GradientButton
           title="Continue"
-          onPress={() => router.push(nextRouteForGoal(goal))}
+          onPress={() => router.push(nextRouteForGoal(goal) as never)}
           testID="results-continue"
         />
       }

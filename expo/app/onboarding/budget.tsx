@@ -70,7 +70,7 @@ export default function BudgetScreen() {
           title="Continue"
           onPress={() => {
             setAnswers({ budget: amountToBudget(amount) });
-            router.push("/onboarding/name");
+            router.push("/onboarding/intro-3");
           }}
           testID="cta-budget-continue"
         />

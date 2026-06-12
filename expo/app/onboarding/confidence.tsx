@@ -55,7 +55,7 @@ export default function ConfidenceScreen() {
             if (!value) return;
             try { setProfileField("confidence", value); } catch (e) { console.log("[confidence] save failed", e); }
             requestAnimationFrame(() => {
-              try { router.push("/onboarding/time"); } catch (e) { console.log("[confidence] nav failed", e); }
+              try { router.push("/onboarding/intro-2"); } catch (e) { console.log("[confidence] nav failed", e); }
             });
           }}
           testID="cta-confidence-continue"
